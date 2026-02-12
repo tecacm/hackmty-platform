@@ -3353,6 +3353,7 @@ __metadata:
     moti: "npm:^0.30.0"
     react-native: "npm:*"
     react-native-drawer-layout: "npm:5.0.0-alpha.1"
+    react-native-safe-area-context: "npm:5.6.2"
     solito: "npm:next"
   peerDependencies:
     react: "*"
@@ -8793,6 +8794,16 @@ __metadata:
     react-native: "*"
     react-native-worklets: ">=0.5.0"
   checksum: 10/f11287c506a640593f74694df6d1d89f56ef2de1bdd57ec9a00c5353be40a48bede121f79b20c1b8f6009b640af37cbada3172b5bf6b320cad954001fc1b79ef
+  languageName: node
+  linkType: hard
+
+"react-native-safe-area-context@npm:5.6.2":
+  version: 5.6.2
+  resolution: "react-native-safe-area-context@npm:5.6.2"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10/880d87ee60119321b366eef2c151ecefe14f5bc0d39cf5cfbfb167684e571d3dae2600ee19b9bc8521f5726eb285abecaa7aafb1a3b213529dafbac24703d302
   languageName: node
   linkType: hard
 
