@@ -3329,7 +3329,11 @@ __metadata:
     "@react-navigation/native-stack": "npm:^7.2.1"
     dripsy: "npm:^4.3.3"
     moti: "npm:^0.30.0"
+    react-native: "npm:*"
     solito: "npm:next"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
   languageName: unknown
   linkType: soft
 
