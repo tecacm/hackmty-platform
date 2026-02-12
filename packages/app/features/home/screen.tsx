@@ -5,8 +5,11 @@ import { ScrollView, Text, View } from 'react-native'
 import { SolitoImage } from 'solito/image'
 import { LinearGradient } from 'app/components/linear-gradient'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
+import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 
 export function HomeScreen() {
+    const insets = useSafeArea();
+
   return (
       <LinearGradient
         colors={['#662d91', '#946cb2']}
@@ -19,7 +22,13 @@ export function HomeScreen() {
       >
 
       <ScrollView>
-        <View style ={{ flex: 1, padding: 16, alignItems: 'center', gap: 16 }}>
+        <View style ={{ 
+          flex: 1, alignItems: 'center', gap: 16,
+            paddingTop: insets.top + 100,
+            paddingBottom: insets.bottom,
+            paddingLeft: insets.left,
+            paddingRight: insets.right,
+         }}>
         <SolitoImage 
           src={logoImage} 
           height={200}
@@ -44,6 +53,7 @@ export function HomeScreen() {
           <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
           <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
           <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
+          <P>Hi :D</P>
         </View>
         </View>
       </ScrollView>
