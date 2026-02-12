@@ -12,12 +12,18 @@ const Stack = createNativeStackNavigator<{
 
 export function NativeNavigation() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        contentStyle: { backgroundColor: 'transparent' },
+      }}
+    >
       <Stack.Screen
         name="home"
         component={HomeScreen}
         options={{
           title: 'Home',
+          headerTransparent: true,
+          headerLargeTitleEnabled: true
         }}
       />
       <Stack.Screen
