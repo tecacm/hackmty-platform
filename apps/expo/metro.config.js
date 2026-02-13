@@ -18,6 +18,23 @@ config.resolver.nodeModulesPaths = [
 ]
 config.resolver.disableHierarchicalLookup = true
 
+// Stub the NativeMaterialSymbolModule to avoid crash in Expo Go on Android.
+// The real module uses TurboModuleRegistry.getEnforcing() which throws if
+// the native module isn't in the binary (Expo Go doesn't include it).
+const originalResolveRequest = config.resolver.resolveRequest
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName.endsWith('NativeMaterialSymbolModule') || moduleName.includes('NativeMaterialSymbolModule')) {
+    return {
+      filePath: path.resolve(projectRoot, 'shims/NativeMaterialSymbolModule.ts'),
+      type: 'sourceFile',
+    }
+  }
+  if (originalResolveRequest) {
+    return originalResolveRequest(context, moduleName, platform)
+  }
+  return context.resolveRequest(context, moduleName, platform)
+}
+
 config.transformer.getTransformOptions = async () => ({
   transform: {
     experimentalImportSupport: false,
