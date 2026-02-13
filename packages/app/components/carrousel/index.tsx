@@ -23,9 +23,14 @@ export function Carrousel(props: CarouselProps) {
     : [];
 
   useEffect(() => {
-    const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
-    setWidth(windowWidth);
-    setHeight(windowHeight);
+    const update = () => {
+      const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
+      setWidth(windowWidth);
+      setHeight(windowHeight);
+    };
+    update();
+    const sub = Dimensions.addEventListener('change', update);
+    return () => sub?.remove();
   }, []);
 
   // Jump to real first slide (index 1) on mount without animation
