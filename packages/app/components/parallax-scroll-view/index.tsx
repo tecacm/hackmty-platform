@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Dimensions, Animated, ViewStyle } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, Dimensions, ViewStyle } from 'react-native';
 
 type ParallaxScrollViewProps = {
   background: React.ReactNode;
@@ -11,10 +11,8 @@ type ParallaxScrollViewProps = {
 };
 
 /**
- * Web implementation: mirrors the native approach.
- * Animated.ScrollView tracks scrollY, background uses translateY
- * to counteract scroll (appears pinned), content overlaps via
- * negative marginTop.
+ * Web implementation: background is fixed in place using position: 'fixed',
+ * content scrolls naturally on top.
  */
 export function ParallaxScrollView({
   background,
@@ -22,54 +20,39 @@ export function ParallaxScrollView({
   contentContainerStyle,
   style,
 }: ParallaxScrollViewProps) {
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const [screenWidth, setScreenWidth] = useState(0);
   const [screenHeight, setScreenHeight] = useState(0);
 
   useEffect(() => {
-    const update = () => {
-      const { width, height } = Dimensions.get('window');
-      setScreenWidth(width);
-      setScreenHeight(height);
-    };
+    const update = () => setScreenHeight(Dimensions.get('window').height);
     update();
     const sub = Dimensions.addEventListener('change', update);
     return () => sub?.remove();
   }, []);
 
   return (
-    <Animated.ScrollView
-      style={[{ flex: 1 }, style]}
-      onScroll={Animated.event(
-        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-        { useNativeDriver: false }
-      )}
-      scrollEventThrottle={16}
-    >
-      {/* Background: pinned in place via translateY counteracting scroll */}
-      <Animated.View
+    <View style={[{ flex: 1, position: 'relative' }, style]}>
+      {/* Background: fixed in place */}
+      <View
         style={{
-          width: screenWidth,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           height: screenHeight,
           zIndex: -1,
-          transform: [{ translateY: scrollY }],
-        }}
+        } as any}
       >
         {background}
-      </Animated.View>
+      </View>
 
-      {/* Content overlaps background area via negative margin */}
-      <View
-        style={[
-          {
-            marginTop: -screenHeight,
-            minHeight: screenHeight,
-          },
-          contentContainerStyle,
-        ]}
+      {/* Scrollable content on top */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[{ minHeight: screenHeight }, contentContainerStyle]}
       >
         {children}
-      </View>
-    </Animated.ScrollView>
+      </ScrollView>
+    </View>
   );
 }
