@@ -38,7 +38,8 @@ export function ParallaxScrollView({
 
   return (
     <Animated.ScrollView
-      style={[{ flex: 1 }, style]}
+      style={[{ flex: 1, overflow: 'visible' }, style]}
+      contentContainerStyle={{ overflow: 'visible' }}
       onScroll={Animated.event(
         [{ nativeEvent: { contentOffset: { y: scrollY } } }],
         { useNativeDriver: true }
@@ -63,6 +64,7 @@ export function ParallaxScrollView({
           {
             marginTop: -screenHeight,
             minHeight: screenHeight,
+            overflow: 'visible',
           },
           contentContainerStyle,
         ]}

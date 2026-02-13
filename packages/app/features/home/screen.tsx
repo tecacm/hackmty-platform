@@ -13,6 +13,33 @@ import skyview from 'app/assets/images/login-screen/skyview.webp'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { Carrousel } from 'app/components/carrousel'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
+import { StyleSheet, Platform } from 'react-native'
+
+const styles = StyleSheet.create({
+  container: {
+    overflow: 'visible', 
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoContainer: {
+    padding: 10,
+    overflow: 'visible',
+  },
+  logoShadow: {
+    ...Platform.select({
+      native: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        elevation: 8,      
+      },
+      web: {
+        filter: 'drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.4))',
+      }
+    })
+  }
+})
 
 export function HomeScreen() {
     const insets = useSafeArea();
@@ -41,14 +68,19 @@ export function HomeScreen() {
         paddingBottom: insets.bottom,
         paddingLeft: insets.left,
         paddingRight: insets.right,
+        overflow: 'visible',
       }}
     >
-        <SolitoImage
-          src={logoImage}
-          height={200}
-          width={100}
-          alt={"The HackMTY Logo"}
-        />
+        <View style={styles.container}>
+          <View style={styles.logoShadow}>
+            <SolitoImage
+              src={logoImage}
+              height={300}
+              width={200} 
+              alt={"The HackMTY Logo"}
+            />
+          </View>
+        </View>
         <H1>HackMTY</H1>
         <View style={{ maxWidth: 600, gap: 16 }}>
           <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>

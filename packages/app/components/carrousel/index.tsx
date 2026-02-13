@@ -61,7 +61,7 @@ export function Carrousel(props: CarouselProps) {
           animatedX.setValue(-width);
         }, 400);
       }
-    }, props.scrollInterval || 3000);
+    }, props.scrollInterval || 5000);
 
     return () => clearInterval(timer);
   }, [total, width, animatedX]);
