@@ -6,7 +6,7 @@ export function StyledInput({ label, isPassword, additionalStyle={}, ...props })
       <Text style={[styles.label, additionalStyle]}>{label}</Text>
       <TextInput
         style={[styles.input, additionalStyle]}
-        placeholderTextColor="#999"
+        placeholderTextColor="#3a3a3a"
         // Crucial for Native UX:
         autoCapitalize="none"
         autoCorrect={false}
@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 50,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#f5f5f57b',
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
