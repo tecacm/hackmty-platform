@@ -1,7 +1,7 @@
 'use client'
 
 import { TextLink } from 'solito/link'
-import { Text, View } from 'react-native'
+import { Button, Text, View } from 'react-native'
 import { SolitoImage } from 'solito/image'
 import { LinearGradient } from 'app/components/linear-gradient'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
@@ -15,7 +15,10 @@ import { Carrousel } from 'app/components/carrousel'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 import { useEffect, useState } from 'react'
 import { StyleSheet, Platform } from 'react-native'
-import { useHeaderHeight } from '@react-navigation/elements'
+import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
+import { StyledInput } from 'app/components/styled-input'
+import { PillButton } from 'app/components/pill-button'
+import { SimpleTextLink } from 'app/components/simple-text-link'
 
 const styles = StyleSheet.create({
   container: {
@@ -27,7 +30,7 @@ const styles = StyleSheet.create({
     padding: 10,
     overflow: 'visible',
   },
-  logoShadow: {
+  shadowStyle: {
     ...Platform.select({
       native: {
         shadowColor: '#000000',
@@ -45,7 +48,7 @@ const styles = StyleSheet.create({
 
 export function HomeScreen() {
   const insets = useSafeArea();
-  const headerHeight = useHeaderHeight();
+  const headerHeight = useHeaderHeightSafe();
   const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
   const images = [rectoria, pavoreal, ciap, photo2024, skyview];
 
@@ -84,7 +87,7 @@ export function HomeScreen() {
       }}
     >
         <View style={styles.container}>
-          <View style={styles.logoShadow}>
+          <View style={styles.shadowStyle}>
             <SolitoImage
               src={logoImage}
               height={300}
@@ -93,25 +96,12 @@ export function HomeScreen() {
             />
           </View>
         </View>
-        <H1>HackMTY</H1>
-        <View style={{ maxWidth: 600, gap: 16, paddingTop: 12 }}>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
-          <P>Hi :D</P>
+        <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
+          <StyledInput label="Email" placeholder="Enter your email" isPassword={false} additionalStyle={styles.shadowStyle}/>
+          <StyledInput label="Password" placeholder="Enter your password" isPassword={true} additionalStyle={{marginBottom:10 ,...styles.shadowStyle}}/>
+          <PillButton title="Login" onPress={() => {}} additionalStyle={{marginBottom: '10'}} />
+          <SimpleTextLink text="Don't have an account? Sign Up" onPress={() => {}}/>
+          <SimpleTextLink text="Forgot your password?" onPress={() => {}}/>
         </View>
     </ParallaxScrollView>
   )

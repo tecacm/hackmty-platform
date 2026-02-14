@@ -1,13 +1,21 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Dimensions, Animated, ViewStyle } from 'react-native';
+import {
+  View,
+  Dimensions,
+  Animated,
+  ViewStyle,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 
 type ParallaxScrollViewProps = {
   background: React.ReactNode;
   children: React.ReactNode;
   contentContainerStyle?: ViewStyle;
   style?: ViewStyle;
+  keyboardVerticalOffset?: number;
 };
 
 /**
@@ -20,6 +28,7 @@ export function ParallaxScrollView({
   children,
   contentContainerStyle,
   style,
+  keyboardVerticalOffset = 100,
 }: ParallaxScrollViewProps) {
   const scrollY = useRef(new Animated.Value(0)).current;
   const [screenWidth, setScreenWidth] = useState(0);
@@ -37,40 +46,46 @@ export function ParallaxScrollView({
   }, []);
 
   return (
-    <Animated.ScrollView
-      style={[{ flex: 1, overflow: 'visible' }, style]}
-      contentContainerStyle={{ overflow: 'visible' }}
-      onScroll={Animated.event(
-        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-        { useNativeDriver: true }
-      )}
-      scrollEventThrottle={16}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={keyboardVerticalOffset}
     >
-      {/* Background: pinned in place via translateY counteracting scroll */}
-      <Animated.View
-        style={{
-          width: screenWidth,
-          height: screenHeight,
-          zIndex: -1,
-          transform: [{ translateY: scrollY }],
-        }}
+      <Animated.ScrollView
+        style={[{ flex: 1, overflow: 'visible' }, style]}
+        contentContainerStyle={{ overflow: 'visible' }}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
       >
-        {background}
-      </Animated.View>
+        {/* Background: pinned in place via translateY counteracting scroll */}
+        <Animated.View
+          style={{
+            width: screenWidth,
+            height: screenHeight,
+            zIndex: -1,
+            transform: [{ translateY: scrollY }],
+          }}
+        >
+          {background}
+        </Animated.View>
 
-      {/* Content overlaps carousel area via negative margin */}
-      <View
-        style={[
-          {
-            marginTop: -screenHeight,
-            minHeight: screenHeight,
-            overflow: 'visible',
-          },
-          contentContainerStyle,
-        ]}
-      >
-        {children}
-      </View>
-    </Animated.ScrollView>
+        {/* Content overlaps carousel area via negative margin */}
+        <View
+          style={[
+            {
+              marginTop: -screenHeight,
+              minHeight: screenHeight,
+              overflow: 'visible',
+            },
+            contentContainerStyle,
+          ]}
+        >
+          {children}
+        </View>
+      </Animated.ScrollView>
+    </KeyboardAvoidingView>
   );
 }

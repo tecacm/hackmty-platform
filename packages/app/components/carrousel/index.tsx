@@ -1,6 +1,6 @@
 'use client';
 
-import { View, Dimensions, Animated } from 'react-native';
+import { View, Dimensions, Animated, Platform } from 'react-native';
 import { SolitoImage } from 'solito/image';
 import { useEffect, useState, useRef } from 'react';
 
@@ -10,8 +10,9 @@ type CarouselProps = {
 };
 
 export function Carrousel(props: CarouselProps) {
-  const [width, setWidth] = useState(1200);
-  const [height, setHeight] = useState(1200);
+  // SSR-safe: start with 0, real values set in useEffect
+  const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
 
   const animatedX = useRef(new Animated.Value(0)).current;
   const indexRef = useRef(1);
@@ -23,14 +24,28 @@ export function Carrousel(props: CarouselProps) {
     : [];
 
   useEffect(() => {
-    const update = () => {
-      const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
-      setWidth(windowWidth);
-      setHeight(windowHeight);
-    };
-    update();
-    const sub = Dimensions.addEventListener('change', update);
-    return () => sub?.remove();
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const update = () => {
+        setWidth(window.innerWidth);
+        setHeight(window.innerHeight);
+      };
+      update();
+      window.addEventListener('resize', update);
+      window.addEventListener('orientationchange', update);
+      return () => {
+        window.removeEventListener('resize', update);
+        window.removeEventListener('orientationchange', update);
+      };
+    } else {
+      const update = () => {
+        const { width: w, height: h } = Dimensions.get('screen');
+        setWidth(w);
+        setHeight(h);
+      };
+      update();
+      const sub = Dimensions.addEventListener('change', update);
+      return () => sub?.remove();
+    }
   }, []);
 
   // Jump to real first slide (index 1) on mount without animation
@@ -69,8 +84,8 @@ export function Carrousel(props: CarouselProps) {
   return (
     <View
       style={{
-        width,
-        height,
+        width: '100%',
+        height: '100%',
         overflow: 'hidden',
       }}
     >
@@ -79,9 +94,9 @@ export function Carrousel(props: CarouselProps) {
           display: 'flex',
           flexDirection: 'row',
           width: width * slides.length,
-          height,
+          height: '100%',
           transform: [{ translateX: animatedX }],
-        }}
+        } as any}
       >
         {slides.map((item, index) => {
           const src = item?.src || item?.default || item;
@@ -89,14 +104,13 @@ export function Carrousel(props: CarouselProps) {
             <View
               key={index}
               style={{
-                width,
-                height,
+                width: width || '100vw',
+                height: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
-                zIndex: -2,
-              }}
+              } as any}
             >
               <SolitoImage
                 src={src}
