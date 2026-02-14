@@ -13,7 +13,9 @@ import skyview from 'app/assets/images/login-screen/skyview.webp'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { Carrousel } from 'app/components/carrousel'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
+import { useEffect, useState } from 'react'
 import { StyleSheet, Platform } from 'react-native'
+import { useHeaderHeight } from '@react-navigation/elements'
 
 const styles = StyleSheet.create({
   container: {
@@ -42,8 +44,18 @@ const styles = StyleSheet.create({
 })
 
 export function HomeScreen() {
-    const insets = useSafeArea();
-    const images = [rectoria, pavoreal, ciap, photo2024, skyview];
+  const insets = useSafeArea();
+  const headerHeight = useHeaderHeight();
+  const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
+  const images = [rectoria, pavoreal, ciap, photo2024, skyview];
+
+  useEffect(() => {
+    if (headerHeight > stableHeaderHeight) {
+      setStableHeaderHeight(headerHeight);
+    }
+  }, [headerHeight, stableHeaderHeight]);
+
+  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
 
   const background = (
     <>
@@ -64,7 +76,7 @@ export function HomeScreen() {
       contentContainerStyle={{
         alignItems: 'center',
         gap: 16,
-        paddingTop: insets.top + 100,
+        paddingTop: topOffset,
         paddingBottom: insets.bottom,
         paddingLeft: insets.left,
         paddingRight: insets.right,
@@ -82,7 +94,7 @@ export function HomeScreen() {
           </View>
         </View>
         <H1>HackMTY</H1>
-        <View style={{ maxWidth: 600, gap: 16 }}>
+        <View style={{ maxWidth: 600, gap: 16, paddingTop: 12 }}>
           <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
           <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
           <P>El HackMTY es un evento de hackathon organizado por estudiantes del Tecnológico de Monterrey.</P>
