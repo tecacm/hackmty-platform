@@ -19,6 +19,7 @@ import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import { StyledInput } from 'app/components/styled-input'
 import { PillButton } from 'app/components/pill-button'
 import { SimpleTextLink } from 'app/components/simple-text-link'
+import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 
 const styles = StyleSheet.create({
   container: {
@@ -46,7 +47,8 @@ const styles = StyleSheet.create({
   }
 })
 
-export function HomeScreen() {
+export function LoginScreen() {
+  const { navigateTo } = useSmartNavigate();
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
   const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
@@ -59,6 +61,8 @@ export function HomeScreen() {
   }, [headerHeight, stableHeaderHeight]);
 
   const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
+
+  const goToRegister = () => navigateTo('/register')
 
   const background = (
     <>
@@ -97,10 +101,10 @@ export function HomeScreen() {
           </View>
         </View>
         <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
-          <StyledInput label="Email" placeholder="Enter your email" isPassword={false} additionalStyle={styles.shadowStyle}/>
+          <StyledInput label="Email Address" placeholder="Enter your email" isPassword={false} additionalStyle={styles.shadowStyle}/>
           <StyledInput label="Password" placeholder="Enter your password" isPassword={true} additionalStyle={{marginBottom:10 ,...styles.shadowStyle}}/>
           <PillButton title="Login" onPress={() => {}} additionalStyle={{marginBottom: '10'}} />
-          <SimpleTextLink text="Don't have an account? Sign Up" onPress={() => {}}/>
+          <SimpleTextLink text="Don't have an account? Sign Up" onPress={goToRegister}/>
           <SimpleTextLink text="Forgot your password?" onPress={() => {}}/>
         </View>
     </ParallaxScrollView>

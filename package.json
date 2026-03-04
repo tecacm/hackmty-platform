@@ -31,5 +31,9 @@
     "useTabs": false,
     "tabWidth": 2,
     "singleQuote": true
+  },
+  "dependencies": {
+    "expo-glass-effect": "^55.0.7",
+    "react-hook-form": "^7.71.1"
   }
 }

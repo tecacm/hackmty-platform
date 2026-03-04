@@ -1,12 +1,12 @@
 import { TextInput, StyleSheet, Platform, View, Text } from 'react-native'
 
-export function StyledInput({ label, isPassword, additionalStyle={}, ...props }) {
+export function StyledInput({ label, isPassword, additionalStyle={}, error, ...props }) {
   return (
     <View style={styles.inputContainer}>
       <Text style={[styles.label, additionalStyle]}>{label}</Text>
       <TextInput
-        style={[styles.input, additionalStyle]}
-        placeholderTextColor="#3a3a3a"
+        style={[styles.input, additionalStyle, error && styles.errorInput]}
+        placeholderTextColor="#ffffff"
         // Crucial for Native UX:
         autoCapitalize="none"
         autoCorrect={false}
@@ -14,6 +14,7 @@ export function StyledInput({ label, isPassword, additionalStyle={}, ...props })
         textContentType={isPassword ? 'password' : 'emailAddress'} 
         {...props}
       />
+      {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   )
 }
@@ -39,5 +40,14 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { outlineStyle: 'none' },
     }),
+  },
+  errorInput: {
+    borderWidth: 2,
+    borderColor: '#ff6b6b',
+  },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 12,
+    marginTop: 4,
   },
 })
