@@ -3,7 +3,6 @@ import { Pressable, Text, StyleSheet, Platform } from 'react-native'
 
 export function PillButton({ title, onPress, additionalStyle={} }) {
   return (
-    <GlassView>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
@@ -12,13 +11,14 @@ export function PillButton({ title, onPress, additionalStyle={} }) {
           {
             // Shrinks slightly when pressed on mobile
             transform: [{ scale: pressed ? 0.96 : 1 }],
-            backgroundColor: pressed ? '#36125e' : '#461184',
+            backgroundColor: pressed ? '#36125e' : '#520f9f',
           },
         ]}
       >
-        <Text style={styles.text}>{title}</Text>
+        <GlassView isInteractive style={[styles.glassContainer]}>
+          <Text style={styles.text}>{title}</Text>
+        </GlassView>
       </Pressable>
-    </GlassView>
   )
 }
 
@@ -44,10 +44,18 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  glassContainer:{
+    width: '100%', // Takes up the width of the 80% container
+    height: '100%',
+    borderRadius: 28, // Half of height = Perfect Pill
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   text: {
     color: 'white',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
+  
 })
