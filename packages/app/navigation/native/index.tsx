@@ -3,10 +3,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { LoginScreen } from 'app/features/login/login-screen'
 import { RegisterScreen } from 'app/features/login/register-screen'
 import { UserDetailScreen } from 'app/features/user/detail-screen'
+import { HomeScreen } from 'app/features/home/home-screen'  
 
 const Stack = createNativeStackNavigator<{
   login: undefined
-  register: undefined
+  register: undefined,
+  home: undefined
   'user-detail': {
     id: string
   }
@@ -32,6 +34,16 @@ export function NativeNavigation() {
       <Stack.Screen
         name="register"
         component={RegisterScreen}
+        options={{
+          headerShown: true,
+          headerTitle: '',
+          headerTransparent: true,
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="home"
+        component={HomeScreen}
         options={{
           headerShown: true,
           headerTitle: '',

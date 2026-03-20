@@ -46,10 +46,10 @@ const styles = StyleSheet.create({
         filter: 'drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.4))',
       }
     })
-  }
+  },
 })
 
-export function RegisterScreen() {
+export function HomeScreen() {
   const { navigateTo } = useSmartNavigate();
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
@@ -62,13 +62,12 @@ export function RegisterScreen() {
       firstName: '',
       lastName: '',
       email: '',
-      password: '',
+      phone: '',
       confirmPassword: '',
       agreeMLH: false,
       subscribeMailingList: false,
     }
   })
-  const password = watch("password")
 
   const onSubmit = (data) => {
     console.log("Hackathon Registration Data:", data)
@@ -99,9 +98,8 @@ export function RegisterScreen() {
 
   const background = (
     <>
-      <Carrousel slideImages={images} />
       <LinearGradient
-        colors={['rgba(29, 4, 31, 0.5)', 'rgba(55, 27, 58, 0.7)']}
+        colors={['rgba(29, 4, 31, 1.0)', 'rgba(55, 27, 58, 1.0)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
@@ -125,15 +123,12 @@ export function RegisterScreen() {
     >
         <View style={styles.container}>
           <View style={styles.shadowStyle}>
-            <SolitoImage
-              src={logoImage}
-              height={300}
-              width={200} 
-              alt={"The HackMTY Logo"}
-            />
+            <Text style={{ color: '#FFF', fontSize: 32, fontWeight: 'bold', textAlign: 'center' }}>
+              Apply as Hacker
+            </Text>
           </View>
         </View>
-        <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
+        <View style={{ alignItems: 'center', width: '80%', maxWidth: 1000, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
           <View style={nameRowStyle}>
               <View style={nameFieldStyle}>
                 <Controller
@@ -156,33 +151,37 @@ export function RegisterScreen() {
                 />
               </View>
           </View>
-          <Controller
-            control={control}
-            name="email"
-            rules={{ required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' } }}
-            render={({ field: { onChange, value } }) => (
-                <StyledInput label="Email Address" placeholder="Enter your email" textContentType={"emailAddress"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.email?.message}/>
-            )}
-          />
-          <Controller
-            control={control}
-            name="password"
-            rules={{ required: 'Password is required' }}
-            render={({ field: { onChange, value } }) => (
-                <StyledInput label="Password" placeholder="Enter your password" textContentType={"password"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.password?.message}/>
-            )}
-          />
-          <Controller
-            control={control}
-            name="confirmPassword"
-            rules={{ 
-              required: 'Please confirm your password' ,
-              validate: (value) => value === password || 'The passwords do not match'
-            }}
-            render={({ field: { onChange, value } }) => (
-                <StyledInput label="Confirm Password" placeholder="Confirm your password" textContentType={"password"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.confirmPassword?.message}/>
-            )}
-          />
+          <View style={nameRowStyle}>
+              <View style={nameFieldStyle}>
+                 <Controller
+                    control={control}
+                    name="email"
+                    rules={{ required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' } }}
+                    render={({ field: { onChange, value } }) => (
+                        <StyledInput label="Email Address" placeholder="Enter your email" textContentType={"emailAddress"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.email?.message}/>
+                    )}
+                  />
+              </View>
+              <View style={nameFieldStyle}>
+                <Controller
+                  control={control}
+                  name="phone"
+                  rules={{ required: 'Phone number is required' }}
+                  render={({ field: { onChange, value } }) => (
+                    <StyledInput
+                      label="Phone Number"
+                      placeholder="+########"
+                      subtitle="Phone number must be entered in the format: +#########. Up to 15 digits allowed."
+                      textContentType={"telephoneNumber"}
+                      additionalStyle={styles.shadowStyle}                    
+                      onChangeText={onChange}
+                      value={value}
+                      error={errors.phone?.message}
+                    />
+                  )}
+                />
+              </View>
+          </View>                   
           <Controller
             control={control}
             name="agreeMLH"

@@ -63,6 +63,7 @@ export function LoginScreen() {
   const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
 
   const goToRegister = () => navigateTo('/register')
+  const goToHome = () => navigateTo('/home')
 
   const background = (
     <>
@@ -101,9 +102,9 @@ export function LoginScreen() {
           </View>
         </View>
         <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
-          <StyledInput label="Email Address" placeholder="Enter your email" isPassword={false} additionalStyle={styles.shadowStyle}/>
-          <StyledInput label="Password" placeholder="Enter your password" isPassword={true} additionalStyle={{marginBottom:10 ,...styles.shadowStyle}}/>
-          <PillButton title="Login" onPress={() => {}} additionalStyle={{marginBottom: '10'}} />
+          <StyledInput label="Email Address" placeholder="Enter your email" textContentType={"emailAddress"} additionalStyle={styles.shadowStyle}/>
+          <StyledInput label="Password" placeholder="Enter your password" textContentType={"password"} additionalStyle={{marginBottom:10 ,...styles.shadowStyle}}/>
+          <PillButton title="Login" onPress={goToHome} additionalStyle={{marginBottom: '10'}} />
           <SimpleTextLink text="Don't have an account? Sign Up" onPress={goToRegister}/>
           <SimpleTextLink text="Forgot your password?" onPress={() => {}}/>
         </View>

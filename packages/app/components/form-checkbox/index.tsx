@@ -16,11 +16,36 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
     onValueChange?.(next)
   }
 
+  // helper used in the wrapper press handler below.  On the web we
+  // need to ignore taps that originate from interactive descendants
+  // (links/buttons) because the user wants to follow the link instead of
+  // toggling the checkbox.  When the tap comes from a native mobile
+  // component `target` will be a numeric React tag so the check is a no‑op.
+  const shouldIgnorePress = (e: any) => {
+    if (Platform.OS === 'web') {
+      const tag = e.nativeEvent?.target?.tagName?.toLowerCase();
+      // anchors are the most common; if you render other touchable
+      // elements inside the label you can expand this list.
+      if (tag === 'a' || tag === 'button' || tag === 'input') {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const handleContainerPress = (e: any) => {
+    if (shouldIgnorePress(e)) {
+      // let the child handle the event – do not toggle the box
+      return;
+    }
+    setChecked(!checked);
+  };
+
   return (
     <View style={styles.wrapper}>
       <Pressable
         style={[styles.container, additionalStyle]}
-        onPress={() => setChecked(!checked)}
+        onPress={handleContainerPress}
       >
         {/* Custom Square Box */}
         <View style={[
@@ -34,7 +59,7 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
         {typeof label === 'string' ? (
           <Text style={styles.label}>{label}</Text>
         ) : (
-          label
+          <View>{label}</View>
         )}
 
         {/* Hidden input for Web Accessibility / SEO */}
