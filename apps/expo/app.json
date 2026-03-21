@@ -1,15 +1,18 @@
 {
   "expo": {
-    "name": "solito-blank",
-    "slug": "solito-blank",
+    "name": "HackMTY",
+    "slug": "hackmty-platform-dev",
     "version": "1.0.0",
-    "scheme": "solito-blank",
+    "scheme": "hackmty-platform",
     "platforms": [
       "ios",
       "android"
     ],
     "ios": {
-      "bundleIdentifier": "com.solito.blank"
+      "bundleIdentifier": "com.hackmty",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "newArchEnabled": true,
     "experiments": {
@@ -17,6 +20,9 @@
     },
     "plugins": [
       "expo-image"
-    ]
+    ],
+    "android": {
+      "package": "com.hackmty"
+    }
   }
 }

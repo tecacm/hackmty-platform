@@ -22,6 +22,7 @@ import { SimpleTextLink } from 'app/components/simple-text-link'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { FormCheckbox } from 'app/components/form-checkbox'
 import { useForm, Controller } from "react-hook-form"
+import { ApplicantForm } from 'app/features/applicant/ApplicantForm'
 
 const styles = StyleSheet.create({
   container: {
@@ -121,103 +122,14 @@ export function HomeScreen() {
         overflow: 'visible',
       }}
     >
-        <View style={styles.container}>
-          <View style={styles.shadowStyle}>
-            <Text style={{ color: '#FFF', fontSize: 32, fontWeight: 'bold', textAlign: 'center' }}>
-              Apply as Hacker
-            </Text>
-          </View>
-        </View>
-        <View style={{ alignItems: 'center', width: '80%', maxWidth: 1000, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
-          <View style={nameRowStyle}>
-              <View style={nameFieldStyle}>
-                <Controller
-                  control={control}
-                  name="firstName"
-                  rules={{ required: 'First name is required' }}
-                  render={({ field: { onChange, value } }) => (
-                    <StyledInput label="First Name" placeholder="Enter your first name" textContentType={"name"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.firstName?.message}/>
-                  )}
-                />
-              </View>
-              <View style={nameFieldStyle}>
-                <Controller
-                  control={control}
-                  name="lastName"
-                  rules={{ required: 'Last name is required' }}
-                  render={({ field: { onChange, value } }) => (
-                    <StyledInput label="Last Name" placeholder="Enter your last name" textContentType={"familyName"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.lastName?.message}/>
-                  )}
-                />
-              </View>
-          </View>
-          <View style={nameRowStyle}>
-              <View style={nameFieldStyle}>
-                 <Controller
-                    control={control}
-                    name="email"
-                    rules={{ required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' } }}
-                    render={({ field: { onChange, value } }) => (
-                        <StyledInput label="Email Address" placeholder="Enter your email" textContentType={"emailAddress"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.email?.message}/>
-                    )}
-                  />
-              </View>
-              <View style={nameFieldStyle}>
-                <Controller
-                  control={control}
-                  name="phone"
-                  rules={{ required: 'Phone number is required' }}
-                  render={({ field: { onChange, value } }) => (
-                    <StyledInput
-                      label="Phone Number"
-                      placeholder="+########"
-                      subtitle="Phone number must be entered in the format: +#########. Up to 15 digits allowed."
-                      textContentType={"telephoneNumber"}
-                      additionalStyle={styles.shadowStyle}                    
-                      onChangeText={onChange}
-                      value={value}
-                      error={errors.phone?.message}
-                    />
-                  )}
-                />
-              </View>
-          </View>                   
-          <Controller
-            control={control}
-            name="agreeMLH"
-            rules={{ required: 'You must agree to the MLH Code of Conduct' }}
-            render={({ field: { onChange, value } }) => (
-              <FormCheckbox 
-                value={value} 
-                onValueChange={onChange}
-                label={
-                  <Text style={{ color: '#FFF' }}>
-                    I agree to the{' '}
-                    <TextLink href="https://mlh.io/code-of-conduct" style={{ color: '#c2b75f', textDecorationLine: 'underline' }}>
-                      MLH Code of Conduct
-                    </TextLink>
-                  </Text>
-                } 
-                additionalStyle={styles.shadowStyle}
-                error={errors.agreeMLH?.message}
-              />
-            )}
+        <View style={[styles.container, { width: '80%', maxWidth: 1000 }]}>
+          <ApplicantForm
+            role="volunteer"
+            onSubmit={(data) => {
+              console.log('Hacker application submitted', data)
+            }}
           />
-          <Controller
-            control={control}
-            name="subscribeMailingList"
-            render={({ field: { onChange, value } }) => (
-              <FormCheckbox 
-                value={value} 
-                onValueChange={onChange}
-                label="Subscribe to our mailing list to receive information about our next event"
-                additionalStyle={styles.shadowStyle}              
-              />
-            )}
-          />
-          <PillButton title="Register" onPress={handleSubmit(onSubmit)} additionalStyle={{marginBottom: '10'}} />
-          <SimpleTextLink text="Already have an account? Login" onPress={goToLogin}/>
-        </View>
+        </View>          
     </ParallaxScrollView>
   )
 }
