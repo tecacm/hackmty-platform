@@ -11,13 +11,19 @@ export function PillButton({ title, onPress, additionalStyle={} }) {
           {
             // Shrinks slightly when pressed on mobile
             transform: [{ scale: pressed ? 0.96 : 1 }],
-            backgroundColor: pressed ? '#36125e' : '#520f9f',
+            ...Platform.select({
+              android: {
+                backgroundColor: pressed ? '#520f9f' : '#4b1687',
+              },
+            }),
           },
         ]}
       >
-        <GlassView isInteractive style={[styles.glassContainer]}>
-          <Text style={styles.text}>{title}</Text>
-        </GlassView>
+        {({ pressed }) => (
+          <GlassView isInteractive style={[styles.glassContainer]} colorScheme='dark' tintColor={pressed ? '#520f9f' : '#4b1687'}>
+            <Text style={styles.text}>{title}</Text>
+          </GlassView>
+        )}
       </Pressable>
   )
 }
@@ -41,6 +47,9 @@ const styles = StyleSheet.create({
       web: {
         cursor: 'pointer',
         transition: 'all 0.2s ease',
+      },
+      ios: {
+        backgroundColor: 'transparent',
       },
     }),
   },

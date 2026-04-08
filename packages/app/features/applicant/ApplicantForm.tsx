@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native'
+import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native'
 import { useForm, Controller } from 'react-hook-form'
 import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
@@ -150,25 +150,33 @@ const styles = StyleSheet.create({
   rowWide: {
     flexDirection: 'row',
     width: '100%',
+    gap: 30
   },
   rowNarrow: {
     flexDirection: 'column',
     width: '100%',
   },
   rowField: {
-    // Removed width: 100% so it doesn't break flex direction
   },
   rowFieldWide: {
     flex: 1,
+    
   },
   rowFieldNarrow: {
     width: '100%',
   },
   inputShadow: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+     ...Platform.select({
+       native: {
+         shadowColor: '#000000',
+         shadowOffset: { width: 0, height: 10 },
+         shadowOpacity: 0.4,
+         shadowRadius: 8,
+         elevation: 2,      
+       },
+       web: {
+         filter: 'drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.4))',
+       }
+     })
+   }
 })

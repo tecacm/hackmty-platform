@@ -10,7 +10,7 @@ export function PillButton({ title, onPress, additionalStyle={} }) {
         {
           // Shrinks slightly when pressed on mobile
           transform: [{ scale: pressed ? 0.96 : 1 }],
-          backgroundColor: pressed ? '#36125e' : '#461184',
+          backgroundColor: pressed ? '#6b1ac8' : '#4b1687',
         },
       ]}
     >

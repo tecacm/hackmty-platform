@@ -1,7 +1,7 @@
 'use client'
 
 import { TextLink } from 'solito/link'
-import { Button, Text, View, useWindowDimensions } from 'react-native'
+import { Button, Dimensions, Text, View, useWindowDimensions } from 'react-native'
 import { SolitoImage } from 'solito/image'
 import { LinearGradient } from 'app/components/linear-gradient'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
@@ -23,6 +23,7 @@ import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { FormCheckbox } from 'app/components/form-checkbox'
 import { useForm, Controller } from "react-hook-form"
 import { ApplicantForm } from 'app/features/applicant/ApplicantForm'
+import numbersbg from 'app/assets/images/numbers-bg.webp'
 
 const styles = StyleSheet.create({
   container: {
@@ -44,7 +45,7 @@ const styles = StyleSheet.create({
         elevation: 2,      
       },
       web: {
-        filter: 'drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.4))',
+        filter: 'drop-shadow(0px 5px 8px rgba(0, 0, 0, 0.4))',
       }
     })
   },
@@ -57,6 +58,8 @@ export function HomeScreen() {
   const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
   const [isWide, setIsWide] = useState(false);
   const { width } = useWindowDimensions();
+  const [height, setHeight] = useState(0);
+
   const images = [rectoria, pavoreal, ciap, photo2024, skyview];
   const { control, handleSubmit, watch, formState: { errors } } = useForm({
     defaultValues: {
@@ -82,29 +85,49 @@ export function HomeScreen() {
   }, [headerHeight, stableHeaderHeight]);
 
   useEffect(() => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const update = () => {
+          setHeight(window.innerHeight);
+        };
+        update();
+        window.addEventListener('resize', update);
+        window.addEventListener('orientationchange', update);
+        return () => {
+          window.removeEventListener('resize', update);
+          window.removeEventListener('orientationchange', update);
+        };
+      } else {
+        const update = () => {
+          const { width: w, height: h } = Dimensions.get('screen');
+          setHeight(h);
+        };
+        update();
+        const sub = Dimensions.addEventListener('change', update);
+        return () => sub?.remove();
+      }
+  }, []);
+
+  useEffect(() => {
     if (width > 0) {
       setIsWide(width >= 520);
     }
   }, [width]);
 
   const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
-  const nameRowStyle = {
-    flexDirection: isWide ? 'row' : 'column',
-    gap: 12,
-    width: '100%'
-  } as const;
-  const nameFieldStyle = isWide ? { flex: 1 } : { width: '100%' as const };
-
   const goToLogin = () => navigateTo('/login')
 
   const background = (
     <>
-      <LinearGradient
-        colors={['rgba(29, 4, 31, 1.0)', 'rgba(55, 27, 58, 1.0)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-      />
+      <SolitoImage
+          src={numbersbg}
+          width={width}
+          height={height}
+          contentFit="cover"
+          resizeMode="cover"
+          transition={0}
+          onLayout={() => {}}
+          alt="Abstract numbers background"
+        />
     </>
   );
 
