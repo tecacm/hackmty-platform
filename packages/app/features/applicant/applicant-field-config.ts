@@ -4,6 +4,7 @@ import { ApplicantRole } from './applicant-types'
 export type ApplicantBaseField = {
   name: string
   label: string
+  validationLabel?: string
   placeholder: string
   textContentType?: string
   required?: boolean
@@ -21,7 +22,7 @@ export const applicantCommonFields: ApplicantBaseField[] = [
   { name: 'university', label: 'University', placeholder: 'Enter university', required: true, section: 'Personal Info' },
   { name: 'phone', label: 'Phone', placeholder: '+#########', textContentType: 'telephoneNumber', required: true, section: 'Personal Info', subtitle: 'Phone number must be entered in the format: +#########. Up to 15 digits allowed.' },
   { name: 'age', label: 'Age', placeholder: 'Age as of date of HackMTY', textContentType: 'none', required: true, section: 'Personal Info',subtitle: 'Enter your age in years as will be on the date of the event. We will not store your exact birth date, only an inferred year.'},
-  { name: 'gender', label: 'What gender do you identify with?', placeholder: 'Select gender', textContentType: 'none', required: true, section: 'Personal Info', subtitle: 'This is for demographic purposes. You can skip this question if you want.', fieldType: 'select', options: [
+  { name: 'gender', label: 'What gender do you identify with?', validationLabel: 'Gender', placeholder: 'Select gender', textContentType: 'none', required: true, section: 'Personal Info', subtitle: 'This is for demographic purposes. Select "Prefer not to answer" if you do not want to disclose.', fieldType: 'select', options: [
     { label: 'Male', value: 'male' },
     { label: 'Female', value: 'female' },
     { label: 'Non-binary', value: 'nonbinary' },

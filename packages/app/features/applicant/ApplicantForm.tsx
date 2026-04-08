@@ -76,7 +76,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                   <Controller
                     control={control}
                     name={field.name as any}
-                    rules={{ required: field.required ? `${field.label} is required` : false }}
+                    rules={{ required: field.required ? `${field.validationLabel ?? field.label} is required` : false }}
                     render={({ field: { onChange, value } }) => {
                       if (field.fieldType === 'select' && field.options?.length) {
                         return (
