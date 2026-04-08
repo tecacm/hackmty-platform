@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useMemo, type CSSProperties } from 'react'
 import { View, Text, TextStyle, ViewStyle } from 'react-native'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
 
@@ -16,7 +16,20 @@ type StyledSelectProps = {
 }
 
 export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, error, additionalStyle }: StyledSelectProps) {
-  const selectedValue = value ?? ''
+  const normalizedPlaceholder = placeholder.trim().toLowerCase()
+  const placeholderMatchedOption = useMemo(
+    () => options.find((option) => option.value.trim().toLowerCase() === normalizedPlaceholder || option.label.trim().toLowerCase() === normalizedPlaceholder),
+    [options, normalizedPlaceholder]
+  )
+
+  useEffect(() => {
+    if ((value ?? '') === '' && placeholderMatchedOption?.value) {
+      onValueChange(placeholderMatchedOption.value)
+    }
+  }, [value, placeholderMatchedOption, onValueChange])
+
+  const shouldRenderPlaceholderOption = !placeholderMatchedOption
+  const selectedValue = (value ?? '') === '' ? (placeholderMatchedOption?.value ?? '') : (value ?? '')
   const combinedStyle = [formFieldStyles.fieldShell, additionalStyle, error && formFieldStyles.errorInput]
   const isPlaceholderActive = selectedValue === ''
   const selectorStyle: CSSProperties = {
@@ -43,7 +56,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
           style={selectorStyle}
           onChange={(e) => onValueChange(e.target.value)}
         >
-          <option value="">{placeholder}</option>
+          {shouldRenderPlaceholderOption && <option value="">{placeholder}</option>}
           {options.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}

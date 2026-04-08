@@ -14,6 +14,41 @@ export type ApplicantBaseField = {
   options?: { label: string; value: string }[]
 }
 
+const tshirtField: ApplicantBaseField = {
+  name: 'tshirt',
+  label: 'What\'s your T-Shirt Size',
+  validationLabel: 'T-Shirt Size',
+  placeholder: 'medium',
+  textContentType: 'none',
+  required: true,
+  section: 'Personal Info',
+  fieldType: 'select',
+  options: [
+    { label: 'Small', value: 'small' },
+    { label: 'Medium', value: 'medium' },
+    { label: 'Large', value: 'large' },
+    { label: 'Extra Large', value: 'xlarge' },
+  ],
+}
+
+const foodField: ApplicantBaseField = {
+  name: 'diet',
+  label: 'Dietary Restrictions',
+  validationLabel: 'Dietary Restrictions',
+  placeholder: 'none',
+  textContentType: 'none',
+  required: true,
+  section: 'Personal Info',
+  fieldType: 'select',
+  options: [
+    { label: 'None', value: 'none' },
+    { label: 'Vegetarian', value: 'vegetarian' },
+    { label: 'Vegan', value: 'vegan' },
+    { label: 'No pork', value: 'no_pork' },
+    { label: 'Gluten-Free', value: 'gluten_free' },
+  ],
+}
+
 export const applicantCommonFields: ApplicantBaseField[] = [
   { name: 'firstName', label: 'First Name', placeholder: 'Enter first name', textContentType: 'name', required: true, section: 'Personal Info' },
   { name: 'lastName', label: 'Last Name', placeholder: 'Enter last name', textContentType: 'familyName', required: true, section: 'Personal Info' },
@@ -29,6 +64,13 @@ export const applicantCommonFields: ApplicantBaseField[] = [
     { label: 'Prefer not to answer', value: 'prefer_not_to_answer' },
   ]},
 ]
+
+const sharedRoleFields: Record<ApplicantRole, ApplicantBaseField[]> = {
+  volunteer: [tshirtField, foodField],
+  hacker: [tshirtField, foodField],
+  mentor: [foodField],
+  sponsor: [],
+}
 
 export const specificFields: Record<ApplicantRole, ApplicantBaseField[]> = {
   volunteer: [
@@ -51,4 +93,8 @@ export const specificFields: Record<ApplicantRole, ApplicantBaseField[]> = {
   ],
 }
 
-export const getApplicantFieldsForRole = (role: ApplicantRole) => [...applicantCommonFields, ...specificFields[role]]
+export const getApplicantFieldsForRole = (role: ApplicantRole) => [
+  ...applicantCommonFields,
+  ...sharedRoleFields[role],
+  ...specificFields[role],
+]

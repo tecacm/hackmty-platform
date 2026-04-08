@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { View, Text, TextStyle, ViewStyle, TouchableOpacity, Modal, Pressable, StyleSheet, UIManager } from 'react-native'
 import { MenuView, MenuAction } from '@react-native-menu/menu'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
@@ -26,7 +26,20 @@ function isMenuViewSupported() {
 
 export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, additionalStyle, error }: StyledSelectProps) {
   const [isModalVisible, setIsModalVisible] = useState(false)
-  const selectedValue = value ?? ''
+  const normalizedPlaceholder = placeholder.trim().toLowerCase()
+  const placeholderMatchedOption = useMemo(
+    () => options.find((option) => option.value.trim().toLowerCase() === normalizedPlaceholder || option.label.trim().toLowerCase() === normalizedPlaceholder),
+    [options, normalizedPlaceholder]
+  )
+
+  useEffect(() => {
+    if ((value ?? '') === '' && placeholderMatchedOption?.value) {
+      onValueChange(placeholderMatchedOption.value)
+    }
+  }, [value, placeholderMatchedOption, onValueChange])
+
+  const shouldRenderPlaceholderOption = !placeholderMatchedOption
+  const selectedValue = (value ?? '') === '' ? (placeholderMatchedOption?.value ?? '') : (value ?? '')
   const selectedLabel = options.find((option) => option.value === selectedValue)?.label || placeholder
   const isPlaceholderActive = selectedValue === ''
   const triggerTextStyle = [formFieldStyles.selectText, isPlaceholderActive && { color: formFieldColors.muted }]
@@ -34,12 +47,12 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
   const useMenuView = useMemo(() => isMenuViewSupported(), [])
 
   const actions: MenuAction[] = [
-    { id: '', title: placeholder },
+    ...(shouldRenderPlaceholderOption ? [{ id: '', title: placeholder }] : []),
     ...options.map((option) => ({ id: option.value, title: option.label })),
   ]
 
   const fallbackOptions: SelectOption[] = [
-    { label: placeholder, value: '' },
+    ...(shouldRenderPlaceholderOption ? [{ label: placeholder, value: '' }] : []),
     ...options,
   ]
 
