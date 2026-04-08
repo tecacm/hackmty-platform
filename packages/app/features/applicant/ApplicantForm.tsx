@@ -87,7 +87,8 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                             options={field.options}
                             subtitle={field.subtitle}
                             onValueChange={(nextValue) => onChange(nextValue)}
-                            style={styles.inputShadow}
+                            additionalStyle={styles.inputShadow}
+                            error={(errors as any)[field.name]?.message}
                           />
                         )
                       }
