@@ -1,3 +1,4 @@
+
 import { ApplicantRole } from './applicant-types'
 
 export type ApplicantBaseField = {

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "HackMTY",
+    "name": "hackmty",
     "slug": "hackmty-platform-dev",
     "version": "1.0.0",
     "scheme": "hackmty-platform",
@@ -19,7 +19,8 @@
       "reactCanary": true
     },
     "plugins": [
-      "expo-image"
+      "expo-image",
+      "./sdk-lockdown"
     ],
     "android": {
       "package": "com.hackmty"
