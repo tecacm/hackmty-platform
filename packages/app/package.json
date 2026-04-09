@@ -7,6 +7,7 @@
     "@react-navigation/native": "8.0.0-alpha.10",
     "@react-navigation/native-stack": "8.0.0-alpha.11",
     "dripsy": "^4.3.3",
+    "expo-blur": "^55.0.13",
     "expo-linear-gradient": "^15.0.8",
     "moti": "^0.30.0",
     "react-native": "*",

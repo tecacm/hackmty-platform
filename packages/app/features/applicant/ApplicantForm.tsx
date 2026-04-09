@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-nat
 import { useForm, Controller } from 'react-hook-form'
 import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
+import { StyledAutocomplete } from 'app/components/styled-autocomplete'
 import { PillButton } from 'app/components/pill-button'
 import { getApplicantFieldsForRole } from './applicant-field-config'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
@@ -72,23 +73,47 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
           {chunkArray(sectionFields, 2).map((rowFields, rowIndex) => (
             <View key={`${sectionName}-${rowIndex}`} style={[styles.row, isWide ? styles.rowWide : styles.rowNarrow]}>
               {rowFields.map((field) => (
-                <View key={field.name} style={[styles.rowField, isWide ? styles.rowFieldWide : styles.rowFieldNarrow]}>
+                <View
+                  key={field.name}
+                  style={[
+                    styles.rowField,
+                    isWide ? styles.rowFieldWide : styles.rowFieldNarrow,
+                  ]}
+                >
                   <Controller
                     control={control}
                     name={field.name as any}
                     rules={{ required: field.required ? `${field.validationLabel ?? field.label} is required` : false }}
                     render={({ field: { onChange, value } }) => {
+                      const controlledValue = value == null ? '' : String(value)
+
                       if (field.fieldType === 'select' && field.options?.length) {
                         return (
                           <StyledSelect
                             label={field.label}
-                            value={value as string}
+                            value={controlledValue}
                             placeholder={field.placeholder}
                             options={field.options}
                             subtitle={field.subtitle}
                             onValueChange={(nextValue) => onChange(nextValue)}
                             additionalStyle={styles.inputShadow}
                             error={(errors as any)[field.name]?.message}
+                          />
+                        )
+                      }
+
+                      if (field.fieldType === 'autocomplete' && field.autocompleteData?.length) {
+                        return (
+                          <StyledAutocomplete
+                            label={field.label}
+                            placeholder={field.placeholder}
+                            subtitle={field.subtitle}
+                            textContentType={field.textContentType as any}
+                            additionalStyle={styles.inputShadow}
+                            onChangeText={onChange}
+                            value={controlledValue}
+                            error={(errors as any)[field.name]?.message}
+                            options={field.autocompleteData}
                           />
                         )
                       }
@@ -101,7 +126,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                           textContentType={field.textContentType as any}
                           additionalStyle={styles.inputShadow}
                           onChangeText={onChange}
-                          value={value as string}
+                          value={controlledValue}
                           error={(errors as any)[field.name]?.message}
                         />
                       )
@@ -160,7 +185,6 @@ const styles = StyleSheet.create({
   },
   rowFieldWide: {
     flex: 1,
-    
   },
   rowFieldNarrow: {
     width: '100%',
@@ -172,7 +196,7 @@ const styles = StyleSheet.create({
          shadowOffset: { width: 0, height: 10 },
          shadowOpacity: 0.4,
          shadowRadius: 8,
-         elevation: 2,      
+         elevation: 4,      
        },
        web: {
          filter: 'drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.4))',

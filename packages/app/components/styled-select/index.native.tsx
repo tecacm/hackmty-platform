@@ -43,7 +43,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
   const selectedLabel = options.find((option) => option.value === selectedValue)?.label || placeholder
   const isPlaceholderActive = selectedValue === ''
   const triggerTextStyle = [formFieldStyles.selectText, isPlaceholderActive && { color: formFieldColors.muted }]
-  const combinedStyle = [formFieldStyles.selectTrigger, additionalStyle, error && formFieldStyles.errorInput]
+  const combinedStyle = [formFieldStyles.selectTrigger, error && formFieldStyles.errorInput]
   const useMenuView = useMemo(() => isMenuViewSupported(), [])
 
   const actions: MenuAction[] = [
@@ -71,9 +71,11 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
           actions={actions}
           style={formFieldStyles.fullWidth}
         >
-          <TouchableOpacity style={combinedStyle}>
-            <Text style={triggerTextStyle}>{selectedLabel}</Text>
-          </TouchableOpacity>
+          <View style={[additionalStyle]}>
+            <TouchableOpacity style={combinedStyle}>
+              <Text style={triggerTextStyle}>{selectedLabel}</Text>
+            </TouchableOpacity>
+          </View>
         </MenuView>
       ) : (
         <>

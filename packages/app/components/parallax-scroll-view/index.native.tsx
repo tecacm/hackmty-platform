@@ -54,6 +54,7 @@ export function ParallaxScrollView({
       <Animated.ScrollView
         style={[{ flex: 1, overflow: 'visible' }, style]}
         contentContainerStyle={{ overflow: 'visible' }}
+        keyboardShouldPersistTaps="handled"
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }

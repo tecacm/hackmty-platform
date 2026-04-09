@@ -3,6 +3,7 @@
     "@react-native-menu/menu": "^2.0.0",
     "app": "*",
     "expo": "~55.0.5",
+    "expo-blur": "^55.0.13",
     "expo-glass-effect": "~55.0.8",
     "expo-image": "~55.0.6",
     "expo-linear-gradient": "~55.0.9",

@@ -1,5 +1,7 @@
 
 import { ApplicantRole } from './applicant-types'
+import countries from 'app/data/static/countries.json'
+import universities from 'app/data/static/universities.json'
 
 export type ApplicantBaseField = {
   name: string
@@ -10,8 +12,9 @@ export type ApplicantBaseField = {
   required?: boolean
   section?: string
   subtitle?: string
-  fieldType?: 'text' | 'select'
+  fieldType?: 'text' | 'select' | 'autocomplete'
   options?: { label: string; value: string }[]
+  autocompleteData?: string[]
 }
 
 const tshirtField: ApplicantBaseField = {
@@ -53,8 +56,25 @@ export const applicantCommonFields: ApplicantBaseField[] = [
   { name: 'firstName', label: 'First Name', placeholder: 'Enter first name', textContentType: 'name', required: true, section: 'Personal Info' },
   { name: 'lastName', label: 'Last Name', placeholder: 'Enter last name', textContentType: 'familyName', required: true, section: 'Personal Info' },
   { name: 'email', label: 'Email', placeholder: 'Enter email', textContentType: 'emailAddress', required: true, section: 'Personal Info' },
-  { name: 'country', label: 'Country', placeholder: 'Enter country', textContentType: 'addressCity', required: true, section: 'Personal Info' },
-  { name: 'university', label: 'University', placeholder: 'Enter university', required: true, section: 'Personal Info' },
+  {
+    name: 'country',
+    label: 'Country',
+    placeholder: 'Enter country',
+    textContentType: 'addressCity',
+    required: true,
+    section: 'Personal Info',
+    fieldType: 'autocomplete',
+    autocompleteData: countries,
+  },
+  {
+    name: 'university',
+    label: 'University',
+    placeholder: 'Enter university',
+    required: true,
+    section: 'Personal Info',
+    fieldType: 'autocomplete',
+    autocompleteData: universities,
+  },
   { name: 'phone', label: 'Phone', placeholder: '+#########', textContentType: 'telephoneNumber', required: true, section: 'Personal Info', subtitle: 'Phone number must be entered in the format: +#########. Up to 15 digits allowed.' },
   { name: 'age', label: 'Age', placeholder: 'Age as of date of HackMTY', textContentType: 'none', required: true, section: 'Personal Info',subtitle: 'Enter your age in years as will be on the date of the event. We will not store your exact birth date, only an inferred year.'},
   { name: 'gender', label: 'What gender do you identify with?', validationLabel: 'Gender', placeholder: 'Select gender', textContentType: 'none', required: true, section: 'Personal Info', subtitle: 'This is for demographic purposes. Select "Prefer not to answer" if you do not want to disclose.', fieldType: 'select', options: [

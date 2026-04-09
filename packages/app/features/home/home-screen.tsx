@@ -55,6 +55,7 @@ export function HomeScreen() {
   const { navigateTo } = useSmartNavigate();
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
+  const [isHydrated, setIsHydrated] = useState(false);
   const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
   const [isWide, setIsWide] = useState(false);
   const { width } = useWindowDimensions();
@@ -73,10 +74,14 @@ export function HomeScreen() {
     }
   })
 
-  const onSubmit = (data) => {
+  const onSubmit = (data: unknown) => {
     console.log("Hackathon Registration Data:", data)
     // Send to Supabase/Firebase/Auth0
   }
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   useEffect(() => {
     if (headerHeight > stableHeaderHeight) {
@@ -116,16 +121,19 @@ export function HomeScreen() {
   const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
   const goToLogin = () => navigateTo('/login')
 
+  const intrinsicWidth = (numbersbg as any)?.width ?? 1920
+  const intrinsicHeight = (numbersbg as any)?.height ?? 1080
+  const backgroundWidth = isHydrated && width > 0 ? width : intrinsicWidth
+  const backgroundHeight = isHydrated && height > 0 ? height : intrinsicHeight
+
   const background = (
     <>
       <SolitoImage
           src={numbersbg}
-          width={width}
-          height={height}
+          width={backgroundWidth}
+          height={backgroundHeight}
           contentFit="cover"
-          resizeMode="cover"
-          transition={0}
-          onLayout={() => {}}
+          resizeMode="cover"    
           alt="Abstract numbers background"
         />
     </>

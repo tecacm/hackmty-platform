@@ -5461,6 +5461,7 @@ __metadata:
     app: "npm:*"
     babel-plugin-react-compiler: "npm:19.0.0-beta-3229e95-20250315"
     expo: "npm:~55.0.5"
+    expo-blur: "npm:^55.0.13"
     expo-glass-effect: "npm:~55.0.8"
     expo-image: "npm:~55.0.6"
     expo-linear-gradient: "npm:~55.0.9"
@@ -5491,6 +5492,17 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10/1f23da4f0bb6e7df52c93fbc38a76d00e80a78efea8ece11d9b8ac01e12a8f4f9a56f99937ef4cc17b5d285b97cada35fdaf0945a848504814c9127154b283d9
+  languageName: node
+  linkType: hard
+
+"expo-blur@npm:^55.0.13":
+  version: 55.0.13
+  resolution: "expo-blur@npm:55.0.13"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 10/7b3938891081a37eba9282ac519d81a3535ea027f96926613880fa7e596bd03015b7648f960e330646531b6b9c7b3a38d9fb24f4b40821b9e390d122511fc52a
   languageName: node
   linkType: hard
 
@@ -6275,6 +6287,7 @@ __metadata:
     "@types/react": "npm:^18.2.21"
     "@types/react-native": "npm:^0.73.0"
     eslint: "npm:^8.21.0"
+    expo-blur: "npm:^55.0.13"
     expo-glass-effect: "npm:^55.0.7"
     expo-linear-gradient: "npm:55.0.9"
     react-hook-form: "npm:^7.71.1"

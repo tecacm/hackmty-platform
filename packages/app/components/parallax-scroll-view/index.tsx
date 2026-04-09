@@ -50,6 +50,7 @@ export function ParallaxScrollView({
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={[{ minHeight: screenHeight }, contentContainerStyle]}
+        keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
