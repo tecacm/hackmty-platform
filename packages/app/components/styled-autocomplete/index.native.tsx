@@ -86,10 +86,12 @@ export function StyledAutocomplete({
 const styles = StyleSheet.create({
   blurContainer: {
     marginTop: -8, 
-    overflow: 'hidden',
+    overflow: 'hidden',    
     ...Platform.select({
         ios:{
             borderRadius: 20,
+            borderWidth: 1,
+            borderColor: '#ffffffab'
         } as any,
         android:{
             backgroundColor: '#ffffff',

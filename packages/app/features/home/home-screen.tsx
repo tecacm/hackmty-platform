@@ -155,7 +155,7 @@ export function HomeScreen() {
     >
         <View style={[styles.container, { width: '80%', maxWidth: 1000 }]}>
           <ApplicantForm
-            role="sponsor"
+            role="hacker"
             onSubmit={(data) => {
               console.log('Hacker application submitted', data)
             }}

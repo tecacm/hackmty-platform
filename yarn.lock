@@ -2848,6 +2848,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-segmented-control/segmented-control@npm:^2.5.7":
+  version: 2.5.7
+  resolution: "@react-native-segmented-control/segmented-control@npm:2.5.7"
+  peerDependencies:
+    react: ">=16.0"
+    react-native: ">=0.62"
+  checksum: 10/d91313487a8d4789ff6c6b7f62d11be748dc95159667ce3d8d76691419c18af566d292fc4d4f2520ec8844a745055142d26b21bad1043b20fecf427ee6ce4449
+  languageName: node
+  linkType: hard
+
 "@react-native/assets-registry@npm:0.83.2":
   version: 0.83.2
   resolution: "@react-native/assets-registry@npm:0.83.2"
@@ -3707,6 +3717,7 @@ __metadata:
     "@react-navigation/native": "npm:8.0.0-alpha.10"
     "@react-navigation/native-stack": "npm:8.0.0-alpha.11"
     dripsy: "npm:^4.3.3"
+    expo-blur: "npm:^55.0.13"
     expo-linear-gradient: "npm:^15.0.8"
     moti: "npm:^0.30.0"
     react-native: "npm:*"
@@ -6284,6 +6295,7 @@ __metadata:
   resolution: "hackmty@workspace:."
   dependencies:
     "@react-native-menu/menu": "npm:^2.0.0"
+    "@react-native-segmented-control/segmented-control": "npm:^2.5.7"
     "@types/react": "npm:^18.2.21"
     "@types/react-native": "npm:^0.73.0"
     eslint: "npm:^8.21.0"

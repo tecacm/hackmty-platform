@@ -2,6 +2,7 @@
 import { ApplicantRole } from './applicant-types'
 import countries from 'app/data/static/countries.json'
 import universities from 'app/data/static/universities.json'
+import majors from 'app/data/static/degrees.json'
 
 export type ApplicantBaseField = {
   name: string
@@ -19,7 +20,7 @@ export type ApplicantBaseField = {
 
 const tshirtField: ApplicantBaseField = {
   name: 'tshirt',
-  label: 'What\'s your T-Shirt Size',
+  label: 'What\'s your T-Shirt Size?',
   validationLabel: 'T-Shirt Size',
   placeholder: 'medium',
   textContentType: 'none',
@@ -52,29 +53,48 @@ const foodField: ApplicantBaseField = {
   ],
 }
 
+const universityField: ApplicantBaseField = {
+  name: 'university',
+  label: 'What university do you attend?',
+  validationLabel: 'University',
+  subtitle: 'Current or most recent school you attended.',
+  placeholder: 'Enter university',
+  required: true,
+  section: 'Personal Info',
+  fieldType: 'autocomplete',
+  autocompleteData: universities,
+}
+
+const majorField: ApplicantBaseField = {
+  name: 'major',
+  label: 'What\'s your major/degree?',
+  validationLabel: 'Major',
+  subtitle: 'Current or most recent major you are pursuing.',
+  placeholder: 'Enter major',
+  required: true,
+  section: 'Personal Info',
+  fieldType: 'autocomplete',
+  autocompleteData: majors,
+}
+
+const countryField: ApplicantBaseField = {
+  name: 'country',
+  label: 'From which country are you joining us?',
+  validationLabel: 'Country',
+  placeholder: 'Enter country',
+  textContentType: 'addressCity',
+  subtitle: 'Please select one of the autocomplete options or write \'Others\'.',
+  required: true,
+  section: 'Personal Info',
+  fieldType: 'autocomplete',
+  autocompleteData: countries,
+}
+
+
 export const applicantCommonFields: ApplicantBaseField[] = [
   { name: 'firstName', label: 'First Name', placeholder: 'Enter first name', textContentType: 'name', required: true, section: 'Personal Info' },
   { name: 'lastName', label: 'Last Name', placeholder: 'Enter last name', textContentType: 'familyName', required: true, section: 'Personal Info' },
   { name: 'email', label: 'Email', placeholder: 'Enter email', textContentType: 'emailAddress', required: true, section: 'Personal Info' },
-  {
-    name: 'country',
-    label: 'Country',
-    placeholder: 'Enter country',
-    textContentType: 'addressCity',
-    required: true,
-    section: 'Personal Info',
-    fieldType: 'autocomplete',
-    autocompleteData: countries,
-  },
-  {
-    name: 'university',
-    label: 'University',
-    placeholder: 'Enter university',
-    required: true,
-    section: 'Personal Info',
-    fieldType: 'autocomplete',
-    autocompleteData: universities,
-  },
   { name: 'phone', label: 'Phone', placeholder: '+#########', textContentType: 'telephoneNumber', required: true, section: 'Personal Info', subtitle: 'Phone number must be entered in the format: +#########. Up to 15 digits allowed.' },
   { name: 'age', label: 'Age', placeholder: 'Age as of date of HackMTY', textContentType: 'none', required: true, section: 'Personal Info',subtitle: 'Enter your age in years as will be on the date of the event. We will not store your exact birth date, only an inferred year.'},
   { name: 'gender', label: 'What gender do you identify with?', validationLabel: 'Gender', placeholder: 'Select gender', textContentType: 'none', required: true, section: 'Personal Info', subtitle: 'This is for demographic purposes. Select "Prefer not to answer" if you do not want to disclose.', fieldType: 'select', options: [
@@ -86,9 +106,9 @@ export const applicantCommonFields: ApplicantBaseField[] = [
 ]
 
 const sharedRoleFields: Record<ApplicantRole, ApplicantBaseField[]> = {
-  volunteer: [tshirtField, foodField],
-  hacker: [tshirtField, foodField],
-  mentor: [foodField],
+  volunteer: [countryField, universityField, majorField, tshirtField, foodField],
+  hacker: [countryField, universityField, majorField, tshirtField, foodField],
+  mentor: [countryField, universityField, majorField, foodField],
   sponsor: [],
 }
 
