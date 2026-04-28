@@ -52,7 +52,7 @@ export const formFieldStyles = StyleSheet.create({
   helperText: {
     color: formFieldColors.muted,
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 8,
   },
   errorText: {
     color: formFieldColors.error,

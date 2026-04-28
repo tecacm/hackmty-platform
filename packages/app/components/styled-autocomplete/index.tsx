@@ -82,7 +82,7 @@ export function StyledAutocomplete({
       </View>
 
       {showSuggestions && (
-        <View style={styles.suggestionList}>
+        <View style={[styles.suggestionList, additionalStyle]}>
           {suggestions.map((entry) => (
             <TouchableOpacity
               key={entry}
@@ -108,11 +108,11 @@ const styles = StyleSheet.create({
   },
   suggestionList: {
     marginTop: -8,
-    borderRadius: 20,
+    borderRadius: 10,
     overflow: 'hidden',
     ...Platform.select({
       web: {
-        backgroundColor: 'rgba(255, 255, 255, 0.61)',
+        backgroundColor: formFieldColors.surface,
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
@@ -123,10 +123,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#ffffff27',
+    borderBottomColor: '#04040427',
   },
   suggestionText: {
-    color: '#101214',
+    color: '#ffffff',
     fontSize: 14,
   },
 })

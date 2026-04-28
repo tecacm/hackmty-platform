@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: formFieldColors.surface,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.25)',
   },
@@ -69,15 +69,15 @@ const styles = StyleSheet.create({
     borderRightColor: 'rgba(255, 255, 255, 0.2)',
   },
   segmentItemActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: 'rgba(255, 255, 255, 0.47)',
   },
   segmentLabel: {
-    color: formFieldColors.text,
+    color: formFieldColors.muted,
     fontSize: 13,
     fontWeight: '500',
   },
   segmentLabelActive: {
-    color: '#101214',
+    color: formFieldColors.text,
     fontWeight: '600',
   },
 })
