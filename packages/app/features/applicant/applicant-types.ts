@@ -8,6 +8,7 @@ export interface ApplicantBase {
   university: string
   phone?: string,
   age?: number
+  year?: string
   tshirt?: 'small' | 'medium' | 'large' | 'xlarge' | ''
   diet?: 'none' | 'vegetarian' | 'vegan' | 'no_pork' | 'gluten_free' | ''
   gender?: 'male' | 'female' | 'nonbinary' | 'prefer_not_to_answer' | ''

@@ -4,6 +4,12 @@ import countries from 'app/data/static/countries.json'
 import universities from 'app/data/static/universities.json'
 import majors from 'app/data/static/degrees.json'
 
+const currentYear = new Date().getFullYear()
+const graduationYearOptions = Array.from({ length: 5 }, (_, index) => {
+  const year = currentYear - 1 + index
+  return { label: String(year), value: String(year) }
+})
+
 export type ApplicantBaseField = {
   name: string
   label: string
@@ -13,9 +19,22 @@ export type ApplicantBaseField = {
   required?: boolean
   section?: string
   subtitle?: string
-  fieldType?: 'text' | 'select' | 'autocomplete'
+  fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented'
   options?: { label: string; value: string }[]
   autocompleteData?: string[]
+}
+
+const yearField: ApplicantBaseField = {
+  name: 'year',
+  label: 'What is your graduation year?',
+  validationLabel: 'Graduation year',
+  placeholder: 'Select graduation year',
+  textContentType: 'none',
+  required: true,
+  section: 'Personal Info',
+  subtitle: 'Choose your expected graduation year.',
+  fieldType: 'segmented',
+  options: graduationYearOptions,
 }
 
 const tshirtField: ApplicantBaseField = {
@@ -106,9 +125,9 @@ export const applicantCommonFields: ApplicantBaseField[] = [
 ]
 
 const sharedRoleFields: Record<ApplicantRole, ApplicantBaseField[]> = {
-  volunteer: [countryField, universityField, majorField, tshirtField, foodField],
-  hacker: [countryField, universityField, majorField, tshirtField, foodField],
-  mentor: [countryField, universityField, majorField, foodField],
+  volunteer: [countryField, universityField, majorField, yearField, tshirtField, foodField],
+  hacker: [countryField, universityField, majorField, yearField, tshirtField, foodField],
+  mentor: [countryField, universityField, majorField, yearField, foodField],
   sponsor: [],
 }
 

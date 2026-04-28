@@ -61,19 +61,6 @@ export function HomeScreen() {
   const { width } = useWindowDimensions();
   const [height, setHeight] = useState(0);
 
-  const images = [rectoria, pavoreal, ciap, photo2024, skyview];
-  const { control, handleSubmit, watch, formState: { errors } } = useForm({
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      confirmPassword: '',
-      agreeMLH: false,
-      subscribeMailingList: false,
-    }
-  })
-
   const onSubmit = (data: unknown) => {
     console.log("Hackathon Registration Data:", data)
     // Send to Supabase/Firebase/Auth0
@@ -142,7 +129,7 @@ export function HomeScreen() {
   return (
     <ParallaxScrollView
       background={background}
-      style={{ backgroundColor: '#1d041f' }}
+      style={{ backgroundColor: '#5a0061cc' }}
       contentContainerStyle={{
         alignItems: 'center',
         gap: 16,

@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
 import { StyledAutocomplete } from 'app/components/styled-autocomplete'
+import { StyledSegmented } from 'app/components/styled-segmented'
 import { PillButton } from 'app/components/pill-button'
 import { getApplicantFieldsForRole } from './applicant-field-config'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
@@ -51,6 +52,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
       phone: '',
       gender: '',
       age: undefined,
+      year: '',
       ...(initialValues as object),
     } as ApplicantFormData,
   })
@@ -118,6 +120,20 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                         )
                       }
 
+                      if (field.fieldType === 'segmented' && field.options?.length) {
+                        return (
+                          <StyledSegmented
+                            label={field.label}
+                            value={controlledValue}
+                            options={field.options}
+                            subtitle={field.subtitle}
+                            onValueChange={(nextValue) => onChange(nextValue)}
+                            additionalStyle={styles.inputShadow}
+                            error={(errors as any)[field.name]?.message}
+                          />
+                        )
+                      }
+
                       return (
                         <StyledInput
                           label={field.label}
@@ -139,7 +155,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
         </View>
       ))}
 
-      <PillButton title="Submit" onPress={handleSubmit((data) => onSubmit(data as ApplicantFormData))} />
+      <PillButton title="Submit" onPress={handleSubmit((data) => onSubmit(data as ApplicantFormData))} /> 
     </View>
   )
 }

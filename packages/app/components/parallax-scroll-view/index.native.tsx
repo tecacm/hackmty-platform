@@ -1,9 +1,6 @@
 'use client';
-
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import {
-  View,
-  Dimensions,
   Animated,
   ViewStyle,
   KeyboardAvoidingView,
@@ -31,19 +28,6 @@ export function ParallaxScrollView({
   keyboardVerticalOffset = 100,
 }: ParallaxScrollViewProps) {
   const scrollY = useRef(new Animated.Value(0)).current;
-  const [screenWidth, setScreenWidth] = useState(0);
-  const [screenHeight, setScreenHeight] = useState(0);
-
-  useEffect(() => {
-    const update = () => {
-      const { width, height } = Dimensions.get('window');
-      setScreenWidth(width);
-      setScreenHeight(height);
-    };
-    update();
-    const sub = Dimensions.addEventListener('change', update);
-    return () => sub?.remove();
-  }, []);
 
   return (
     <KeyboardAvoidingView
@@ -52,8 +36,8 @@ export function ParallaxScrollView({
       keyboardVerticalOffset={keyboardVerticalOffset}
     >
       <Animated.ScrollView
-        style={[{ flex: 1, overflow: 'visible' }, style]}
-        contentContainerStyle={{ overflow: 'visible' }}
+        style={[{ flex: 1,  }, style]}
+        contentContainerStyle={{ flexGrow: 1, overflow: 'visible' }}
         keyboardShouldPersistTaps="handled"
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -61,31 +45,25 @@ export function ParallaxScrollView({
         )}
         scrollEventThrottle={16}
       >
-        {/* Background: pinned in place via translateY counteracting scroll */}
+        {/* Background pinned to viewport by counteracting scroll */}
         <Animated.View
+          pointerEvents="none"
           style={{
-            width: screenWidth,
-            height: screenHeight,
-            zIndex: -1,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             transform: [{ translateY: scrollY }],
           }}
         >
           {background}
         </Animated.View>
 
-        {/* Content overlaps carousel area via negative margin */}
-        <View
-          style={[
-            {
-              marginTop: -screenHeight,
-              minHeight: screenHeight,
-              overflow: 'visible',
-            },
-            contentContainerStyle,
-          ]}
-        >
+        {/* Foreground content in normal flow */}
+        <Animated.View style={[{ flexGrow: 1 }, contentContainerStyle]}>
           {children}
-        </View>
+        </Animated.View>
       </Animated.ScrollView>
     </KeyboardAvoidingView>
   );

@@ -3,6 +3,7 @@
   "name": "app",
   "main": "index.ts",
   "dependencies": {
+    "@react-native-segmented-control/segmented-control": "^2.5.7",
     "@react-navigation/bottom-tabs": "8.0.0-alpha.11",
     "@react-navigation/native": "8.0.0-alpha.10",
     "@react-navigation/native-stack": "8.0.0-alpha.11",

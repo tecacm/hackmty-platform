@@ -3463,6 +3463,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/prop-types@npm:*":
+  version: 15.7.15
+  resolution: "@types/prop-types@npm:15.7.15"
+  checksum: 10/31aa2f59b28f24da6fb4f1d70807dae2aedfce090ec63eaf9ea01727a9533ef6eaf017de5bff99fbccad7d1c9e644f52c6c2ba30869465dd22b1a7221c29f356
+  languageName: node
+  linkType: hard
+
 "@types/react-native@npm:^0.73.0":
   version: 0.73.0
   resolution: "@types/react-native@npm:0.73.0"
@@ -3472,7 +3479,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^19.2.14, @types/react@npm:~19.2.10":
+"@types/react@npm:^18.2.21":
+  version: 18.3.28
+  resolution: "@types/react@npm:18.3.28"
+  dependencies:
+    "@types/prop-types": "npm:*"
+    csstype: "npm:^3.2.2"
+  checksum: 10/6db7bb7f19957ee9f530baa7d143527f8befedad1585b064eb80777be0d84621157de75aba4f499ff429b10c5ef0c7d13e89be6bca3296ef71c80472894ff0eb
+  languageName: node
+  linkType: hard
+
+"@types/react@npm:~19.2.10":
   version: 19.2.14
   resolution: "@types/react@npm:19.2.14"
   dependencies:
@@ -6338,7 +6355,7 @@ __metadata:
   dependencies:
     "@react-native-menu/menu": "npm:^2.0.0"
     "@react-native-segmented-control/segmented-control": "npm:^2.5.7"
-    "@types/react": "npm:^19.2.14"
+    "@types/react": "npm:^18.2.21"
     "@types/react-native": "npm:^0.73.0"
     eslint: "npm:^8.21.0"
     expo-blur: "npm:^55.0.13"
