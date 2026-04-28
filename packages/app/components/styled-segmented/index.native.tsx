@@ -38,8 +38,9 @@ export function StyledSegmented({
   return (
     <View style={formFieldStyles.container}>
       <Text style={[formFieldStyles.label, additionalStyle]}>{label}</Text>
-      <View style={[styles.segmentedWrapper, additionalStyle, error && formFieldStyles.errorInput]}>
+      <View style={[styles.segmentedWrapper, error && formFieldStyles.errorInput]}>
         <SegmentedControl
+        style={[additionalStyle]}
           values={labels}
           selectedIndex={selectedIndex}
           onChange={(event) => {
@@ -47,10 +48,11 @@ export function StyledSegmented({
             const nextValue = options[nextIndex]?.value
             if (nextValue != null) onValueChange(nextValue)
           }}
-          tintColor="rgba(255, 255, 255, 0.2)"
-          backgroundColor="rgba(255, 255, 255, 0.15)"
+          tintColor="rgba(255, 255, 255, 0.33)"
+          backgroundColor="#ffffff56"
           fontStyle={styles.segmentLabel}
           activeFontStyle={styles.segmentLabelActive}
+          appearance='light'
         />
       </View>
       {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
@@ -65,11 +67,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   segmentLabel: {
-    color: formFieldColors.text,
+    color: formFieldColors.muted,
     fontSize: 13,
   },
   segmentLabelActive: {
-    color: '#000000',
+    color: '#ffffff',
     fontSize: 13,
     fontWeight: '600',
   },

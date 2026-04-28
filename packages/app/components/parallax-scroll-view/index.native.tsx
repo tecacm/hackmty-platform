@@ -30,41 +30,36 @@ export function ParallaxScrollView({
   const scrollY = useRef(new Animated.Value(0)).current;
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={keyboardVerticalOffset}
+    <Animated.ScrollView
+      style={[{ flex: 1,  }, style]}
+      contentContainerStyle={{ flexGrow: 1, overflow: 'visible' }}
+      keyboardShouldPersistTaps="handled"
+      onScroll={Animated.event(
+        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+        { useNativeDriver: true }
+      )}
+      automaticallyAdjustKeyboardInsets={true}
+      scrollEventThrottle={16}
     >
-      <Animated.ScrollView
-        style={[{ flex: 1,  }, style]}
-        contentContainerStyle={{ flexGrow: 1, overflow: 'visible' }}
-        keyboardShouldPersistTaps="handled"
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
+      {/* Background pinned to viewport by counteracting scroll */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          transform: [{ translateY: scrollY }],
+        }}
       >
-        {/* Background pinned to viewport by counteracting scroll */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            transform: [{ translateY: scrollY }],
-          }}
-        >
-          {background}
-        </Animated.View>
+        {background}
+      </Animated.View>
 
-        {/* Foreground content in normal flow */}
-        <Animated.View style={[{ flexGrow: 1 }, contentContainerStyle]}>
-          {children}
-        </Animated.View>
-      </Animated.ScrollView>
-    </KeyboardAvoidingView>
+      {/* Foreground content in normal flow */}
+      <Animated.View style={[{ flexGrow: 1 }, contentContainerStyle]}>
+        {children}
+      </Animated.View>
+    </Animated.ScrollView>
   );
 }

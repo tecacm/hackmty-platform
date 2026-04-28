@@ -46,10 +46,9 @@ export function NativeNavigation() {
         component={HomeScreen}
         options={{
           headerShown: true,
-          headerTitle: 'Home',
+          headerTitle: '',
           headerTransparent: true,
           headerShadowVisible: false,
-          headerLargeTitleEnabled: true,
         }}
       />
       <Stack.Screen
