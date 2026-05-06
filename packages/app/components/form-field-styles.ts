@@ -1,11 +1,15 @@
 import { Platform, StyleSheet } from 'react-native'
 
 export const formFieldColors = {
-  text: '#ffffff',
-  muted: '#d4d4d4',
+  titleText: '#ffffff',
+  text: '#000000',
+  muted: '#777777',
+  subtext: '#dbdbdb',
   error: '#ff6b6b',
-  surface: '#f5f5f57b',
+  surface: '#f5f5f5e9',
   transparent: '#ffffff00',
+  accent: '#c2b75f',
+  theme: '#d077d0',
 } as const
 
 export const formFieldStyles = StyleSheet.create({
@@ -20,12 +24,13 @@ export const formFieldStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
-    color: formFieldColors.text,
+    color: formFieldColors.titleText,
   },
   fieldShell: {
     height: 50,
     backgroundColor: formFieldColors.surface,
     borderRadius: 12,
+    justifyContent: 'center',
     paddingHorizontal: 16,
     borderColor: formFieldColors.transparent,
   },
@@ -38,21 +43,14 @@ export const formFieldStyles = StyleSheet.create({
       },
     }),
   },
-  selectTrigger: {
-    minHeight: 50,
-    backgroundColor: formFieldColors.surface,
-    borderRadius: 12,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
   selectText: {
     color: formFieldColors.text,
     fontSize: 16,
   },
   helperText: {
-    color: formFieldColors.muted,
+    color: formFieldColors.subtext,
     fontSize: 12,
-    marginTop: 8,
+    marginTop: 12,
   },
   errorText: {
     color: formFieldColors.error,

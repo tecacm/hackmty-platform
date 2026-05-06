@@ -10,6 +10,7 @@ import { StyledSegmented } from 'app/components/styled-segmented'
 import { PillButton } from 'app/components/pill-button'
 import { getApplicantFieldsForRole } from './applicant-field-config'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
+import { formFieldColors } from 'app/components/form-field-styles'
 
 type ApplicantFormProps = {
   role: ApplicantRole
@@ -179,7 +180,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: {
-    color: '#c2b75f',
+    color: formFieldColors.accent,
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 8,

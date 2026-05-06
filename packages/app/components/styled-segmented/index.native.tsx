@@ -38,22 +38,25 @@ export function StyledSegmented({
   return (
     <View style={formFieldStyles.container}>
       <Text style={[formFieldStyles.label, additionalStyle]}>{label}</Text>
-      <View style={[styles.segmentedWrapper, error && formFieldStyles.errorInput]}>
-        <SegmentedControl
-        style={[additionalStyle]}
-          values={labels}
-          selectedIndex={selectedIndex}
-          onChange={(event) => {
-            const nextIndex = event.nativeEvent.selectedSegmentIndex
-            const nextValue = options[nextIndex]?.value
-            if (nextValue != null) onValueChange(nextValue)
-          }}
-          tintColor="rgba(255, 255, 255, 0.33)"
-          backgroundColor="#ffffff56"
-          fontStyle={styles.segmentLabel}
-          activeFontStyle={styles.segmentLabelActive}
-          appearance='light'
-        />
+      <View style={additionalStyle}>
+        <View style={[styles.segmentedWrapper, error && formFieldStyles.errorInput]}>
+          <SegmentedControl
+            style={[{height: 40}]}
+            values={labels}
+            selectedIndex={selectedIndex}
+            onChange={(event) => {
+              const nextIndex = event.nativeEvent.selectedSegmentIndex
+              const nextValue = options[nextIndex]?.value
+              if (nextValue != null) onValueChange(nextValue)
+            }}
+            tintColor={formFieldColors.theme}
+            backgroundColor={formFieldColors.surface}
+            fontStyle={styles.segmentLabel}
+            activeFontStyle={styles.segmentLabelActive}
+            appearance='light'
+            sliderStyle={{borderRadius: 23}}
+          />
+        </View>
       </View>
       {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
       {error && <Text style={formFieldStyles.errorText}>{error}</Text>}

@@ -42,8 +42,8 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
   const selectedValue = (value ?? '') === '' ? (placeholderMatchedOption?.value ?? '') : (value ?? '')
   const selectedLabel = options.find((option) => option.value === selectedValue)?.label || placeholder
   const isPlaceholderActive = selectedValue === ''
-  const triggerTextStyle = [formFieldStyles.selectText, isPlaceholderActive && { color: formFieldColors.muted }]
-  const combinedStyle = [formFieldStyles.selectTrigger, error && formFieldStyles.errorInput]
+  const triggerTextStyle = [formFieldStyles.inputText, isPlaceholderActive && { color: formFieldColors.muted }, additionalStyle]
+  const combinedStyle = [formFieldStyles.fieldShell, error && formFieldStyles.errorInput]
   const useMenuView = useMemo(() => isMenuViewSupported(), [])
 
   const actions: MenuAction[] = [
@@ -64,6 +64,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
   return (
     <View style={formFieldStyles.container}>
       <Text style={formFieldStyles.label}>{label}</Text>
+      <View style={additionalStyle}>
       {useMenuView ? (
         <MenuView
           title={selectedLabel}
@@ -99,6 +100,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
           </Modal>
         </>
       )}
+      </View>
       {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
       {error && <Text style={formFieldStyles.errorText}>{error}</Text>}
     </View>
@@ -131,7 +133,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   optionText: {
-    color: formFieldColors.text,
+    color: formFieldColors.titleText,
     fontSize: 15,
   },
   optionTextSelected: {
