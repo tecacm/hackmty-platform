@@ -65,9 +65,11 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.heading, { fontSize: dynamicHeadingSize }]}>
-        Applying as {role.charAt(0).toUpperCase() + role.slice(1)}
-      </Text>
+      {Platform.OS === 'web' && (
+        <Text style={[styles.heading, { fontSize: dynamicHeadingSize }]}> 
+          Applying as {role.charAt(0).toUpperCase() + role.slice(1)}
+        </Text>
+      )}
 
       {Object.entries(sections).map(([sectionName, sectionFields]) => (
         <View key={sectionName} style={styles.section}>
@@ -181,7 +183,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: formFieldColors.accent,
-    fontSize: 18,
+    fontSize: 25,
     fontWeight: '600',
     marginBottom: 8,
   },

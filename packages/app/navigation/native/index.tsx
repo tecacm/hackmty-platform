@@ -44,11 +44,13 @@ export function NativeNavigation() {
       <Stack.Screen
         name="home"
         component={HomeScreen}
-        options={{
+        options={{          
+          headerTitleAlign: 'center',
           headerShown: true,
-          headerTitle: '',
+          headerLargeTitleEnabled: true,
           headerTransparent: true,
-          headerShadowVisible: false,
+          headerShadowVisible: true,
+          headerTintColor: '#FFFFFF',      
         }}
       />
       <Stack.Screen

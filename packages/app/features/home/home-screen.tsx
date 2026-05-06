@@ -13,7 +13,7 @@ import skyview from 'app/assets/images/login-screen/skyview.webp'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { Carrousel } from 'app/components/carrousel'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { StyleSheet, Platform } from 'react-native'
 import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import { StyledInput } from 'app/components/styled-input'
@@ -24,6 +24,7 @@ import { FormCheckbox } from 'app/components/form-checkbox'
 import { useForm, Controller } from "react-hook-form"
 import { ApplicantForm } from 'app/features/applicant/ApplicantForm'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
+
 
 const styles = StyleSheet.create({
   container: {
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
   },
 })
 
-export function HomeScreen() {
+export function HomeScreen({ navigation }: { navigation?: any } = {}) {
   const { navigateTo } = useSmartNavigate();
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
@@ -108,6 +109,14 @@ export function HomeScreen() {
   const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
   const goToLogin = () => navigateTo('/login')
 
+  const applicantRole = 'hacker'
+  const applicantRoleLabel = applicantRole.charAt(0).toUpperCase() + applicantRole.slice(1)
+  useLayoutEffect(() => {
+    if (navigation && typeof (navigation as any).setOptions === 'function') {
+      ;(navigation as any).setOptions({ title: `Applying as ${applicantRoleLabel}` })
+    }
+  }, [navigation, applicantRoleLabel])
+
   const intrinsicWidth = (numbersbg as any)?.width ?? 1920
   const intrinsicHeight = (numbersbg as any)?.height ?? 1080
   const backgroundWidth = isHydrated && width > 0 ? width : intrinsicWidth
@@ -142,7 +151,7 @@ export function HomeScreen() {
     >
         <View style={[styles.container, { width: '80%', maxWidth: 1000 }]}>
           <ApplicantForm
-            role="hacker"
+            role={applicantRole as any}
             onSubmit={(data) => {
               console.log('Hacker application submitted', data)
             }}
