@@ -3,7 +3,7 @@ import { Platform, StyleSheet } from 'react-native'
 export const formFieldColors = {
   titleText: '#ffffff',
   text: '#000000',
-  muted: '#777777',
+  muted: '#989898',
   subtext: '#dbdbdb',
   error: '#ff6b6b',
   surface: '#f5f5f5e9',
