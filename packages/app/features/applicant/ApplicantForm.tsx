@@ -167,12 +167,16 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     width: '100%',
-    maxWidth: 920,
+    maxWidth: 1000,
     gap: 16,
-    marginBottom: 24,
+    marginVertical: 24,
+    backgroundColor: "#f4f4f4",
+    paddingVertical: 40,
+    paddingHorizontal: 40,
+    borderRadius: 24,
   },
   heading: {
-    color: '#fff',
+    color: formFieldColors.theme,
     fontSize: 40,
     fontWeight: '700',
     marginBottom: 10,
@@ -209,17 +213,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputShadow: {
-     ...Platform.select({
-       native: {
-         shadowColor: '#000000',
-         shadowOffset: { width: 0, height: 10 },
-         shadowOpacity: 0.4,
-         shadowRadius: 8,
-         elevation: 4,      
-       },
-       web: {
-         filter: 'drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.4))',
-       }
-     })
+    
    }
 })

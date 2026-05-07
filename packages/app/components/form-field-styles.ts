@@ -1,14 +1,15 @@
 import { Platform, StyleSheet } from 'react-native'
 
 export const formFieldColors = {
-  titleText: '#ffffff',
+  titleText: '#7f7f7f',
   text: '#000000',
-  muted: '#989898',
-  subtext: '#dbdbdb',
+  muted: '#747474',
+  subtext: '#5e5e5e',
   error: '#ff6b6b',
-  surface: '#f5f5f5e9',
+  surface: '#ecececf2',
   transparent: '#ffffff00',
   accent: '#c2b75f',
+  selectedText: '#ffffff',
   theme: '#d077d0',
 } as const
 
@@ -32,7 +33,8 @@ export const formFieldStyles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     paddingHorizontal: 16,
-    borderColor: formFieldColors.transparent,
+    borderWidth: 1,
+    borderColor: "#c2c2c2",
   },
   inputText: {
     fontSize: 16,

@@ -54,7 +54,7 @@ export function StyledSegmented({
     <View style={formFieldStyles.container}>
       <Text style={[formFieldStyles.label, additionalStyle]}>{label}</Text>
       <View
-        style={[styles.segmentedWrapper, additionalStyle, error && formFieldStyles.errorInput]}
+        style={[formFieldStyles.fieldShell, styles.segmentedWrapper, additionalStyle, error && formFieldStyles.errorInput]}
         onLayout={(event) => setWrapperWidth(event.nativeEvent.layout.width)}
       >
         {hasSelection && segmentWidth > 0 && (
@@ -90,15 +90,10 @@ export function StyledSegmented({
 }
 
 const styles = StyleSheet.create({
-  segmentedWrapper: {
-    minHeight: 50,
-    borderRadius: 12,
+  segmentedWrapper: { 
     overflow: 'hidden',
     position: 'relative',
     flexDirection: 'row',
-    backgroundColor: formFieldColors.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   selectionIndicator: {
     position: 'absolute',
@@ -121,7 +116,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   segmentLabelActive: {
-    color: formFieldColors.titleText,
+    color: formFieldColors.selectedText,
     fontWeight: '600',
   },
 })
