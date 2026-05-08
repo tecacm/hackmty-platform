@@ -10,6 +10,7 @@ export const formFieldColors = {
   transparent: '#ffffff00',
   accent: '#c2b75f',
   selectedText: '#ffffff',
+  borderColor: '#c2c2c2',
   theme: '#d077d0',
 } as const
 
@@ -34,7 +35,7 @@ export const formFieldStyles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#c2c2c2",
+    borderColor: formFieldColors.borderColor,
   },
   inputText: {
     fontSize: 16,

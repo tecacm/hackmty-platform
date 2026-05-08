@@ -10,7 +10,7 @@ const graduationYearOptions = Array.from({ length: 5 }, (_, index) => {
   return { label: String(year), value: String(year) }
 })
 
-export type ApplicantBaseField = {
+type ApplicantFormField = {
   name: string
   label: string
   validationLabel?: string
@@ -24,7 +24,16 @@ export type ApplicantBaseField = {
   autocompleteData?: string[]
 }
 
-const yearField: ApplicantBaseField = {
+type ApplicantDividerField = {
+  name: string
+  fieldType: 'divider'
+  section?: string
+}
+
+export type ApplicantBaseField = ApplicantFormField
+export type ApplicantField = ApplicantFormField | ApplicantDividerField
+
+const yearField: ApplicantField = {
   name: 'year',
   label: 'What is your graduation year?',
   validationLabel: 'Graduation year',
@@ -37,7 +46,7 @@ const yearField: ApplicantBaseField = {
   options: graduationYearOptions,
 }
 
-const tshirtField: ApplicantBaseField = {
+const tshirtField: ApplicantField = {
   name: 'tshirt',
   label: 'What\'s your T-Shirt Size?',
   validationLabel: 'T-Shirt Size',
@@ -54,7 +63,7 @@ const tshirtField: ApplicantBaseField = {
   ],
 }
 
-const foodField: ApplicantBaseField = {
+const foodField: ApplicantField = {
   name: 'diet',
   label: 'Dietary Restrictions',
   validationLabel: 'Dietary Restrictions',
@@ -72,7 +81,7 @@ const foodField: ApplicantBaseField = {
   ],
 }
 
-const universityField: ApplicantBaseField = {
+const universityField: ApplicantField = {
   name: 'university',
   label: 'What university do you attend?',
   validationLabel: 'University',
@@ -84,7 +93,7 @@ const universityField: ApplicantBaseField = {
   autocompleteData: universities,
 }
 
-const majorField: ApplicantBaseField = {
+const majorField: ApplicantField = {
   name: 'major',
   label: 'What\'s your major/degree?',
   validationLabel: 'Major',
@@ -96,7 +105,7 @@ const majorField: ApplicantBaseField = {
   autocompleteData: majors,
 }
 
-const countryField: ApplicantBaseField = {
+const countryField: ApplicantField = {
   name: 'country',
   label: 'From which country are you joining us?',
   validationLabel: 'Country',
@@ -109,8 +118,13 @@ const countryField: ApplicantBaseField = {
   autocompleteData: countries,
 }
 
+const personalInfoDivider: ApplicantDividerField = {
+  name: 'personal_info_divider',
+  fieldType: 'divider',
+  section: 'Personal Info',
+}
 
-export const applicantCommonFields: ApplicantBaseField[] = [
+export const applicantCommonFields: ApplicantField[] = [
   { name: 'firstName', label: 'First Name', placeholder: 'Enter first name', textContentType: 'name', required: true, section: 'Personal Info' },
   { name: 'lastName', label: 'Last Name', placeholder: 'Enter last name', textContentType: 'familyName', required: true, section: 'Personal Info' },
   { name: 'email', label: 'Email', placeholder: 'Enter email', textContentType: 'emailAddress', required: true, section: 'Personal Info' },
@@ -122,16 +136,17 @@ export const applicantCommonFields: ApplicantBaseField[] = [
     { label: 'Non-binary', value: 'nonbinary' },
     { label: 'Prefer not to answer', value: 'prefer_not_to_answer' },
   ]},
+  personalInfoDivider,
 ]
 
-const sharedRoleFields: Record<ApplicantRole, ApplicantBaseField[]> = {
+const sharedRoleFields: Record<ApplicantRole, ApplicantField[]> = {
   volunteer: [countryField, universityField, majorField, yearField, tshirtField, foodField],
   hacker: [countryField, universityField, majorField, yearField, tshirtField, foodField],
   mentor: [countryField, universityField, majorField, yearField, foodField],
   sponsor: [],
 }
 
-export const specificFields: Record<ApplicantRole, ApplicantBaseField[]> = {
+export const specificFields: Record<ApplicantRole, ApplicantField[]> = {
   volunteer: [
     { name: 'availability', label: 'Availability', placeholder: 'e.g., weekends', required: true },
     { name: 'skills', label: 'Skills', placeholder: 'Your technical/soft skills', required: true },

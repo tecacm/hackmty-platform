@@ -3479,6 +3479,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/react-test-renderer@npm:^19.1.0":
+  version: 19.1.0
+  resolution: "@types/react-test-renderer@npm:19.1.0"
+  dependencies:
+    "@types/react": "npm:*"
+  checksum: 10/2ef3aec0f2fd638902cda606d70c8531d66f8e8944334427986b99dcac9755ee60b700c5c3a19ac354680f9c45669e98077b84f79cac60e950bdb7d38aebffde
+  languageName: node
+  linkType: hard
+
+"@types/react@npm:*, @types/react@npm:~19.2.10":
+  version: 19.2.14
+  resolution: "@types/react@npm:19.2.14"
+  dependencies:
+    csstype: "npm:^3.2.2"
+  checksum: 10/fbff239089ee64b6bd9b00543594db498278b06de527ef1b0f71bb0eb09cc4445a71b5dd3c0d3d0257255c4eed94406be40a74ad4a987ade8a8d5dd65c82bc5f
+  languageName: node
+  linkType: hard
+
 "@types/react@npm:^18.2.21":
   version: 18.3.28
   resolution: "@types/react@npm:18.3.28"
@@ -3486,15 +3504,6 @@ __metadata:
     "@types/prop-types": "npm:*"
     csstype: "npm:^3.2.2"
   checksum: 10/6db7bb7f19957ee9f530baa7d143527f8befedad1585b064eb80777be0d84621157de75aba4f499ff429b10c5ef0c7d13e89be6bca3296ef71c80472894ff0eb
-  languageName: node
-  linkType: hard
-
-"@types/react@npm:~19.2.10":
-  version: 19.2.14
-  resolution: "@types/react@npm:19.2.14"
-  dependencies:
-    csstype: "npm:^3.2.2"
-  checksum: 10/fbff239089ee64b6bd9b00543594db498278b06de527ef1b0f71bb0eb09cc4445a71b5dd3c0d3d0257255c4eed94406be40a74ad4a987ade8a8d5dd65c82bc5f
   languageName: node
   linkType: hard
 
@@ -6362,6 +6371,7 @@ __metadata:
     expo-glass-effect: "npm:^55.0.7"
     expo-linear-gradient: "npm:55.0.9"
     react-hook-form: "npm:^7.71.1"
+    react-native-gesture-handler: "npm:^2.31.2"
     react-native-reanimated: "npm:4.2.1"
     react-native-worklets: "npm:0.7.2"
     turbo: "npm:^2.4.4"
@@ -9173,6 +9183,21 @@ __metadata:
     react-native-gesture-handler: ">= 2.0.0"
     react-native-reanimated: ">= 4.0.0"
   checksum: 10/05f7f316e9ce1c819f7f85d42c7d167093d96e2e0f14d11669c202f6fe4c1649b4f0c9b8daf2859bc2cda42f5da0c4e1f76fe8db1deacb27ed7d8f941713494c
+  languageName: node
+  linkType: hard
+
+"react-native-gesture-handler@npm:^2.31.2":
+  version: 2.31.2
+  resolution: "react-native-gesture-handler@npm:2.31.2"
+  dependencies:
+    "@egjs/hammerjs": "npm:^2.0.17"
+    "@types/react-test-renderer": "npm:^19.1.0"
+    hoist-non-react-statics: "npm:^3.3.0"
+    invariant: "npm:^2.2.4"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10/717ae7a0b997e2eba5eb3d78c11c34cfb5b4f5ac86e84037687983e66f217ca4baceb95ee833329f5bb06d81d83cc96bb57009fa43daa759692abae01ea9cfe0
   languageName: node
   linkType: hard
 

@@ -106,7 +106,7 @@ export function HomeScreen({ navigation }: { navigation?: any } = {}) {
     }
   }, [width]);
 
-  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
+  const topOffset = Math.max(stableHeaderHeight, insets.top);
   const goToLogin = () => navigateTo('/login')
 
   const applicantRole = 'hacker'
@@ -149,7 +149,7 @@ export function HomeScreen({ navigation }: { navigation?: any } = {}) {
         overflow: 'visible',
       }}
     >
-        <View style={[styles.container, { width: '80%', maxWidth: 1000 }]}>
+        <View style={[styles.container, { width: '90%', maxWidth: 1000 }]}>
           <ApplicantForm
             role={applicantRole as any}
             onSubmit={(data) => {

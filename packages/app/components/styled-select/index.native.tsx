@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   optionText: {
-    color: formFieldColors.titleText,
+    color: formFieldColors.surface,
     fontSize: 15,
   },
   optionTextSelected: {

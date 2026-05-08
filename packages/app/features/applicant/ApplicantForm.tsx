@@ -18,10 +18,42 @@ type ApplicantFormProps = {
   onSubmit: (data: ApplicantFormData) => void
 }
 
-function chunkArray<T>(arr: T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size))
-  return chunks
+type SectionRow<T> =
+  | { type: 'divider'; field: T }
+  | { type: 'fields'; fields: T[] }
+
+function FormDivider() {
+  return <View style={styles.divider} />
+}
+
+function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): SectionRow<T>[] {
+  const rows: SectionRow<T>[] = []
+  let pendingFields: T[] = []
+
+  fields.forEach((field) => {
+    if (field.fieldType === 'divider') {
+      if (pendingFields.length) {
+        rows.push({ type: 'fields', fields: pendingFields })
+        pendingFields = []
+      }
+
+      rows.push({ type: 'divider', field })
+      return
+    }
+
+    pendingFields.push(field)
+
+    if (pendingFields.length === 2) {
+      rows.push({ type: 'fields', fields: pendingFields })
+      pendingFields = []
+    }
+  })
+
+  if (pendingFields.length) {
+    rows.push({ type: 'fields', fields: pendingFields })
+  }
+
+  return rows
 }
 
 export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantFormProps) {
@@ -75,86 +107,102 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
         <View key={sectionName} style={styles.section}>
           {sectionName !== 'General' && <Text style={styles.sectionTitle}>{sectionName}</Text>}
 
-          {chunkArray(sectionFields, 2).map((rowFields, rowIndex) => (
-            <View key={`${sectionName}-${rowIndex}`} style={[styles.row, isWide ? styles.rowWide : styles.rowNarrow]}>
-              {rowFields.map((field) => (
-                <View
-                  key={field.name}
-                  style={[
-                    styles.rowField,
-                    isWide ? styles.rowFieldWide : styles.rowFieldNarrow,
-                  ]}
-                >
-                  <Controller
-                    control={control}
-                    name={field.name as any}
-                    rules={{ required: field.required ? `${field.validationLabel ?? field.label} is required` : false }}
-                    render={({ field: { onChange, value } }) => {
-                      const controlledValue = value == null ? '' : String(value)
-
-                      if (field.fieldType === 'select' && field.options?.length) {
-                        return (
-                          <StyledSelect
-                            label={field.label}
-                            value={controlledValue}
-                            placeholder={field.placeholder}
-                            options={field.options}
-                            subtitle={field.subtitle}
-                            onValueChange={(nextValue) => onChange(nextValue)}
-                            additionalStyle={styles.inputShadow}
-                            error={(errors as any)[field.name]?.message}
-                          />
-                        )
-                      }
-
-                      if (field.fieldType === 'autocomplete' && field.autocompleteData?.length) {
-                        return (
-                          <StyledAutocomplete
-                            label={field.label}
-                            placeholder={field.placeholder}
-                            subtitle={field.subtitle}
-                            textContentType={field.textContentType as any}
-                            additionalStyle={styles.inputShadow}
-                            onChangeText={onChange}
-                            value={controlledValue}
-                            error={(errors as any)[field.name]?.message}
-                            options={field.autocompleteData}
-                          />
-                        )
-                      }
-
-                      if (field.fieldType === 'segmented' && field.options?.length) {
-                        return (
-                          <StyledSegmented
-                            label={field.label}
-                            value={controlledValue}
-                            options={field.options}
-                            subtitle={field.subtitle}
-                            onValueChange={(nextValue) => onChange(nextValue)}
-                            additionalStyle={styles.inputShadow}
-                            error={(errors as any)[field.name]?.message}
-                          />
-                        )
-                      }
-
-                      return (
-                        <StyledInput
-                          label={field.label}
-                          placeholder={field.placeholder}
-                          subtitle={field.subtitle}
-                          textContentType={field.textContentType as any}
-                          additionalStyle={styles.inputShadow}
-                          onChangeText={onChange}
-                          value={controlledValue}
-                          error={(errors as any)[field.name]?.message}
-                        />
-                      )
-                    }}
-                  />
+          {buildSectionRows(sectionFields).map((row, rowIndex) => {
+            if (row.type === 'divider') {
+              return (
+                <View key={`${sectionName}-${row.field.name}-${rowIndex}`} style={styles.dividerRow}>
+                  <FormDivider />
                 </View>
-              ))}
-            </View>
-          ))}
+              )
+            }
+
+            return (
+              <View key={`${sectionName}-${rowIndex}`} style={[styles.row, isWide ? styles.rowWide : styles.rowNarrow]}>
+                {row.fields.map((field) => (
+                  field.fieldType === 'divider' ? (
+                    <View key={field.name} style={[styles.rowField, styles.rowFieldNarrow]}>
+                      <FormDivider />
+                    </View>
+                  ) : (
+                    <View
+                      key={field.name}
+                      style={[
+                        styles.rowField,
+                        isWide ? styles.rowFieldWide : styles.rowFieldNarrow,
+                      ]}
+                    >
+                      <Controller
+                        control={control}
+                        name={field.name as any}
+                        rules={{ required: field.required ? `${field.validationLabel ?? field.label} is required` : false }}
+                        render={({ field: { onChange, value } }) => {
+                          const controlledValue = value == null ? '' : String(value)
+
+                          if (field.fieldType === 'select' && field.options?.length) {
+                            return (
+                              <StyledSelect
+                                label={field.label}
+                                value={controlledValue}
+                                placeholder={field.placeholder}
+                                options={field.options}
+                                subtitle={field.subtitle}
+                                onValueChange={(nextValue) => onChange(nextValue)}
+                                additionalStyle={styles.inputShadow}
+                                error={(errors as any)[field.name]?.message}
+                              />
+                            )
+                          }
+
+                          if (field.fieldType === 'autocomplete' && field.autocompleteData?.length) {
+                            return (
+                              <StyledAutocomplete
+                                label={field.label}
+                                placeholder={field.placeholder}
+                                subtitle={field.subtitle}
+                                textContentType={field.textContentType as any}
+                                additionalStyle={styles.inputShadow}
+                                onChangeText={onChange}
+                                value={controlledValue}
+                                error={(errors as any)[field.name]?.message}
+                                options={field.autocompleteData}
+                              />
+                            )
+                          }
+
+                          if (field.fieldType === 'segmented' && field.options?.length) {
+                            return (
+                              <StyledSegmented
+                                label={field.label}
+                                value={controlledValue}
+                                options={field.options}
+                                subtitle={field.subtitle}
+                                onValueChange={(nextValue) => onChange(nextValue)}
+                                additionalStyle={styles.inputShadow}
+                                error={(errors as any)[field.name]?.message}
+                              />
+                            )
+                          }
+
+                          return (
+                            <StyledInput
+                              label={field.label}
+                              placeholder={field.placeholder}
+                              subtitle={field.subtitle}
+                              textContentType={field.textContentType as any}
+                              additionalStyle={styles.inputShadow}
+                              onChangeText={onChange}
+                              value={controlledValue}
+                              error={(errors as any)[field.name]?.message}
+                            />
+                          )
+                        }}
+                      />
+                    </View>
+                  )
+                ))}
+              </View>
+            )
+          })}
         </View>
       ))}
 
@@ -171,8 +219,13 @@ const styles = StyleSheet.create({
     gap: 16,
     marginVertical: 24,
     backgroundColor: "#f4f4f4",
-    paddingVertical: 40,
-    paddingHorizontal: 40,
+    ...Platform.OS === 'web' ? { 
+        paddingVertical: 40,
+        paddingHorizontal: 40,
+    } : {
+      paddingHorizontal: 20,
+      paddingVertical: 30, 
+    },   
     borderRadius: 24,
   },
   heading: {
@@ -211,6 +264,16 @@ const styles = StyleSheet.create({
   },
   rowFieldNarrow: {
     width: '100%',
+  },
+  dividerRow: {
+    width: '100%',
+    marginVertical: 8,
+  },
+  divider: {
+    width: '100%',
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: formFieldColors.borderColor,
   },
   inputShadow: {
     
