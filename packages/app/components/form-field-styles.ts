@@ -6,7 +6,7 @@ export const formFieldColors = {
   muted: '#747474',
   subtext: '#5e5e5e',
   error: '#ff6b6b',
-  surface: '#ecececf2',
+  surface: '#e2e2e2',
   transparent: '#ffffff00',
   accent: '#c2b75f',
   selectedText: '#ffffff',
@@ -31,7 +31,7 @@ export const formFieldStyles = StyleSheet.create({
   fieldShell: {
     height: 50,
     backgroundColor: formFieldColors.surface,
-    borderRadius: 12,
+    borderRadius: 16,
     justifyContent: 'center',
     paddingHorizontal: 16,
     borderWidth: 1,

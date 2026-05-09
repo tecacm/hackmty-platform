@@ -8,6 +8,7 @@ import {
 } from 'react-native-gesture-handler'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
 import { GlassView } from 'expo-glass-effect'
+import SegmentedControl from '@react-native-segmented-control/segmented-control'
 
 type SegmentedOption = {
   label: string
@@ -41,175 +42,123 @@ export function StyledSegmented({
     return found >= 0 ? found : 0
   }, [options, value])
 
-  const [wrapperWidth, setWrapperWidth] = useState(0)
-  const indicatorX = useRef(new Animated.Value(0)).current
-  const dragScale = useRef(new Animated.Value(1)).current
-  const segmentWidth = wrapperWidth > 0 && options.length > 0 ? wrapperWidth / options.length : 0
-
-  // Ref for gesture callbacks (avoid stale closure), state for render
-  const isDraggingRef = useRef(false)
-  const [isDragging, setIsDragging] = useState(false)
-  const lastNearestIndex = useRef<number | null>(null)
-  const lastX = useRef(0)
-
-  const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
-
-  const scaleUp = () => {
-    Animated.timing(dragScale, { toValue: 1.2, duration: 120, useNativeDriver: false }).start()
-  }
-
-  const scaleDown = () => {
-    Animated.spring(dragScale, {
-      toValue: 1,
-      useNativeDriver: false,
-      damping: 20,
-      stiffness: 300,
-      mass: 0.5,
-    }).start()
-  }
-
-  const stopDragging = () => {
-    if (!isDraggingRef.current) return
-    isDraggingRef.current = false
-    setIsDragging(false)
-    lastNearestIndex.current = null
-    lastX.current = 0
-    scaleDown()
-  }
-
-  // onActivated fires when the pan gesture crosses the activation threshold —
-  // i.e. the finger has actually moved. This is the correct moment to scale up.
-  // onBegan fires on touch-down before any movement, so if the user lifts without
-  // panning, the gesture goes BEGAN→FAILED and onEnded never fires, leaving scale stuck.
-  const onActivated = (_event: HandlerStateChangeEvent<Record<string, unknown>>) => {
-    isDraggingRef.current = true
-    setIsDragging(true)
-    scaleUp()
-  }
-
-  const onPan = (event: PanGestureHandlerGestureEvent) => {
-    if (!segmentWidth || wrapperWidth === 0) return
-
-    const x = event.nativeEvent.x
-    lastX.current = x
-
-    const left = clamp(x - segmentWidth / 2, 0, Math.max(0, wrapperWidth - segmentWidth))
-    indicatorX.setValue(left)
-
-    const nearestIndex = Math.min(options.length - 1, Math.max(0, Math.floor(x / segmentWidth)))
-    if (lastNearestIndex.current !== nearestIndex) {
-      lastNearestIndex.current = nearestIndex
-      const nextValue = options[nearestIndex]?.value
-      if (nextValue != null && nextValue !== value) {
-        onValueChange(nextValue)
-      }
-    }
-  }
-
-  const onPanEnd = (_event: HandlerStateChangeEvent<Record<string, unknown>>) => {
-    if (!segmentWidth || wrapperWidth === 0) {
-      stopDragging()
-      return
-    }
-
-    const x = lastX.current
-    const nextIndex = Math.min(options.length - 1, Math.max(0, Math.floor(x / segmentWidth)))
-    const nextValue = options[nextIndex]?.value
-    const targetLeft = nextIndex * segmentWidth
-
-    Animated.spring(indicatorX, {
-      toValue: targetLeft,
-      useNativeDriver: false,
-      damping: 20,
-      stiffness: 260,
-      mass: 0.7,
-    }).start()
-
-    if (nextValue != null && nextValue !== value) {
-      onValueChange(nextValue)
-    }
-
-    stopDragging()
-  }
-
-  const onPanFailed = (_event: HandlerStateChangeEvent<Record<string, unknown>>) => {
-    stopDragging()
-  }
-
-  const onPanCancelled = (_event: HandlerStateChangeEvent<Record<string, unknown>>) => {
-    stopDragging()
-  }
-
-  useEffect(() => {
-    if (!segmentWidth || !hasSelection || isDragging) return
-    Animated.spring(indicatorX, {
-      toValue: selectedIndex * segmentWidth,
-      useNativeDriver: false,
-      damping: 20,
-      stiffness: 260,
-      mass: 0.7,
-    }).start()
-  }, [hasSelection, indicatorX, segmentWidth, selectedIndex, isDragging])
-
   return (
-    <GestureHandlerRootView>
       <View style={formFieldStyles.container}>
         <Text style={[formFieldStyles.label, additionalStyle]}>{label}</Text>
-        <PanGestureHandler
-          onActivated={onActivated}
-          onGestureEvent={onPan}
-          onEnded={onPanEnd}
-          onFailed={onPanFailed}
-          onCancelled={onPanCancelled}
-        >
+         <View style={[formFieldStyles.fieldShell, { backgroundColor: 'transparent', paddingHorizontal: 0}, additionalStyle, error && formFieldStyles.errorInput]}>
+          <SegmentedControl
+          backgroundColor='transparent'
+          style={{height: '100%', zIndex:0}}
+          values={options.map((o) => o.label)}
+          onChange={(event) => {
+            const nextIndex = event.nativeEvent.selectedSegmentIndex
+            const nextValue = options[nextIndex]?.value
+            if (nextValue != null) onValueChange(nextValue)
+          }}
+            tintColor="#970a97b2"
+            fontStyle={styles.segmentLabel}
+            activeFontStyle={styles.segmentLabelActive}
+            appearance='light'
+          />
+          <>
+          {/* left edge cleanup */}
           <View
-            style={[formFieldStyles.fieldShell, styles.segmentedWrapper, additionalStyle, error && formFieldStyles.errorInput]}
-            onLayout={(event) => setWrapperWidth(event.nativeEvent.layout.width)}
-          >
-            {(hasSelection || isDragging) && segmentWidth > 0 && (
-              <Animated.View
-                pointerEvents='none'
-                style={[
-                  styles.selectionIndicator,
-                  {
-                    left: Animated.multiply(
-                      Animated.add(indicatorX, Animated.multiply(dragScale, segmentWidth * -0.075)),
-                      1
-                    ),
-                    width: Animated.multiply(segmentWidth, dragScale),
-                    top: Animated.multiply(Animated.subtract(dragScale, 1), -50),
-                    bottom: Animated.multiply(Animated.subtract(dragScale, 1), -50),
-                  },
-                ]}
-              >
-                <GlassView
-                  style={StyleSheet.absoluteFillObject}
-                  glassEffectStyle={{ style: 'clear' }}
-                  tintColor={'#970a9700'}
-                />
-              </Animated.View>
-            )}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 14,
+              bottom: 14,
+              width: 2,
+              backgroundColor: formFieldColors.surface,
+            }}
+          />
 
-            {options.map((option) => {
-              const isActive = option.value === value
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => onValueChange(option.value)}
-                  style={styles.segmentItem}
-                >
-                  <Text style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-        </PanGestureHandler>
+          {/* right edge cleanup */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 14,
+              bottom: 14,
+              width: 3,
+              backgroundColor: formFieldColors.surface,
+            }}
+          />
+
+          {/* top-left */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: 15,
+              height: 15,
+
+              borderTopLeftRadius: 16,
+              borderTopWidth: 4,
+              borderLeftWidth: 4,
+              borderColor: formFieldColors.surface,
+            }}
+          />
+
+          {/* top-right */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: 16,
+              height: 15,
+
+              borderTopRightRadius: 20,
+              borderTopWidth: 4,
+              borderRightWidth: 4,
+              borderColor: formFieldColors.surface,
+            }}
+          />
+
+          {/* bottom-left */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: 15.5,
+              height: 14,
+
+              borderBottomLeftRadius: 14,
+              borderBottomWidth: 4,
+              borderLeftWidth: 4,
+              borderColor: formFieldColors.surface,
+            }}
+          />
+
+          {/* bottom-right */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              right: 0,
+              width: 16,
+              height: 14,
+
+              borderBottomRightRadius: 14,
+              borderBottomWidth: 4,
+              borderRightWidth: 4,
+              borderColor: formFieldColors.surface,
+            }}
+          />
+        </>
+        </View>
         {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
         {error && <Text style={formFieldStyles.errorText}>{error}</Text>}
       </View>
-    </GestureHandlerRootView>
   )
 }
 
@@ -220,7 +169,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 0,
   },
-  selectionIndicator: {
+  indicatorBase: {
     position: 'absolute',
     borderRadius: 12,
     overflow: 'hidden',
@@ -229,7 +178,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1,
     paddingVertical: 12,
   },
   segmentLabel: {
