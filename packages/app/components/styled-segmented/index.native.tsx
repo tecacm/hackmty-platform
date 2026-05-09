@@ -21,6 +21,7 @@ type StyledSegmentedProps = {
   options: SegmentedOption[]
   error?: string
   subtitle?: string
+  required?: boolean
   onValueChange: (value: string) => void
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
 }
@@ -31,6 +32,7 @@ export function StyledSegmented({
   options,
   error,
   subtitle,
+  required = false,
   onValueChange,
   additionalStyle = {},
 }: StyledSegmentedProps) {
@@ -44,7 +46,7 @@ export function StyledSegmented({
 
   return (
       <View style={formFieldStyles.container}>
-        <Text style={[formFieldStyles.label, additionalStyle]}>{label}</Text>
+        <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
          <View style={[formFieldStyles.fieldShell, { backgroundColor: 'transparent', paddingHorizontal: 0}, additionalStyle, error && formFieldStyles.errorInput]}>
           <SegmentedControl
           backgroundColor='transparent'
@@ -55,7 +57,7 @@ export function StyledSegmented({
             const nextValue = options[nextIndex]?.value
             if (nextValue != null) onValueChange(nextValue)
           }}
-            tintColor="#970a97b2"
+            tintColor={formFieldColors.theme}
             fontStyle={styles.segmentLabel}
             activeFontStyle={styles.segmentLabelActive}
             appearance='light'

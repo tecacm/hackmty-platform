@@ -5,7 +5,7 @@ import universities from 'app/data/static/universities.json'
 import majors from 'app/data/static/degrees.json'
 
 const currentYear = new Date().getFullYear()
-const graduationYearOptions = Array.from({ length: 5 }, (_, index) => {
+const graduationYearOptions = Array.from({ length: 6 }, (_, index) => {
   const year = currentYear - 1 + index
   return { label: String(year), value: String(year) }
 })
@@ -81,6 +81,29 @@ const foodField: ApplicantField = {
   ],
 }
 
+const levelOfStudy: ApplicantField = {
+  name: 'levelOfStudy',
+  label: 'Level of Study',
+  validationLabel: 'Level of Study',
+  placeholder: 'Select level of study',
+  textContentType: 'none',
+  required: true,
+  section: 'Personal Info',
+  fieldType: 'select',
+  options: [
+    { label: 'Less than Secondary / High School', value: 'less_than_secondary' },
+    { label: 'Secondary / High School', value: 'secondary' },
+    { label: 'Undergraduate (2 year - community college or similar)', value: 'undergraduate_2_year' },
+    { label: 'Undergraduate (3+ year)', value: 'undergraduate_3_year' },
+    { label: 'Graduate University (Masters, Professional, Doctoral, etc)', value: 'graduate' },
+    { label: 'Code School / Bootcamp', value: 'code_school' },
+    { label: 'Other Vocational / Trade Program or Apprenticeship', value: 'other_vocational' },
+    { label: 'Post Doctorate', value: 'post_doctorate' },
+    { label: 'Other', value: 'other' },
+    { label: 'I\'m not currently a student', value: 'not_a_student' },
+  ],
+}
+
 const universityField: ApplicantField = {
   name: 'university',
   label: 'What university do you attend?',
@@ -113,9 +136,62 @@ const countryField: ApplicantField = {
   textContentType: 'addressCity',
   subtitle: 'Please select one of the autocomplete options or write \'Others\'.',
   required: true,
-  section: 'Personal Info',
+  section: 'Traveling',
   fieldType: 'autocomplete',
   autocompleteData: countries,
+}
+
+const cityField: ApplicantField = {
+  name: 'city',
+  label: 'From which city are you joining us?',
+  validationLabel: 'City',
+  placeholder: 'Enter city',
+  textContentType: 'addressCity',
+  required: true,
+  section: 'Traveling',
+  fieldType: 'text'
+}
+
+
+const github: ApplicantField = {
+  name: 'github',
+  label: 'GitHub',
+  validationLabel: 'GitHub',
+  placeholder: 'GitHub profile URL',
+  required: false,
+  section: 'Show us what you\'ve built',
+  fieldType: 'text'
+}
+
+
+const devpost: ApplicantField = {
+  name: 'devpost',
+  label: 'Devpost',
+  validationLabel: 'Devpost',
+  placeholder: 'Devpost profile URL',
+  required: false,
+  section: 'Show us what you\'ve built',
+  fieldType: 'text'
+}
+
+const linkedin: ApplicantField = {
+  name: 'linkedin',
+  label: 'LinkedIn',
+  validationLabel: 'LinkedIn',
+  placeholder: 'LinkedIn profile URL',
+  required: false,
+  section: 'Show us what you\'ve built',
+  fieldType: 'text'
+}
+
+const personalSite: ApplicantField = {
+  name: 'personalSite',
+  label: 'Personal Website',
+  validationLabel: 'Personal Website',
+  placeholder: 'Personal website URL',
+  required: false,
+  section: 'Show us what you\'ve built',
+  fieldType: 'text'
 }
 
 const personalInfoDivider: ApplicantDividerField = {
@@ -140,9 +216,9 @@ export const applicantCommonFields: ApplicantField[] = [
 ]
 
 const sharedRoleFields: Record<ApplicantRole, ApplicantField[]> = {
-  volunteer: [countryField, universityField, majorField, yearField, tshirtField, foodField],
-  hacker: [countryField, universityField, majorField, yearField, tshirtField, foodField],
-  mentor: [countryField, universityField, majorField, yearField, foodField],
+  volunteer: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField],
+  hacker: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField],
+  mentor: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, foodField],
   sponsor: [],
 }
 
@@ -157,8 +233,10 @@ export const specificFields: Record<ApplicantRole, ApplicantField[]> = {
     { name: 'mentorshipAreas', label: 'Mentorship Areas', placeholder: 'e.g., web, mobile', required: true },
   ],
   hacker: [
-    { name: 'projectIdea', label: 'Project Idea', placeholder: 'Brief idea description', required: true },
-    { name: 'github', label: 'GitHub', placeholder: 'GitHub profile URL', required: false },
+    github,
+    linkedin,
+    devpost,
+    personalSite
   ],
   sponsor: [
     { name: 'company', label: 'Company', placeholder: 'Company name', required: true },

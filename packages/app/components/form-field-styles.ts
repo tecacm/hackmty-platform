@@ -11,7 +11,7 @@ export const formFieldColors = {
   accent: '#c2b75f',
   selectedText: '#ffffff',
   borderColor: '#c2c2c2',
-  theme: '#d077d0',
+  theme: '#970a97b2',
 } as const
 
 export const formFieldStyles = StyleSheet.create({

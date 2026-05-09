@@ -9,6 +9,7 @@ type StyledAutocompleteProps = {
   placeholder?: string
   error?: string
   subtitle?: string
+  required?: boolean
   options: string[]
   onChangeText: (value: string) => void
   maxSuggestions?: number
@@ -22,6 +23,7 @@ export function StyledAutocomplete({
   placeholder,
   error,
   subtitle,
+  required = false,
   options,
   onChangeText,
   maxSuggestions = 8,
@@ -66,6 +68,7 @@ export function StyledAutocomplete({
           placeholder={placeholder}
           subtitle={subtitle}
           error={error}
+          required={required}
           textContentType={textContentType}
           additionalStyle={additionalStyle}
           onFocus={() => {
@@ -115,7 +118,7 @@ const styles = StyleSheet.create({
         backgroundColor: formFieldColors.surface,
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.07)',
       } as any,
     }),
   },
@@ -126,7 +129,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#04040427',
   },
   suggestionText: {
-    color: '#ffffff',
+    color: formFieldColors.text,
     fontSize: 14,
   },
 })

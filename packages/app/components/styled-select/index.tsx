@@ -9,13 +9,14 @@ type StyledSelectProps = {
   value?: string
   error?: string
   placeholder?: string
+  required?: boolean
   options: SelectOption[]
   onValueChange: (value: string) => void
   subtitle?: string
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
 }
 
-export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, error, additionalStyle }: StyledSelectProps) {
+export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, error, additionalStyle, required = false }: StyledSelectProps) {
   const normalizedPlaceholder = placeholder.trim().toLowerCase()
   const placeholderMatchedOption = useMemo(
     () => options.find((option) => option.value.trim().toLowerCase() === normalizedPlaceholder || option.label.trim().toLowerCase() === normalizedPlaceholder),
@@ -47,7 +48,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
 
   return (
     <View style={formFieldStyles.container}>
-      <Text style={[formFieldStyles.label, additionalStyle]}>{label}</Text>
+      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
       <View style={combinedStyle}>
         <select
           aria-label={label}

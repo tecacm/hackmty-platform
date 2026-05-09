@@ -13,6 +13,7 @@ type StyledSegmentedProps = {
   options: SegmentedOption[]
   error?: string
   subtitle?: string
+  required?: boolean
   onValueChange: (value: string) => void
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
 }
@@ -23,6 +24,7 @@ export function StyledSegmented({
   options,
   error,
   subtitle,
+  required = false,
   onValueChange,
   additionalStyle = {},
 }: StyledSegmentedProps) {
@@ -52,7 +54,7 @@ export function StyledSegmented({
 
   return (
     <View style={formFieldStyles.container}>
-      <Text style={[formFieldStyles.label, additionalStyle]}>{label}</Text>
+      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
       <View
         style={[formFieldStyles.fieldShell, styles.segmentedWrapper, additionalStyle, error && formFieldStyles.errorInput]}
         onLayout={(event) => setWrapperWidth(event.nativeEvent.layout.width)}

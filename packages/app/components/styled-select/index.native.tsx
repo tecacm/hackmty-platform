@@ -10,6 +10,7 @@ type StyledSelectProps = {
   value?: string
   placeholder?: string
   error?: string
+  required?: boolean
   options: SelectOption[]
   onValueChange: (value: string) => void
   subtitle?: string
@@ -24,7 +25,7 @@ function isMenuViewSupported() {
   }
 }
 
-export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, additionalStyle, error }: StyledSelectProps) {
+export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, additionalStyle, error, required = false }: StyledSelectProps) {
   const [isModalVisible, setIsModalVisible] = useState(false)
   const normalizedPlaceholder = placeholder.trim().toLowerCase()
   const placeholderMatchedOption = useMemo(
@@ -63,7 +64,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
 
   return (
     <View style={formFieldStyles.container}>
-      <Text style={formFieldStyles.label}>{label}</Text>
+      <Text style={formFieldStyles.label}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
       <View style={additionalStyle}>
       {useMenuView ? (
         <MenuView

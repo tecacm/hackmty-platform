@@ -5,15 +5,16 @@ type StyledInputProps = Omit<TextInputProps, 'style'> & {
   label: string
   error?: string
   subtitle?: string
+  required?: boolean
   textContentType?: TextInputProps['textContentType']
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
 }
 
-export function StyledInput({ label, textContentType, additionalStyle = {}, error, subtitle, ...props }: StyledInputProps) {
+export function StyledInput({ label, textContentType, additionalStyle = {}, error, subtitle, required = false, ...props }: StyledInputProps) {
   let isPassword = textContentType === 'password'
   return (
     <View style={formFieldStyles.container}>
-      <Text style={[formFieldStyles.label, additionalStyle]}>{label}</Text>
+      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
       <View style={[additionalStyle]} >
       <TextInput
         style={[formFieldStyles.fieldShell, formFieldStyles.inputText, error && formFieldStyles.errorInput]}
