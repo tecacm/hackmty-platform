@@ -54,7 +54,7 @@ export function StyledSegmented({
 
   return (
     <View style={formFieldStyles.container}>
-      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
+      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
       <View
         style={[formFieldStyles.fieldShell, styles.segmentedWrapper, additionalStyle, error && formFieldStyles.errorInput]}
         onLayout={(event) => setWrapperWidth(event.nativeEvent.layout.width)}

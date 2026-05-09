@@ -14,7 +14,7 @@ export function StyledInput({ label, textContentType, additionalStyle = {}, erro
   let isPassword = textContentType === 'password'
   return (
     <View style={formFieldStyles.container}>
-      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
+      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
       <View style={[additionalStyle]} >
       <TextInput
         style={[formFieldStyles.fieldShell, formFieldStyles.inputText, error && formFieldStyles.errorInput]}

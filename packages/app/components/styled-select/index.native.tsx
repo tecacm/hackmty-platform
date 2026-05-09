@@ -64,7 +64,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
 
   return (
     <View style={formFieldStyles.container}>
-      <Text style={formFieldStyles.label}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
+      <Text style={formFieldStyles.label}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
       <View style={additionalStyle}>
       {useMenuView ? (
         <MenuView

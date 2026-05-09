@@ -7,6 +7,7 @@ import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
 import { StyledAutocomplete } from 'app/components/styled-autocomplete'
 import { StyledSegmented } from 'app/components/styled-segmented'
+import { StyledFileInput } from 'app/components/styled-file-input'
 import { PillButton } from 'app/components/pill-button'
 import { getApplicantFieldsForRole } from './applicant-field-config'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
@@ -82,6 +83,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
       email: '',
       country: '',
       university: '',
+      resume: '',
       phone: '',
       gender: '',
       age: undefined,
@@ -179,6 +181,22 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                                 options={field.options}
                                 subtitle={field.subtitle}
                                 required={field.required}
+                                onValueChange={(nextValue) => onChange(nextValue)}
+                                additionalStyle={styles.inputShadow}
+                                error={(errors as any)[field.name]?.message}
+                              />
+                            )
+                          }
+
+                          if (field.fieldType === 'file') {
+                            return (
+                              <StyledFileInput
+                                label={field.label}
+                                value={controlledValue}
+                                placeholder={field.placeholder}
+                                subtitle={field.subtitle}
+                                required={field.required}
+                                  fileSelectorProps={field.fileSelectorProps}
                                 onValueChange={(nextValue) => onChange(nextValue)}
                                 additionalStyle={styles.inputShadow}
                                 error={(errors as any)[field.name]?.message}

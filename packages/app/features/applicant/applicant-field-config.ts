@@ -3,6 +3,7 @@ import { ApplicantRole } from './applicant-types'
 import countries from 'app/data/static/countries.json'
 import universities from 'app/data/static/universities.json'
 import majors from 'app/data/static/degrees.json'
+import type { FileSelectorProps } from 'app/components/styled-file-input'
 
 const currentYear = new Date().getFullYear()
 const graduationYearOptions = Array.from({ length: 6 }, (_, index) => {
@@ -19,9 +20,10 @@ type ApplicantFormField = {
   required?: boolean
   section?: string
   subtitle?: string
-  fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented'
+  fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented' | 'file'
   options?: { label: string; value: string }[]
   autocompleteData?: string[]
+  fileSelectorProps?: FileSelectorProps
 }
 
 type ApplicantDividerField = {
@@ -200,6 +202,25 @@ const personalInfoDivider: ApplicantDividerField = {
   section: 'Personal Info',
 }
 
+const resumeField: ApplicantField = {
+  name: 'resume',
+  label: 'Resume / CV',
+  validationLabel: 'Resume',
+  placeholder: 'Upload your resume',
+  required: true,
+  section: 'Show us what you\'ve built',
+  subtitle: 'Accepted format: PDF only. Max size: 5 MB',
+  fieldType: 'file',
+  fileSelectorProps: {
+    acceptedMimeTypes: ['application/pdf'],
+    acceptedExtensions: ['pdf'],
+    maxSizeBytes: 5 * 1024 * 1024,
+    invalidFileTypeMessage: 'Resume must be a PDF.',
+    invalidFileSizeMessage: 'Resume must be 5 MB or smaller.',
+    fileSizeUnknownMessage: 'Resume size could not be verified. Please choose another PDF.',
+  },
+}
+
 export const applicantCommonFields: ApplicantField[] = [
   { name: 'firstName', label: 'First Name', placeholder: 'Enter first name', textContentType: 'name', required: true, section: 'Personal Info' },
   { name: 'lastName', label: 'Last Name', placeholder: 'Enter last name', textContentType: 'familyName', required: true, section: 'Personal Info' },
@@ -233,10 +254,13 @@ export const specificFields: Record<ApplicantRole, ApplicantField[]> = {
     { name: 'mentorshipAreas', label: 'Mentorship Areas', placeholder: 'e.g., web, mobile', required: true },
   ],
   hacker: [
+    {name: 'excited', label: 'What are you most excited about for HackMTY?', placeholder: 'Your answer here', required: true, fieldType: 'text', section: 'Hackathons'},
+    {name: 'projects', label: 'What projects have you worked on?', placeholder: 'Your answer here', required: false, fieldType: 'text', section: 'Hackathons'},
     github,
     linkedin,
     devpost,
-    personalSite
+    personalSite,
+    resumeField
   ],
   sponsor: [
     { name: 'company', label: 'Company', placeholder: 'Company name', required: true },

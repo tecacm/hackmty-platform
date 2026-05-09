@@ -46,7 +46,7 @@ export function StyledSegmented({
 
   return (
       <View style={formFieldStyles.container}>
-        <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
+        <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
          <View style={[formFieldStyles.fieldShell, { backgroundColor: 'transparent', paddingHorizontal: 0}, additionalStyle, error && formFieldStyles.errorInput]}>
           <SegmentedControl
           backgroundColor='transparent'

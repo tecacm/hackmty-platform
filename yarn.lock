@@ -3768,6 +3768,7 @@ __metadata:
     "@react-navigation/native-stack": "npm:8.0.0-alpha.11"
     dripsy: "npm:^4.3.3"
     expo-blur: "npm:^55.0.13"
+    expo-document-picker: "npm:~14.0.7"
     expo-linear-gradient: "npm:^15.0.8"
     moti: "npm:^0.30.0"
     react-native: "npm:*"
@@ -5516,6 +5517,7 @@ __metadata:
     babel-plugin-react-compiler: "npm:19.0.0-beta-3229e95-20250315"
     expo: "npm:~55.0.17"
     expo-blur: "npm:^55.0.14"
+    expo-document-picker: "npm:~14.0.7"
     expo-glass-effect: "npm:~55.0.10"
     expo-image: "npm:~55.0.9"
     expo-linear-gradient: "npm:~55.0.13"
@@ -5580,6 +5582,15 @@ __metadata:
     expo: "*"
     react-native: "*"
   checksum: 10/b0992b543ef9258168932deeddf48754ba007b2950bbf2564c9407119fee6e644fa0e63ad5979e739e7e86cdc40f72fa9b785786ebbf2e39c0aa020d085cb027
+  languageName: node
+  linkType: hard
+
+"expo-document-picker@npm:~14.0.7":
+  version: 14.0.8
+  resolution: "expo-document-picker@npm:14.0.8"
+  peerDependencies:
+    expo: "*"
+  checksum: 10/6bc2a41a87c840ac13d9bc872f5838e396b90eaeeeddcee19e88ca62614ec57c3517ab1f5725d4efc43470760e9c6b7035e7d35d6c600d246771a0cee93a45b1
   languageName: node
   linkType: hard
 

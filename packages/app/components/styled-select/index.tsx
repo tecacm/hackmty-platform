@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-inline-styles */
 import { useEffect, useMemo, type CSSProperties } from 'react'
 import { View, Text, TextStyle, ViewStyle } from 'react-native'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
@@ -48,7 +49,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
 
   return (
     <View style={formFieldStyles.container}>
-      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>*</Text>}</Text>
+      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
       <View style={combinedStyle}>
         <select
           aria-label={label}
