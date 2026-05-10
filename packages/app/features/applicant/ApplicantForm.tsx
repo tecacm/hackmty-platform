@@ -8,6 +8,7 @@ import { StyledSelect } from 'app/components/styled-select'
 import { StyledAutocomplete } from 'app/components/styled-autocomplete'
 import { StyledSegmented } from 'app/components/styled-segmented'
 import { StyledFileInput } from 'app/components/styled-file-input'
+import { FormCheckbox } from 'app/components/form-checkbox'
 import { PillButton } from 'app/components/pill-button'
 import { getApplicantFieldsForRole } from './applicant-field-config'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
@@ -32,7 +33,7 @@ function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): Sectio
   let pendingFields: T[] = []
 
   fields.forEach((field) => {
-    if (field.fieldType === 'divider') {
+    if (field.fieldType === 'divider' || field.fieldType === 'paragraph') {
       if (pendingFields.length) {
         rows.push({ type: 'fields', fields: pendingFields })
         pendingFields = []
@@ -86,6 +87,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
       resume: '',
       phone: '',
       gender: '',
+      consentFoodAllergies: false,
       age: undefined,
       year: '',
       ...(initialValues as object),
@@ -111,8 +113,17 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
           {buildSectionRows(sectionFields).map((row, rowIndex) => {
             if (row.type === 'divider') {
+              const f: any = row.field
+              if (f.fieldType === 'paragraph') {
+                return (
+                  <View key={`${sectionName}-${rowIndex}-paragraph`} style={styles.paragraphRow}>
+                    <Text style={styles.paragraphText}>{f.content}</Text>
+                  </View>
+                )
+              }
+
               return (
-                <View key={`${sectionName}-${row.field.name}-${rowIndex}`} style={styles.dividerRow}>
+                <View key={`${sectionName}-${(row as any).field.name ?? rowIndex}-${rowIndex}`} style={styles.dividerRow}>
                   <FormDivider />
                 </View>
               )
@@ -120,108 +131,119 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
             return (
               <View key={`${sectionName}-${rowIndex}`} style={[styles.row, isWide ? styles.rowWide : styles.rowNarrow]}>
-                {row.fields.map((field) => (
-                  field.fieldType === 'divider' ? (
-                    <View key={field.name} style={[styles.rowField, styles.rowFieldNarrow]}>
-                      <FormDivider />
-                    </View>
-                  ) : (
-                    <View
-                      key={field.name}
-                      style={[
-                        styles.rowField,
-                        isWide ? styles.rowFieldWide : styles.rowFieldNarrow,
-                      ]}
-                    >
+                {row.fields.map((field) => {
+                  // skip non-input rows (shouldn't be present here, but guard for types)
+                  if ((field as any).fieldType === 'divider' || (field as any).fieldType === 'paragraph') return null
+
+                  const ff: any = field
+
+                  return (
+                    <View key={ff.name} style={[styles.rowField, isWide ? styles.rowFieldWide : styles.rowFieldNarrow]}>
                       <Controller
                         control={control}
-                        name={field.name as any}
-                        rules={{ required: field.required ? `${field.validationLabel ?? field.label} is required` : false }}
+                        name={ff.name as any}
+                        rules={{ required: ff.required ? `${ff.validationLabel ?? ff.label} is required` : false }}
                         render={({ field: { onChange, value } }) => {
-                          const controlledValue = value == null ? '' : String(value)
-
-                          if (field.fieldType === 'select' && field.options?.length) {
+                          if (ff.fieldType === 'checkbox') {
+                            const checked = !!value
                             return (
-                              <StyledSelect
-                                label={field.label}
-                                value={controlledValue}
-                                placeholder={field.placeholder}
-                                options={field.options}
-                                subtitle={field.subtitle}
-                                required={field.required}
-                                onValueChange={(nextValue) => onChange(nextValue)}
+                              <FormCheckbox
+                                variant="form"
+                                label={ff.label}
+                                required={!!ff.required}
+                                value={checked}
+                                onValueChange={(v) => onChange(v)}
                                 additionalStyle={styles.inputShadow}
-                                error={(errors as any)[field.name]?.message}
+                                error={(errors as any)[ff.name]?.message}
                               />
                             )
                           }
 
-                          if (field.fieldType === 'autocomplete' && field.autocompleteData?.length) {
+                          const controlledValue = value == null ? '' : String(value)
+
+                          if (ff.fieldType === 'select' && ff.options?.length) {
+                            return (
+                              <StyledSelect
+                                label={ff.label}
+                                value={controlledValue}
+                                placeholder={ff.placeholder}
+                                options={ff.options}
+                                subtitle={ff.subtitle}
+                                required={ff.required}
+                                onValueChange={(nextValue: any) => onChange(nextValue)}
+                                additionalStyle={styles.inputShadow}
+                                error={(errors as any)[ff.name]?.message}
+                              />
+                            )
+                          }
+
+                          if (ff.fieldType === 'autocomplete' && ff.autocompleteData?.length) {
                             return (
                               <StyledAutocomplete
-                                label={field.label}
-                                placeholder={field.placeholder}
-                                subtitle={field.subtitle}
-                                required={field.required}
-                                textContentType={field.textContentType as any}
+                                label={ff.label}
+                                placeholder={ff.placeholder}
+                                subtitle={ff.subtitle}
+                                required={ff.required}
+                                textContentType={ff.textContentType as any}
                                 additionalStyle={styles.inputShadow}
                                 onChangeText={onChange}
                                 value={controlledValue}
-                                error={(errors as any)[field.name]?.message}
-                                options={field.autocompleteData}
+                                error={(errors as any)[ff.name]?.message}
+                                options={ff.autocompleteData}
                               />
                             )
                           }
 
-                          if (field.fieldType === 'segmented' && field.options?.length) {
+                          if (ff.fieldType === 'segmented' && ff.options?.length) {
                             return (
                               <StyledSegmented
-                                label={field.label}
+                                label={ff.label}
                                 value={controlledValue}
-                                options={field.options}
-                                subtitle={field.subtitle}
-                                required={field.required}
-                                onValueChange={(nextValue) => onChange(nextValue)}
+                                options={ff.options}
+                                subtitle={ff.subtitle}
+                                required={ff.required}
+                                onValueChange={(nextValue: any) => onChange(nextValue)}
                                 additionalStyle={styles.inputShadow}
-                                error={(errors as any)[field.name]?.message}
+                                error={(errors as any)[ff.name]?.message}
                               />
                             )
                           }
 
-                          if (field.fieldType === 'file') {
+                          if (ff.fieldType === 'file') {
                             return (
                               <StyledFileInput
-                                label={field.label}
+                                label={ff.label}
                                 value={controlledValue}
-                                placeholder={field.placeholder}
-                                subtitle={field.subtitle}
-                                required={field.required}
-                                  fileSelectorProps={field.fileSelectorProps}
-                                onValueChange={(nextValue) => onChange(nextValue)}
+                                placeholder={ff.placeholder}
+                                subtitle={ff.subtitle}
+                                required={ff.required}
+                                fileSelectorProps={ff.fileSelectorProps}
+                                onValueChange={(nextValue: any) => onChange(nextValue)}
                                 additionalStyle={styles.inputShadow}
-                                error={(errors as any)[field.name]?.message}
+                                error={(errors as any)[ff.name]?.message}
                               />
                             )
                           }
 
                           return (
                             <StyledInput
-                              label={field.label}
-                              placeholder={field.placeholder}
-                              subtitle={field.subtitle}
-                              required={field.required}
-                              textContentType={field.textContentType as any}
+                              label={ff.label}
+                              placeholder={ff.placeholder}
+                              subtitle={ff.subtitle}
+                              required={ff.required}
+                              textContentType={ff.textContentType as any}
+                              height={ff.height}
                               additionalStyle={styles.inputShadow}
                               onChangeText={onChange}
                               value={controlledValue}
-                              error={(errors as any)[field.name]?.message}
+                              error={(errors as any)[ff.name]?.message}
                             />
                           )
                         }}
                       />
                     </View>
                   )
-                ))}
+                })}
               </View>
             )
           })}
@@ -290,6 +312,16 @@ const styles = StyleSheet.create({
   dividerRow: {
     width: '100%',
     marginVertical: 8,
+  },
+  paragraphRow: {
+    width: '100%',
+    marginVertical: 8,
+  },
+  paragraphText: {
+    color: formFieldColors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
   },
   divider: {
     width: '100%',

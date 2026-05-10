@@ -1,5 +1,6 @@
 
 import { ApplicantRole } from './applicant-types'
+import type { ReactNode } from 'react'
 import countries from 'app/data/static/countries.json'
 import universities from 'app/data/static/universities.json'
 import majors from 'app/data/static/degrees.json'
@@ -13,17 +14,18 @@ const graduationYearOptions = Array.from({ length: 6 }, (_, index) => {
 
 type ApplicantFormField = {
   name: string
-  label: string
+  label: string | ReactNode
   validationLabel?: string
   placeholder: string
   textContentType?: string
   required?: boolean
   section?: string
   subtitle?: string
-  fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented' | 'file'
+  fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented' | 'file' | 'checkbox'
   options?: { label: string; value: string }[]
   autocompleteData?: string[]
   fileSelectorProps?: FileSelectorProps
+  height?: number
 }
 
 type ApplicantDividerField = {
@@ -32,8 +34,15 @@ type ApplicantDividerField = {
   section?: string
 }
 
+type ApplicantParagraphField = {
+  name?: string
+  fieldType: 'paragraph'
+  section?: string
+  content: string
+}
+
 export type ApplicantBaseField = ApplicantFormField
-export type ApplicantField = ApplicantFormField | ApplicantDividerField
+export type ApplicantField = ApplicantFormField | ApplicantDividerField | ApplicantParagraphField
 
 const yearField: ApplicantField = {
   name: 'year',
@@ -221,6 +230,23 @@ const resumeField: ApplicantField = {
   },
 }
 
+const foodAllergiesField: ApplicantField = {
+  name: 'consentFoodAllergies', 
+  label: 'I authorize HackMTY the use of my food allergies and intolerances data for the sole purpose of managing the catering service', 
+  placeholder: '', 
+  required: true, 
+  fieldType: 'checkbox',
+  section: 'HackMTY Policies'
+}
+
+
+const policiesHeader: ApplicantParagraphField = { 
+  fieldType: 'paragraph', 
+  section: 'HackMTY Policies', 
+  content: `We, at HackMTY, process your provided information in order to organize the best possible hackathon. This may also include images and videos featuring you during the event. Your data will be preliminarily used for admissions, and any images or videos may be used for marketing and archiving. For more information on the processing of your personal data and on how to exercise your rights of access, rectification, suppression, limitation, portability and opposition please visit our Privacy and Cookies Policy.`
+ }
+
+
 export const applicantCommonFields: ApplicantField[] = [
   { name: 'firstName', label: 'First Name', placeholder: 'Enter first name', textContentType: 'name', required: true, section: 'Personal Info' },
   { name: 'lastName', label: 'Last Name', placeholder: 'Enter last name', textContentType: 'familyName', required: true, section: 'Personal Info' },
@@ -234,11 +260,12 @@ export const applicantCommonFields: ApplicantField[] = [
     { label: 'Prefer not to answer', value: 'prefer_not_to_answer' },
   ]},
   personalInfoDivider,
+  policiesHeader
 ]
 
 const sharedRoleFields: Record<ApplicantRole, ApplicantField[]> = {
   volunteer: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField],
-  hacker: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField],
+  hacker: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField, foodAllergiesField],
   mentor: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, foodField],
   sponsor: [],
 }
@@ -254,8 +281,8 @@ export const specificFields: Record<ApplicantRole, ApplicantField[]> = {
     { name: 'mentorshipAreas', label: 'Mentorship Areas', placeholder: 'e.g., web, mobile', required: true },
   ],
   hacker: [
-    {name: 'excited', label: 'What are you most excited about for HackMTY?', placeholder: 'Your answer here', required: true, fieldType: 'text', section: 'Hackathons'},
-    {name: 'projects', label: 'What projects have you worked on?', placeholder: 'Your answer here', required: false, fieldType: 'text', section: 'Hackathons'},
+    {name: 'excited', label: 'What are you most excited about for HackMTY?', placeholder: 'Your answer here', required: true, fieldType: 'text', section: 'Hackathons', height: 100},
+    {name: 'projects', label: 'What projects have you worked on?', placeholder: 'Your answer here', required: false, fieldType: 'text', section: 'Hackathons', height: 100},
     github,
     linkedin,
     devpost,

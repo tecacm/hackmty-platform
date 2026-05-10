@@ -1,7 +1,8 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
+import { formFieldColors } from '../form-field-styles'
 
-export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string }) {
+export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error, variant = 'default', required = false }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string; variant?: 'default' | 'form'; required?: boolean }) {
   const isControlled = typeof value !== 'undefined'
   const [internalValue, setInternalValue] = useState<boolean>(!!value)
 
@@ -50,16 +51,22 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
         {/* Custom Square Box */}
         <View style={[
           styles.checkboxBase,
-          checked && styles.checkboxChecked,
+          checked && (variant === 'form' ? styles.checkboxCheckedForm : styles.checkboxCheckedDefault),
           error && styles.checkboxError
         ]}>
-          {checked && <View style={styles.checkmark} />}
+          {checked && <View style={variant === 'form' ? styles.checkmarkForm : styles.checkmarkDefault} />}
         </View>
 
         {typeof label === 'string' ? (
-          <Text style={styles.label}>{label}</Text>
+          <Text style={variant === 'form' ? styles.labelForm : styles.labelDefault}>
+            {label}
+            {required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}
+          </Text>
         ) : (
-          <View>{label}</View>
+          <View style={styles.compositeLabelRow}>
+            {label}
+            {required && <Text style={[variant === 'form' ? styles.labelForm : styles.labelDefault, { color: formFieldColors.error }]}>{' *'}</Text>}
+          </View>
         )}
 
         {/* Hidden input for Web Accessibility / SEO */}
@@ -93,22 +100,34 @@ const styles = StyleSheet.create({
   checkboxBase: {
     width: 20,
     height: 20,
-    borderRadius: 4, // "Nice square" with a tiny bit of rounding
+    borderRadius: 4,
     borderWidth: 2,
-    borderColor: '#FFFFFF', // Clean white outline
+    borderColor: formFieldColors.borderColor,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     backgroundColor: 'transparent',
   },
-  checkboxChecked: {
-    backgroundColor: '#461184', // HackMTY Blue
+  checkboxCheckedForm: {
+    backgroundColor: formFieldColors.theme,
+    borderColor: formFieldColors.theme,
+  },
+  checkboxCheckedDefault: {
+    backgroundColor: '#461184',
     borderColor: '#461184',
   },
   checkboxError: {
-    borderColor: '#ff6b6b',
+    borderColor: formFieldColors.error,
   },
-  checkmark: {
+  checkmarkForm: {
+    width: 10,
+    height: 6,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: formFieldColors.selectedText,
+    transform: [{ rotate: '-45deg' }, { translateY: -1 }],
+  },
+  checkmarkDefault: {
     width: 10,
     height: 6,
     borderLeftWidth: 2,
@@ -116,16 +135,27 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
     transform: [{ rotate: '-45deg' }, { translateY: -1 }],
   },
-  label: {
+  labelForm: {
+    color: formFieldColors.titleText,
+    fontSize: 14,
+    letterSpacing: -0.2,
+    flexShrink: 1,
+  },
+  labelDefault: {
     color: '#FFFFFF',
     fontSize: 14,
     letterSpacing: -0.2,
-    flexShrink: 1, // Prevents text from pushing off screen on mobile
+    flexShrink: 1,
   },
   errorText: {
     color: '#ff6b6b',
     fontSize: 12,
     marginTop: 4,
     marginLeft: 32,
+  },
+  compositeLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
 });

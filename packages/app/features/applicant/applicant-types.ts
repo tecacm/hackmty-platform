@@ -29,6 +29,7 @@ export interface MentorApplicant extends ApplicantBase {
 export interface HackerApplicant extends ApplicantBase {
   projectIdea: string
   github: string
+  consentFoodAllergies?: boolean
 }
 
 export interface SponsorApplicant extends ApplicantBase {
