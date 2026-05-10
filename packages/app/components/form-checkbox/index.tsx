@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
 import { formFieldColors } from '../form-field-styles'
 
-export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error, variant = 'default', required = false }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string; variant?: 'default' | 'form'; required?: boolean }) {
+export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error, variant = 'default', required = false, subtitle }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string; variant?: 'default' | 'form'; required?: boolean; subtitle?: string }) {
   const isControlled = typeof value !== 'undefined'
   const [internalValue, setInternalValue] = useState<boolean>(!!value)
 
@@ -82,10 +82,13 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
             type="checkbox"
             checked={checked}
             readOnly
-            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+            hidden
+            title={typeof label === 'string' ? label : 'checkbox'}
+            aria-label={typeof label === 'string' ? label : 'checkbox'}
           />
         )}
       </Pressable>
+      {subtitle ? <Text style={styles.subtitleText}>{subtitle}</Text> : null}
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   )
@@ -153,6 +156,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: -0.2,
     flexShrink: 1,
+  },
+  subtitleText: {
+    color: formFieldColors.muted,
+    fontSize: 12,
+    marginTop: 6,
+    marginLeft: 32,
   },
   errorText: {
     color: '#ff6b6b',

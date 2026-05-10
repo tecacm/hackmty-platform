@@ -182,6 +182,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                               <FormCheckbox
                                 variant="form"
                                 label={ff.label}
+                                subtitle={ff.subtitle}
                                 required={!!ff.required}
                                 value={checked}
                                 onValueChange={(v) => onChange(v)}
@@ -198,6 +199,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                                 options={ff.options || []}
                                 multiple={!!ff.multiple}
                                 layout={ff.layout || 'vertical'}
+                                subtitle={ff.subtitle}
                                 value={value}
                                 onChange={(next: any) => onChange(next)}
                                 required={!!ff.required}

@@ -13,6 +13,7 @@ export function FormRadio({
   onChange,
   required = false,
   variant = 'form',
+  subtitle,
   error,
   additionalStyle = {},
 }: {
@@ -24,6 +25,7 @@ export function FormRadio({
   onChange?: (v: string | string[]) => void
   required?: boolean
   variant?: 'default' | 'form'
+  subtitle?: string
   error?: string
   additionalStyle?: any
 }) {
@@ -111,6 +113,7 @@ export function FormRadio({
         })}
       </View>
 
+      {subtitle ? <Text style={styles.subtitleText}>{subtitle}</Text> : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   )
@@ -212,6 +215,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     letterSpacing: -0.2,
+  },
+  subtitleText: {
+    color: formFieldColors.muted,
+    fontSize: 12,
+    marginTop: 6,
   },
   errorText: {
     color: '#ff6b6b',
