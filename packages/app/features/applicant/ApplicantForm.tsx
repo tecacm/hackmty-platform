@@ -9,6 +9,7 @@ import { StyledAutocomplete } from 'app/components/styled-autocomplete'
 import { StyledSegmented } from 'app/components/styled-segmented'
 import { StyledFileInput } from 'app/components/styled-file-input'
 import { FormCheckbox } from 'app/components/form-checkbox'
+import FormRadio from 'app/components/form-radio'
 import { PillButton } from 'app/components/pill-button'
 import { getApplicantFieldsForRole } from './applicant-field-config'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
@@ -96,7 +97,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
   const sections = Array.from(sectionMap.values()).sort((a, b) => a.order - b.order)
 
-  const { control, handleSubmit, formState: { errors } } = useForm<ApplicantFormData>({
+  const { control, handleSubmit, formState: { errors } } = useForm<Partial<ApplicantFormData>>({
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -107,10 +108,12 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
       phone: '',
       gender: '',
       consentFoodAllergies: false,
+      firstHackathon: '',
+      participatedRoles: [],
       age: undefined,
       year: '',
       ...(initialValues as object),
-    } as ApplicantFormData,
+    } as Partial<ApplicantFormData>,
   })
 
   // Avoid hydration mismatch by waiting for client width calculation
@@ -172,6 +175,22 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                                 required={!!ff.required}
                                 value={checked}
                                 onValueChange={(v) => onChange(v)}
+                                additionalStyle={styles.inputShadow}
+                                error={(errors as any)[ff.name]?.message}
+                              />
+                            )
+                          }
+
+                          if (ff.fieldType === 'radio') {
+                            return (
+                              <FormRadio
+                                title={ff.label}
+                                options={ff.options || []}
+                                multiple={!!ff.multiple}
+                                value={value}
+                                onChange={(next: any) => onChange(next)}
+                                required={!!ff.required}
+                                variant="form"
                                 additionalStyle={styles.inputShadow}
                                 error={(errors as any)[ff.name]?.message}
                               />

@@ -34,8 +34,9 @@ type ApplicantFormField = {
   required?: boolean
   section?: SectionRef
   subtitle?: string
-  fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented' | 'file' | 'checkbox'
+  fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented' | 'file' | 'checkbox' | 'radio'
   options?: { label: string; value: string }[]
+  multiple?: boolean
   autocompleteData?: string[]
   fileSelectorProps?: FileSelectorProps
   height?: number
@@ -297,6 +298,62 @@ const privacyPolicyField: ApplicantField = {
   section: SECTIONS.POLICIES
 }
 
+const yesNoOptions = [
+  { label: 'Yes', value: 'yes' },
+  { label: 'No', value: 'no' },
+]
+
+const firstHackathonField: ApplicantField = {
+  name: 'firstHackathon',
+  label: 'Is this your First Hackathon?',
+  placeholder: '',
+  required: true,
+  fieldType: 'radio',
+  options: yesNoOptions,
+  section: SECTIONS.HACKATHONS,
+}
+
+const nightShiftsField: ApplicantField = {
+  name: 'nightShifts',
+  label: 'Would you be ok doing nightshifts?',
+  placeholder: '',
+  subtitle: 'We have lots of fun events during the night, but we also need volunteers to help us out during those hours.',
+  required: true,
+  fieldType: 'radio',
+  options: yesNoOptions,
+  section: SECTIONS.HACKATHONS,
+}
+
+const participatedRolesField: ApplicantField = {
+  name: 'participatedRoles',
+  label: 'Did you participate as a hacker, mentor, or volunteer?',
+  placeholder: '',
+  required: false,
+  fieldType: 'radio',
+  multiple: true,
+  options: [
+    { label: 'Hacker', value: 'hacker' },
+    { label: 'Mentor', value: 'mentor' },
+    { label: 'Volunteer', value: 'volunteer' },
+  ],
+  section: SECTIONS.HACKATHONS,
+}
+
+const daysToAttendField: ApplicantField = {
+  name: 'daysToAttend',
+  label: 'Which days will you be attending HackMTY?',
+  placeholder: '',
+  required: false,
+  fieldType: 'radio',
+  multiple: true,
+  options: [
+    { label: 'Friday', value: 'friday' },
+    { label: 'Saturday', value: 'saturday' },
+    { label: 'Sunday', value: 'sunday' },
+  ],
+  section: SECTIONS.HACKATHONS,
+}
+
 const mlhEmailsField: ApplicantField = {
   name: 'mlhEmails',
   label: 'I authorize MLH to send me occasional emails about relevant events, career opportunities, and community announcements.',
@@ -330,21 +387,20 @@ export const applicantCommonFields: ApplicantField[] = [
 ]
 
 const sharedRoleFields: Record<ApplicantRole, ApplicantField[]> = {
-  volunteer: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField, foodAllergiesField, codeOfConductField],
-  hacker: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField, foodAllergiesField, codeOfConductField, privacyPolicyField, mlhEmailsField],
-  mentor: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, foodField, foodAllergiesField, codeOfConductField],
+  volunteer: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField, foodAllergiesField, codeOfConductField, firstHackathonField, participatedRolesField],
+  hacker: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField, foodAllergiesField, codeOfConductField, firstHackathonField, participatedRolesField, privacyPolicyField, mlhEmailsField],
+  mentor: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, foodField, foodAllergiesField, codeOfConductField, firstHackathonField, participatedRolesField],
   sponsor: [],
 }
 
 export const specificFields: Record<ApplicantRole, ApplicantField[]> = {
   volunteer: [
-    { name: 'availability', label: 'Availability', placeholder: 'e.g., weekends', required: true },
-    { name: 'skills', label: 'Skills', placeholder: 'Your technical/soft skills', required: true },
+    daysToAttendField,
+    nightShiftsField,
+    
   ],
   mentor: [
-    { name: 'company', label: 'Company', placeholder: 'Your company', required: true },
-    { name: 'jobPosition', label: 'Job Position', placeholder: 'Your role', required: true },
-    { name: 'mentorshipAreas', label: 'Mentorship Areas', placeholder: 'e.g., web, mobile', required: true },
+   
   ],
   hacker: [
     {name: 'excited', label: 'What are you most excited about for HackMTY?', placeholder: 'Your answer here', required: true, fieldType: 'text', section: SECTIONS.HACKATHONS, height: 100},

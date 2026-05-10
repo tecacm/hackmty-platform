@@ -13,6 +13,8 @@ export interface ApplicantBase {
   tshirt?: 'small' | 'medium' | 'large' | 'xlarge' | ''
   diet?: 'none' | 'vegetarian' | 'vegan' | 'no_pork' | 'gluten_free' | ''
   gender?: 'male' | 'female' | 'nonbinary' | 'prefer_not_to_answer' | ''
+  firstHackathon?: 'yes' | 'no' | ''
+  participatedRoles?: ('hacker' | 'mentor' | 'volunteer')[]
 }
 
 export interface VolunteerApplicant extends ApplicantBase {
