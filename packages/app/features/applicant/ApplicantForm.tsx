@@ -120,9 +120,11 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
   })
 
   const currentValues = watch()
+  const roleFieldNames = new Set(allFields.map((field: any) => field.name))
 
   const fields = allFields.filter((field: any) => {
     if (!field.dependsOn) return true
+    if (!roleFieldNames.has(field.dependsOn.field)) return true
     const dependentValue = (currentValues as Record<string, unknown>)[field.dependsOn.field]
     return dependentValue === field.dependsOn.value
   })
@@ -196,7 +198,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                       <Controller
                         control={control}
                         name={ff.name as any}
-                        rules={{ required: ff.required ? `${ff.validationLabel ?? ff.label} is required` : false }}
+                        rules={{ required: ff.required ? `${ff.validationLabel ?? ff.label ?? "This" } is required` : false }}
                         render={({ field: { onChange, value } }) => {
                           if (ff.fieldType === 'checkbox') {
                             const checked = !!value

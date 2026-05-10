@@ -18,7 +18,21 @@
     {
       "id": "sponsor",
       "label": "Sponsor",
-      "fields": ["firstName", "lastName", "email", "phone", "age", "gender", "workPlace", "jobPosition", "daysToAttend"]
+      "fields": [
+        "firstName",
+        "lastName",
+        "email",
+        "phone",
+        "age",
+        "gender",
+        { "name": "workPlace",  "section": "SPONSOR_INFO" },
+        { "name": "jobPosition", "section": "SPONSOR_INFO" },
+        { "name": "daysToAttend", "section": "SPONSOR_INFO" },
+        { "name": "levelOfStudy", "section": "SPONSOR_INFO" },
+        "codeOfConduct",
+        "privacyPolicy",
+        "mlhEmails"
+      ]
     }
   ]
 }

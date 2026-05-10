@@ -225,7 +225,6 @@ const styles = StyleSheet.create({
     color: '#ff6b6b',
     fontSize: 12,
     marginTop: 4,
-    marginLeft: 32,
   },
 })
 

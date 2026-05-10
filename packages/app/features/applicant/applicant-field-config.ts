@@ -171,7 +171,7 @@ export type ApplicantField = ApplicantFormField | ApplicantDividerField | Applic
 type ApplicationTypeConfig = {
   id: string
   label: string
-  fields: string[]
+  fields: Array<string | { name: string; section?: string }>
 }
 
 // Build all fields from JSON configuration
@@ -186,8 +186,21 @@ const allFieldsFromJson = [
 const fieldsByName = new Map(allFieldsFromJson.map(f => [f.name, f]))
 
 // Helper to get fields by name
-const getFieldsByNames = (names: string[]): ApplicantField[] => 
-  names.map(name => fieldsByName.get(name)).filter((field): field is ApplicantField => Boolean(field))
+const resolveFieldRef = (fieldRef: string | { name: string; section?: string }): ApplicantField | null => {
+  const fieldName = typeof fieldRef === 'string' ? fieldRef : fieldRef.name
+  const field = fieldsByName.get(fieldName)
+  if (!field) return null
+
+  if (typeof fieldRef === 'string' || !fieldRef.section) {
+    return field
+  }
+
+  const nextField = { ...field, sectionKey: fieldRef.section, section: SECTIONS[fieldRef.section as keyof typeof SECTIONS] ?? field.section }
+  return nextField
+}
+
+const getFieldsByNames = (names: Array<string | { name: string; section?: string }>): ApplicantField[] => 
+  names.map(resolveFieldRef).filter((field): field is ApplicantField => Boolean(field))
 
 const applicationTypes = (applicationTypesConfig.applicationTypes || []) as ApplicationTypeConfig[]
 
