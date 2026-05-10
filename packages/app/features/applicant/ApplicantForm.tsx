@@ -12,6 +12,7 @@ import { FormCheckbox } from 'app/components/form-checkbox'
 import FormRadio from 'app/components/form-radio'
 import { PillButton } from 'app/components/pill-button'
 import { getApplicantFieldsForRole } from './applicant-field-config'
+import applicationFieldsConfig from 'app/data/application-fields.json'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
 import { formFieldColors } from 'app/components/form-field-styles'
 
@@ -27,6 +28,20 @@ type SectionRow<T> =
 
 function FormDivider() {
   return <View style={styles.divider} />
+}
+
+type SectionHeader = { key: string; text: string }
+
+type HeaderConfig = { section: string; label: string; order?: number }
+
+function getSectionHeaders(sectionId: string): SectionHeader[] {
+  const headers = (applicationFieldsConfig.headers as Record<string, HeaderConfig> | undefined) || {}
+  return headers
+    ? Object.entries(headers)
+        .filter(([, header]) => header.section === sectionId)
+        .sort(([, a], [, b]) => (a.order ?? 0) - (b.order ?? 0))
+        .map(([key, header]) => ({ key, text: header.label }))
+    : []
 }
 
 function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): SectionRow<T>[] {
@@ -112,16 +127,17 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
     return dependentValue === field.dependsOn.value
   })
 
-  const sectionMap = new Map<string, { id: string; label: string; order: number; fields: typeof fields }>()
+  const sectionMap = new Map<string, { key: string; id: string; label: string; order: number; fields: typeof fields }>()
 
   fields.forEach((field) => {
     const sec = (field as any).section as SectionRef | undefined
     const id = typeof sec === 'string' || !sec ? (sec ?? 'General') : (sec as any).id ?? 'General'
+    const key = (field as any).sectionKey ?? (typeof sec === 'string' ? sec : undefined) ?? id
     const label = typeof sec === 'object' && (sec as any).label ? (sec as any).label : id
     const order = typeof sec === 'object' && typeof (sec as any).order === 'number' ? (sec as any).order : 0
 
-    if (!sectionMap.has(id)) sectionMap.set(id, { id, label, order, fields: [] as typeof fields })
-    sectionMap.get(id)!.fields.push(field)
+    if (!sectionMap.has(key)) sectionMap.set(key, { key, id, label, order, fields: [] as typeof fields })
+    sectionMap.get(key)!.fields.push(field)
   })
 
   const sections = Array.from(sectionMap.values()).sort((a, b) => a.order - b.order)
@@ -139,30 +155,36 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
         </Text>
       )}
 
-      {sections.map(({ id: sectionName, label: sectionLabel, fields: sectionFields }) => (
-        <View key={sectionName} style={styles.section}>
+      {sections.map(({ key: sectionKey, id: sectionName, label: sectionLabel, fields: sectionFields }) => (
+        <View key={sectionKey} style={styles.section}>
           {sectionName !== 'General' && <Text style={styles.sectionTitle}>{sectionLabel ?? sectionName}</Text>}
+
+          {getSectionHeaders(sectionKey).map((header) => (
+            <View key={`${sectionKey}-${header.key}`} style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeaderText}>{header.text}</Text>
+            </View>
+          ))}
 
           {buildSectionRows(sectionFields).map((row, rowIndex) => {
             if (row.type === 'divider') {
               const f: any = row.field
               if (f.fieldType === 'paragraph') {
                 return (
-                  <View key={`${sectionName}-${rowIndex}-paragraph`} style={styles.paragraphRow}>
+                  <View key={`${sectionKey}-${rowIndex}-paragraph`} style={styles.paragraphRow}>
                     <Text style={styles.paragraphText}>{f.content}</Text>
                   </View>
                 )
               }
 
               return (
-                <View key={`${sectionName}-${(row as any).field.name ?? rowIndex}-${rowIndex}`} style={styles.dividerRow}>
+                <View key={`${sectionKey}-${(row as any).field.name ?? rowIndex}-${rowIndex}`} style={styles.dividerRow}>
                   <FormDivider />
                 </View>
               )
             }
 
             return (
-              <View key={`${sectionName}-${rowIndex}`} style={[styles.row, isWide ? styles.rowWide : styles.rowNarrow]}>
+              <View key={`${sectionKey}-${rowIndex}`} style={[styles.row, isWide ? styles.rowWide : styles.rowNarrow]}>
                 {row.fields.map((field) => {
                   // skip non-input rows (shouldn't be present here, but guard for types)
                   if ((field as any).fieldType === 'divider' || (field as any).fieldType === 'paragraph') return null
@@ -338,6 +360,15 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontWeight: '600',
     marginBottom: 8,
+  },
+  sectionHeaderRow: {
+    width: '100%',
+    marginBottom: 8,
+  },
+  sectionHeaderText: {
+    color: formFieldColors.titleText,
+    fontSize: 15,
+    lineHeight: 22,
   },
   row: {
     width: '100%',

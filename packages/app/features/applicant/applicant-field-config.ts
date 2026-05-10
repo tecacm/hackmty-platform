@@ -30,7 +30,10 @@ const dataReferences: Record<string, any[]> = {
 }
 
 // Map for resolving special content refs
-const contentReferences: Record<string, string> = applicationFieldsConfig.content || {}
+const contentReferences: Record<string, string> = Object.values(applicationFieldsConfig.headers || {}).reduce(
+  (accumulator, sectionHeaders) => ({ ...accumulator, ...(sectionHeaders as Record<string, string>) }),
+  {}
+)
 
 // Function to create React component for hyperlinked labels
 const createMLHLink = (text: string, href: string) =>
@@ -84,6 +87,10 @@ const fileTypeConfigs: Record<string, FileSelectorProps> = {
 // Function to process a field definition from JSON
 function processFieldDefinition(fieldDef: any): ApplicantField {
   const field = { ...fieldDef } as any
+
+  if (fieldDef?.section) {
+    field.sectionKey = fieldDef.section
+  }
   
   // Resolve section references
   if (typeof field.section === 'string') {
@@ -133,6 +140,7 @@ type ApplicantFormField = {
   textContentType?: string
   required?: boolean
   section?: SectionRef
+  sectionKey?: string
   subtitle?: string
   fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented' | 'file' | 'checkbox' | 'radio'
   options?: { label: string; value: string }[]
@@ -167,7 +175,14 @@ type ApplicationTypeConfig = {
 }
 
 // Build all fields from JSON configuration
-const allFieldsFromJson = Object.values(applicationFieldsConfig.fields as any).map(processFieldDefinition)
+const allFieldsFromJson = [
+  ...Object.entries(applicationFieldsConfig.fields as any).map(([fieldKey, fieldDef]) =>
+    processFieldDefinition({ ...(fieldDef as any), sectionKey: (fieldDef as any)?.section, fieldKey })
+  ),
+  ...Object.entries(applicationFieldsConfig.specialFields as any || {}).map(([fieldKey, fieldDef]) =>
+    processFieldDefinition({ ...(fieldDef as any), sectionKey: (fieldDef as any)?.section, fieldKey })
+  ),
+]
 const fieldsByName = new Map(allFieldsFromJson.map(f => [f.name, f]))
 
 // Helper to get fields by name

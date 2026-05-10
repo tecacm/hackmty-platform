@@ -88,7 +88,18 @@
       ]
     }
   },
-  "content": {
-    "policiesHeader": "We, at HackMTY, process your provided information in order to organize the best possible hackathon. This may also include images and videos featuring you during the event. Your data will be preliminarily used for admissions, and any images or videos may be used for marketing and archiving. For more information on the processing of your personal data and on how to exercise your rights of access, rectification, suppression, limitation, portability and opposition please visit our Privacy and Cookies Policy."
+  "headers": {
+    "personalInfoIntro": {
+      "section": "PERSONAL_INFO",
+      "label": "Hey there, before we begin, we would like to know a little more about you."
+    },
+    "policiesHeader": {
+      "section": "POLICIES",
+      "label": "We, at HackMTY, process your provided information in order to organize the best possible hackathon. This may also include images and videos featuring you during the event. Your data will be preliminarily used for admissions, and any images or videos may be used for marketing and archiving. For more information on the processing of your personal data and on how to exercise your rights of access, rectification, suppression, limitation, portability and opposition please visit our Privacy and Cookies Policy."
+    },
+    "hackathonsHeader": {
+      "section": "SHOW_BUILT",
+      "label": "Some of our sponsors may use this information for recruitment purposes, so please include as much as you can."
+    }
   }
 }
