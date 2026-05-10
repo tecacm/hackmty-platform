@@ -1,16 +1,29 @@
 
 import { ApplicantRole } from './applicant-types'
-import type { ReactNode } from 'react'
+import React, { type ReactNode } from 'react'
+import { Text } from 'react-native'
+import { TextLink } from 'solito/link'
 import countries from 'app/data/static/countries.json'
 import universities from 'app/data/static/universities.json'
 import majors from 'app/data/static/degrees.json'
 import type { FileSelectorProps } from 'app/components/styled-file-input'
+import { formFieldColors } from 'app/components/form-field-styles'
 
 const currentYear = new Date().getFullYear()
 const graduationYearOptions = Array.from({ length: 6 }, (_, index) => {
   const year = currentYear - 1 + index
   return { label: String(year), value: String(year) }
 })
+
+export const SECTIONS = {
+  PERSONAL_INFO: { id: 'Personal Info', label: 'Personal Info', order: 0 },
+  HACKATHONS: { id: 'Hackathons', label: 'Hackathons', order: 10 },
+  TRAVELING: { id: 'Traveling', label: 'Traveling', order: 20 },
+  SHOW_BUILT: { id: "Show us what you've built", label: "Show us what you've built", order: 30 },
+  POLICIES: { id: 'HackMTY Policies', label: 'HackMTY Policies', order: 999 },
+} as const
+
+type SectionRef = string | { id: string; label?: string; order?: number }
 
 type ApplicantFormField = {
   name: string
@@ -19,7 +32,7 @@ type ApplicantFormField = {
   placeholder: string
   textContentType?: string
   required?: boolean
-  section?: string
+  section?: SectionRef
   subtitle?: string
   fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented' | 'file' | 'checkbox'
   options?: { label: string; value: string }[]
@@ -31,13 +44,13 @@ type ApplicantFormField = {
 type ApplicantDividerField = {
   name: string
   fieldType: 'divider'
-  section?: string
+  section?: SectionRef
 }
 
 type ApplicantParagraphField = {
   name?: string
   fieldType: 'paragraph'
-  section?: string
+  section?: SectionRef
   content: string
 }
 
@@ -51,7 +64,7 @@ const yearField: ApplicantField = {
   placeholder: 'Select graduation year',
   textContentType: 'none',
   required: true,
-  section: 'Personal Info',
+  section: SECTIONS.PERSONAL_INFO,
   subtitle: 'Choose your expected graduation year.',
   fieldType: 'segmented',
   options: graduationYearOptions,
@@ -64,7 +77,7 @@ const tshirtField: ApplicantField = {
   placeholder: 'medium',
   textContentType: 'none',
   required: true,
-  section: 'Personal Info',
+  section: SECTIONS.PERSONAL_INFO,
   fieldType: 'select',
   options: [
     { label: 'Small', value: 'small' },
@@ -81,7 +94,7 @@ const foodField: ApplicantField = {
   placeholder: 'none',
   textContentType: 'none',
   required: true,
-  section: 'Personal Info',
+  section: SECTIONS.PERSONAL_INFO,
   fieldType: 'select',
   options: [
     { label: 'None', value: 'none' },
@@ -99,7 +112,7 @@ const levelOfStudy: ApplicantField = {
   placeholder: 'Select level of study',
   textContentType: 'none',
   required: true,
-  section: 'Personal Info',
+  section: SECTIONS.PERSONAL_INFO,
   fieldType: 'select',
   options: [
     { label: 'Less than Secondary / High School', value: 'less_than_secondary' },
@@ -122,7 +135,7 @@ const universityField: ApplicantField = {
   subtitle: 'Current or most recent school you attended.',
   placeholder: 'Enter university',
   required: true,
-  section: 'Personal Info',
+  section: SECTIONS.PERSONAL_INFO,
   fieldType: 'autocomplete',
   autocompleteData: universities,
 }
@@ -134,7 +147,7 @@ const majorField: ApplicantField = {
   subtitle: 'Current or most recent major you are pursuing.',
   placeholder: 'Enter major',
   required: true,
-  section: 'Personal Info',
+  section: SECTIONS.PERSONAL_INFO,
   fieldType: 'autocomplete',
   autocompleteData: majors,
 }
@@ -147,7 +160,7 @@ const countryField: ApplicantField = {
   textContentType: 'addressCity',
   subtitle: 'Please select one of the autocomplete options or write \'Others\'.',
   required: true,
-  section: 'Traveling',
+  section: SECTIONS.TRAVELING,
   fieldType: 'autocomplete',
   autocompleteData: countries,
 }
@@ -159,7 +172,7 @@ const cityField: ApplicantField = {
   placeholder: 'Enter city',
   textContentType: 'addressCity',
   required: true,
-  section: 'Traveling',
+  section: SECTIONS.TRAVELING,
   fieldType: 'text'
 }
 
@@ -170,7 +183,7 @@ const github: ApplicantField = {
   validationLabel: 'GitHub',
   placeholder: 'GitHub profile URL',
   required: false,
-  section: 'Show us what you\'ve built',
+  section: SECTIONS.SHOW_BUILT,
   fieldType: 'text'
 }
 
@@ -181,7 +194,7 @@ const devpost: ApplicantField = {
   validationLabel: 'Devpost',
   placeholder: 'Devpost profile URL',
   required: false,
-  section: 'Show us what you\'ve built',
+  section: SECTIONS.SHOW_BUILT,
   fieldType: 'text'
 }
 
@@ -191,7 +204,7 @@ const linkedin: ApplicantField = {
   validationLabel: 'LinkedIn',
   placeholder: 'LinkedIn profile URL',
   required: false,
-  section: 'Show us what you\'ve built',
+  section: SECTIONS.SHOW_BUILT,
   fieldType: 'text'
 }
 
@@ -201,14 +214,14 @@ const personalSite: ApplicantField = {
   validationLabel: 'Personal Website',
   placeholder: 'Personal website URL',
   required: false,
-  section: 'Show us what you\'ve built',
+  section: SECTIONS.SHOW_BUILT,
   fieldType: 'text'
 }
 
 const personalInfoDivider: ApplicantDividerField = {
   name: 'personal_info_divider',
   fieldType: 'divider',
-  section: 'Personal Info',
+  section: SECTIONS.PERSONAL_INFO,
 }
 
 const resumeField: ApplicantField = {
@@ -217,7 +230,7 @@ const resumeField: ApplicantField = {
   validationLabel: 'Resume',
   placeholder: 'Upload your resume',
   required: true,
-  section: 'Show us what you\'ve built',
+  section: SECTIONS.SHOW_BUILT,
   subtitle: 'Accepted format: PDF only. Max size: 5 MB',
   fieldType: 'file',
   fileSelectorProps: {
@@ -231,29 +244,82 @@ const resumeField: ApplicantField = {
 }
 
 const foodAllergiesField: ApplicantField = {
-  name: 'consentFoodAllergies', 
-  label: 'I authorize HackMTY the use of my food allergies and intolerances data for the sole purpose of managing the catering service', 
-  placeholder: '', 
-  required: true, 
+  name: 'consentFoodAllergies',
+  label: 'I authorize HackMTY the use of my food allergies and intolerances data for the sole purpose of managing the catering service',
+  placeholder: '',
+  required: true,
   fieldType: 'checkbox',
-  section: 'HackMTY Policies'
+  section: SECTIONS.POLICIES
+}
+
+const codeOfConductField: ApplicantField = {
+  name: 'codeOfConduct',
+  label: React.createElement(
+    Text,
+    { style: { color: formFieldColors.titleText } },
+    "I've read, understand and accept the",
+    ' ',
+    React.createElement(
+      TextLink,
+      { href: 'https://mlh.io/code-of-conduct', style: { color: '#c2b75f', textDecorationLine: 'underline' }, children: 'MLH Code of Conduct' }
+    )
+  ),
+  placeholder: '',
+  required: true,
+  fieldType: 'checkbox',
+  section: SECTIONS.POLICIES
+}
+
+const mlhPrivacyPolicy = React.createElement(
+  TextLink,
+  { href: 'https://github.com/MLH/mlh-policies/blob/main/privacy-policy.md', style: { color: '#c2b75f', textDecorationLine: 'underline' }, children: 'MLH Privacy Policy' }
+)
+
+const privacyPolicyField: ApplicantField = {
+  name: 'privacyPolicy',
+  label: React.createElement(
+    Text,
+    { style: { color: formFieldColors.titleText, }},
+    "I authorize you to share my application/registration information with Major League Hacking for event administration, ranking, and MLH administration in-line with the ",
+    mlhPrivacyPolicy,
+    '. I further agree to the terms of both the ',
+    React.createElement(
+      TextLink,
+      { href: 'https://github.com/MLH/mlh-policies/blob/main/contest-terms.md', style: { color: '#c2b75f', textDecorationLine: 'underline' }, children: 'MLH Contest Terms and Conditions' }
+    ),
+    ' and the ',
+    mlhPrivacyPolicy,
+    '.'
+  ),
+  placeholder: '',
+  required: true,
+  fieldType: 'checkbox',
+  section: SECTIONS.POLICIES
+}
+
+const mlhEmailsField: ApplicantField = {
+  name: 'mlhEmails',
+  label: 'I authorize MLH to send me occasional emails about relevant events, career opportunities, and community announcements.',
+  placeholder: '',
+  required: false,
+  fieldType: 'checkbox',
+  section: SECTIONS.POLICIES
+}
+
+const policiesHeader: ApplicantParagraphField = {
+  fieldType: 'paragraph',
+  section: SECTIONS.POLICIES,
+  content: `We, at HackMTY, process your provided information in order to organize the best possible hackathon. This may also include images and videos featuring you during the event. Your data will be preliminarily used for admissions, and any images or videos may be used for marketing and archiving. For more information on the processing of your personal data and on how to exercise your rights of access, rectification, suppression, limitation, portability and opposition please visit our Privacy and Cookies Policy.`
 }
 
 
-const policiesHeader: ApplicantParagraphField = { 
-  fieldType: 'paragraph', 
-  section: 'HackMTY Policies', 
-  content: `We, at HackMTY, process your provided information in order to organize the best possible hackathon. This may also include images and videos featuring you during the event. Your data will be preliminarily used for admissions, and any images or videos may be used for marketing and archiving. For more information on the processing of your personal data and on how to exercise your rights of access, rectification, suppression, limitation, portability and opposition please visit our Privacy and Cookies Policy.`
- }
-
-
 export const applicantCommonFields: ApplicantField[] = [
-  { name: 'firstName', label: 'First Name', placeholder: 'Enter first name', textContentType: 'name', required: true, section: 'Personal Info' },
-  { name: 'lastName', label: 'Last Name', placeholder: 'Enter last name', textContentType: 'familyName', required: true, section: 'Personal Info' },
-  { name: 'email', label: 'Email', placeholder: 'Enter email', textContentType: 'emailAddress', required: true, section: 'Personal Info' },
-  { name: 'phone', label: 'Phone', placeholder: '+#########', textContentType: 'telephoneNumber', required: true, section: 'Personal Info', subtitle: 'Phone number must be entered in the format: +#########. Up to 15 digits allowed.' },
-  { name: 'age', label: 'Age', placeholder: 'Age as of date of HackMTY', textContentType: 'none', required: true, section: 'Personal Info',subtitle: 'Enter your age in years as will be on the date of the event. We will not store your exact birth date, only an inferred year.'},
-  { name: 'gender', label: 'What gender do you identify with?', validationLabel: 'Gender', placeholder: 'Select gender', textContentType: 'none', required: true, section: 'Personal Info', subtitle: 'This is for demographic purposes. Select "Prefer not to answer" if you do not want to disclose.', fieldType: 'select', options: [
+  { name: 'firstName', label: 'First Name', placeholder: 'Enter first name', textContentType: 'name', required: true, section: SECTIONS.PERSONAL_INFO },
+  { name: 'lastName', label: 'Last Name', placeholder: 'Enter last name', textContentType: 'familyName', required: true, section: SECTIONS.PERSONAL_INFO },
+  { name: 'email', label: 'Email', placeholder: 'Enter email', textContentType: 'emailAddress', required: true, section: SECTIONS.PERSONAL_INFO },
+  { name: 'phone', label: 'Phone', placeholder: '+#########', textContentType: 'telephoneNumber', required: true, section: SECTIONS.PERSONAL_INFO, subtitle: 'Phone number must be entered in the format: +#########. Up to 15 digits allowed.' },
+  { name: 'age', label: 'Age', placeholder: 'Age as of date of HackMTY', textContentType: 'none', required: true, section: SECTIONS.PERSONAL_INFO,subtitle: 'Enter your age in years as will be on the date of the event. We will not store your exact birth date, only an inferred year.'},
+  { name: 'gender', label: 'What gender do you identify with?', validationLabel: 'Gender', placeholder: 'Select gender', textContentType: 'none', required: true, section: SECTIONS.PERSONAL_INFO, subtitle: 'This is for demographic purposes. Select "Prefer not to answer" if you do not want to disclose.', fieldType: 'select', options: [
     { label: 'Male', value: 'male' },
     { label: 'Female', value: 'female' },
     { label: 'Non-binary', value: 'nonbinary' },
@@ -264,9 +330,9 @@ export const applicantCommonFields: ApplicantField[] = [
 ]
 
 const sharedRoleFields: Record<ApplicantRole, ApplicantField[]> = {
-  volunteer: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField],
-  hacker: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField, foodAllergiesField],
-  mentor: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, foodField],
+  volunteer: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField, foodAllergiesField, codeOfConductField],
+  hacker: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, tshirtField, foodField, foodAllergiesField, codeOfConductField, privacyPolicyField, mlhEmailsField],
+  mentor: [countryField, cityField, universityField, majorField, yearField, levelOfStudy, foodField, foodAllergiesField, codeOfConductField],
   sponsor: [],
 }
 
@@ -281,8 +347,8 @@ export const specificFields: Record<ApplicantRole, ApplicantField[]> = {
     { name: 'mentorshipAreas', label: 'Mentorship Areas', placeholder: 'e.g., web, mobile', required: true },
   ],
   hacker: [
-    {name: 'excited', label: 'What are you most excited about for HackMTY?', placeholder: 'Your answer here', required: true, fieldType: 'text', section: 'Hackathons', height: 100},
-    {name: 'projects', label: 'What projects have you worked on?', placeholder: 'Your answer here', required: false, fieldType: 'text', section: 'Hackathons', height: 100},
+    {name: 'excited', label: 'What are you most excited about for HackMTY?', placeholder: 'Your answer here', required: true, fieldType: 'text', section: SECTIONS.HACKATHONS, height: 100},
+    {name: 'projects', label: 'What projects have you worked on?', placeholder: 'Your answer here', required: false, fieldType: 'text', section: SECTIONS.HACKATHONS, height: 100},
     github,
     linkedin,
     devpost,

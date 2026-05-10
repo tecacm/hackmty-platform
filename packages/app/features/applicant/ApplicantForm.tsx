@@ -43,6 +43,16 @@ function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): Sectio
       return
     }
 
+    // Checkboxes always get their own row
+    if (field.fieldType === 'checkbox') {
+      if (pendingFields.length) {
+        rows.push({ type: 'fields', fields: pendingFields })
+        pendingFields = []
+      }
+      rows.push({ type: 'fields', fields: [field] })
+      return
+    }
+
     pendingFields.push(field)
 
     if (pendingFields.length === 2) {
@@ -70,12 +80,21 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
     setIsReady(true)
   }, [])
 
-  const sections = fields.reduce<Record<string, typeof fields>>((acc, field) => {
-    const sectionName = field.section ?? 'General'
-    if (!acc[sectionName]) acc[sectionName] = []
-    acc[sectionName].push(field)
-    return acc
-  }, {})
+  type SectionRef = string | { id: string; label?: string; order?: number }
+
+  const sectionMap = new Map<string, { id: string; label: string; order: number; fields: typeof fields }>()
+
+  fields.forEach((field) => {
+    const sec = (field as any).section as SectionRef | undefined
+    const id = typeof sec === 'string' || !sec ? (sec ?? 'General') : (sec as any).id ?? 'General'
+    const label = typeof sec === 'object' && (sec as any).label ? (sec as any).label : id
+    const order = typeof sec === 'object' && typeof (sec as any).order === 'number' ? (sec as any).order : 0
+
+    if (!sectionMap.has(id)) sectionMap.set(id, { id, label, order, fields: [] as typeof fields })
+    sectionMap.get(id)!.fields.push(field)
+  })
+
+  const sections = Array.from(sectionMap.values()).sort((a, b) => a.order - b.order)
 
   const { control, handleSubmit, formState: { errors } } = useForm<ApplicantFormData>({
     defaultValues: {
@@ -107,9 +126,9 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
         </Text>
       )}
 
-      {Object.entries(sections).map(([sectionName, sectionFields]) => (
+      {sections.map(({ id: sectionName, label: sectionLabel, fields: sectionFields }) => (
         <View key={sectionName} style={styles.section}>
-          {sectionName !== 'General' && <Text style={styles.sectionTitle}>{sectionName}</Text>}
+          {sectionName !== 'General' && <Text style={styles.sectionTitle}>{sectionLabel ?? sectionName}</Text>}
 
           {buildSectionRows(sectionFields).map((row, rowIndex) => {
             if (row.type === 'divider') {
@@ -322,6 +341,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 8,
+    flexWrap: 'wrap',
+    ...Platform.select({
+      web: { wordBreak: 'break-word', overflowWrap: 'break-word' } as any,
+    }),
   },
   divider: {
     width: '100%',

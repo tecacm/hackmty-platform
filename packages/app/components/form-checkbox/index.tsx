@@ -63,10 +63,17 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
             {required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}
           </Text>
         ) : (
-          <View style={styles.compositeLabelRow}>
+          <Text style={{ flex: 1, flexShrink: 1 }}>
             {label}
-            {required && <Text style={[variant === 'form' ? styles.labelForm : styles.labelDefault, { color: formFieldColors.error }]}>{' *'}</Text>}
-          </View>
+            {required && (
+              <Text style={[
+                variant === 'form' ? styles.labelForm : styles.labelDefault,
+                { color: formFieldColors.error }
+              ]}>
+                {' *'}
+              </Text>
+            )}
+          </Text>
         )}
 
         {/* Hidden input for Web Accessibility / SEO */}
@@ -152,10 +159,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     marginLeft: 32,
-  },
-  compositeLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
   },
 });

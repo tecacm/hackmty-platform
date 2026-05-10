@@ -109,7 +109,7 @@ export function HomeScreen({ navigation }: { navigation?: any } = {}) {
   const topOffset = Math.max(stableHeaderHeight, insets.top);
   const goToLogin = () => navigateTo('/login')
 
-  const applicantRole = 'hacker'
+  const applicantRole = 'mentor'
   const applicantRoleLabel = applicantRole.charAt(0).toUpperCase() + applicantRole.slice(1)
   useLayoutEffect(() => {
     if (navigation && typeof (navigation as any).setOptions === 'function') {
