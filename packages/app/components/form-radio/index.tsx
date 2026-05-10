@@ -8,6 +8,7 @@ export function FormRadio({
   title,
   options,
   multiple = false,
+  layout = 'vertical',
   value,
   onChange,
   required = false,
@@ -18,6 +19,7 @@ export function FormRadio({
   title?: string | React.ReactNode
   options: Option[]
   multiple?: boolean
+  layout?: 'vertical' | 'horizontal-wrap'
   value?: string | string[]
   onChange?: (v: string | string[]) => void
   required?: boolean
@@ -60,6 +62,8 @@ export function FormRadio({
     return selected === opt
   }
 
+  const isHorizontalWrap = layout === 'horizontal-wrap'
+
   return (
     <View style={[styles.wrapper, additionalStyle]}>
       {title ? (
@@ -69,7 +73,7 @@ export function FormRadio({
         </Text>
       ) : null}
 
-      <View>
+      <View style={isHorizontalWrap ? styles.optionsHorizontalWrap : styles.optionsVertical}>
         {options.map((o) => {
           const checked = isOptionSelected(o.value)
           return (
@@ -83,7 +87,7 @@ export function FormRadio({
                 }
                 toggleOption(o.value)
               }}
-              style={styles.optionRow}
+              style={[styles.optionRow, isHorizontalWrap ? styles.optionRowHorizontalWrap : styles.optionRowVertical]}
             >
               {multiple ? (
                 <View style={[styles.checkboxBase, checked && styles.checkboxCheckedForm]}>
@@ -95,7 +99,7 @@ export function FormRadio({
                 </View>
               )}
 
-              <View style={{ flex: 1 }}>
+              <View style={isHorizontalWrap ? styles.optionLabelHorizontal : styles.optionLabelVertical}>
                 {typeof o.label === 'string' ? (
                   <Text style={variant === 'form' ? styles.labelForm : styles.labelDefault}>{o.label}</Text>
                 ) : (
@@ -124,12 +128,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 6,
   },
+  optionsVertical: {
+    width: '100%',
+  },
+  optionsHorizontalWrap: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    ...Platform.select({ web: { cursor: 'pointer' } }),
+  },
+  optionRowVertical: {
     marginVertical: 8,
     width: '100%',
-    ...Platform.select({ web: { cursor: 'pointer' } }),
+  },
+  optionRowHorizontalWrap: {
+    width: 'auto',
+    marginRight: 18,
+    marginBottom: 10,
+    paddingTop: 10,
+    paddingRight: 8,
+  },
+  optionLabelVertical: {
+    flex: 1,
+  },
+  optionLabelHorizontal: {
+    flexShrink: 1,
+    marginRight: 2,
   },
   checkboxBase: {
     width: 20,

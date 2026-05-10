@@ -15,6 +15,8 @@ export interface ApplicantBase {
   gender?: 'male' | 'female' | 'nonbinary' | 'prefer_not_to_answer' | ''
   firstHackathon?: 'yes' | 'no' | ''
   participatedRoles?: ('hacker' | 'mentor' | 'volunteer')[]
+  studyingOrWorking?: 'yes' | 'no' | ''
+  workPlace?: string
 }
 
 export interface VolunteerApplicant extends ApplicantBase {

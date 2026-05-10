@@ -37,9 +37,11 @@ type ApplicantFormField = {
   fieldType?: 'text' | 'select' | 'autocomplete' | 'segmented' | 'file' | 'checkbox' | 'radio'
   options?: { label: string; value: string }[]
   multiple?: boolean
+  layout?: 'vertical' | 'horizontal-wrap'
   autocompleteData?: string[]
   fileSelectorProps?: FileSelectorProps
   height?: number
+  dependsOn?: { field: string; value: any }
 }
 
 type ApplicantDividerField = {
@@ -328,7 +330,7 @@ const participatedRolesField: ApplicantField = {
   name: 'participatedRoles',
   label: 'Did you participate as a hacker, mentor, or volunteer?',
   placeholder: '',
-  required: false,
+  required: true,
   fieldType: 'radio',
   multiple: true,
   options: [
@@ -337,19 +339,37 @@ const participatedRolesField: ApplicantField = {
     { label: 'Volunteer', value: 'volunteer' },
   ],
   section: SECTIONS.HACKATHONS,
+  dependsOn: { field: 'firstHackathon', value: 'no' },
 }
 
 const daysToAttendField: ApplicantField = {
   name: 'daysToAttend',
   label: 'Which days will you be attending HackMTY?',
   placeholder: '',
-  required: false,
+  required: true,
   fieldType: 'radio',
   multiple: true,
   options: [
     { label: 'Friday', value: 'friday' },
     { label: 'Saturday', value: 'saturday' },
     { label: 'Sunday', value: 'sunday' },
+  ],
+  section: SECTIONS.HACKATHONS,
+}
+
+const englishConfidenceField: ApplicantField = {
+  name: 'englishConfidence',
+  label: 'How confident are you speaking English?',
+  placeholder: '',
+  required: true,
+  fieldType: 'radio',
+  layout: 'horizontal-wrap',
+  options: [
+    { label: '1', value: 'one' },
+    { label: '2', value: 'two' },
+    { label: '3', value: 'three' },
+    { label: '4', value: 'four' },
+    { label: '5', value: 'five' },
   ],
   section: SECTIONS.HACKATHONS,
 }
@@ -361,6 +381,29 @@ const mlhEmailsField: ApplicantField = {
   required: false,
   fieldType: 'checkbox',
   section: SECTIONS.POLICIES
+}
+
+const studyingOrWorkingField: ApplicantField = {
+  name: 'studyingOrWorking',
+  label: 'Are you studying or working?',
+  placeholder: '',
+  required: true,
+  fieldType: 'radio',
+  options: [
+    { label: 'Working', value: 'working' },
+    { label: 'Studying', value: 'studying' },
+  ],
+  section: SECTIONS.PERSONAL_INFO,
+}
+
+const workPlaceField: ApplicantField = {
+  name: 'workPlace',
+  label: 'Where are you working?',
+  placeholder: 'Enter company or institution',
+  required: true,
+  fieldType: 'text',
+  section: SECTIONS.PERSONAL_INFO,
+  dependsOn: { field: 'studyingOrWorking', value: 'working' },
 }
 
 const policiesHeader: ApplicantParagraphField = {
@@ -397,10 +440,13 @@ export const specificFields: Record<ApplicantRole, ApplicantField[]> = {
   volunteer: [
     daysToAttendField,
     nightShiftsField,
-    
+    englishConfidenceField
   ],
   mentor: [
-   
+    studyingOrWorkingField,
+    workPlaceField,
+    privacyPolicyField,
+    mlhEmailsField,
   ],
   hacker: [
     {name: 'excited', label: 'What are you most excited about for HackMTY?', placeholder: 'Your answer here', required: true, fieldType: 'text', section: SECTIONS.HACKATHONS, height: 100},

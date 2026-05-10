@@ -70,7 +70,7 @@ function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): Sectio
 }
 
 export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantFormProps) {
-  const fields = getApplicantFieldsForRole(role)
+  const allFields = getApplicantFieldsForRole(role)
   const { width } = useWindowDimensions()
   const [isReady, setIsReady] = useState(false)
   const isWide = width >= 520
@@ -82,6 +82,35 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
   }, [])
 
   type SectionRef = string | { id: string; label?: string; order?: number }
+
+  const { control, handleSubmit, watch, formState: { errors } } = useForm<Partial<ApplicantFormData>>({
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      country: '',
+      university: '',
+      resume: '',
+      phone: '',
+      gender: '',
+      consentFoodAllergies: false,
+      firstHackathon: '',
+      participatedRoles: [],
+      studyingOrWorking: '',
+      workPlace: '',
+      age: undefined,
+      year: '',
+      ...(initialValues as object),
+    } as Partial<ApplicantFormData>,
+  })
+
+  const currentValues = watch()
+
+  const fields = allFields.filter((field: any) => {
+    if (!field.dependsOn) return true
+    const dependentValue = (currentValues as Record<string, unknown>)[field.dependsOn.field]
+    return dependentValue === field.dependsOn.value
+  })
 
   const sectionMap = new Map<string, { id: string; label: string; order: number; fields: typeof fields }>()
 
@@ -96,25 +125,6 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
   })
 
   const sections = Array.from(sectionMap.values()).sort((a, b) => a.order - b.order)
-
-  const { control, handleSubmit, formState: { errors } } = useForm<Partial<ApplicantFormData>>({
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      country: '',
-      university: '',
-      resume: '',
-      phone: '',
-      gender: '',
-      consentFoodAllergies: false,
-      firstHackathon: '',
-      participatedRoles: [],
-      age: undefined,
-      year: '',
-      ...(initialValues as object),
-    } as Partial<ApplicantFormData>,
-  })
 
   // Avoid hydration mismatch by waiting for client width calculation
   if (!isReady) {
@@ -187,6 +197,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                                 title={ff.label}
                                 options={ff.options || []}
                                 multiple={!!ff.multiple}
+                                layout={ff.layout || 'vertical'}
                                 value={value}
                                 onChange={(next: any) => onChange(next)}
                                 required={!!ff.required}
