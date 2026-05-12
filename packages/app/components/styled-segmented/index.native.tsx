@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { View, Text, StyleSheet, TextStyle, ViewStyle, Animated, Pressable } from 'react-native'
+import { View, Text, StyleSheet, TextStyle, ViewStyle, Animated, Pressable, Platform } from 'react-native'
 import {
   PanGestureHandler,
   PanGestureHandlerGestureEvent,
@@ -49,14 +49,14 @@ export function StyledSegmented({
         <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
          <View style={[formFieldStyles.fieldShell, { backgroundColor: 'transparent', paddingHorizontal: 0}, additionalStyle, error && formFieldStyles.errorInput]}>
           <SegmentedControl
-          backgroundColor='transparent'
-          style={{height: '100%', zIndex:0}}
-          values={options.map((o) => o.label)}
-          onChange={(event) => {
-            const nextIndex = event.nativeEvent.selectedSegmentIndex
-            const nextValue = options[nextIndex]?.value
-            if (nextValue != null) onValueChange(nextValue)
-          }}
+            backgroundColor={Platform.OS === 'ios' ? 'transparent' : formFieldColors.surface}
+            style={{height: '100%', zIndex:0}}
+            values={options.map((o) => o.label)}
+            onChange={(event) => {
+              const nextIndex = event.nativeEvent.selectedSegmentIndex
+              const nextValue = options[nextIndex]?.value
+              if (nextValue != null) onValueChange(nextValue)
+            }}
             tintColor={formFieldColors.theme}
             fontStyle={styles.segmentLabel}
             activeFontStyle={styles.segmentLabelActive}

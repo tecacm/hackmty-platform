@@ -4,6 +4,8 @@ import { LoginScreen } from 'app/features/login/login-screen'
 import { RegisterScreen } from 'app/features/login/register-screen'
 import { UserDetailScreen } from 'app/features/user/detail-screen'
 import { HomeScreen } from 'app/features/home/home-screen'  
+import { Platform } from 'react-native'
+import { formFieldColors } from 'app/components/form-field-styles'
 
 const Stack = createNativeStackNavigator<{
   login: undefined
@@ -48,9 +50,9 @@ export function NativeNavigation() {
           headerTitleAlign: 'center',
           headerShown: true,
           headerLargeTitleEnabled: true,
-          headerTransparent: true,
+          headerTransparent: Platform.OS === 'ios',
           headerShadowVisible: true,
-          headerTintColor: '#FFFFFF',      
+          headerTintColor: Platform.OS == 'ios' ? '#FFFFFF' : formFieldColors.theme,
         }}
       />
       <Stack.Screen
