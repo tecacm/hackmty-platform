@@ -1,13 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TextStyle, ViewStyle, Animated, Pressable, Platform } from 'react-native'
-import {
-  PanGestureHandler,
-  PanGestureHandlerGestureEvent,
-  GestureHandlerRootView,
-  HandlerStateChangeEvent,
-} from 'react-native-gesture-handler'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
-import { GlassView } from 'expo-glass-effect'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 
 type SegmentedOption = {
@@ -50,7 +43,7 @@ export function StyledSegmented({
          <View style={[formFieldStyles.fieldShell, { backgroundColor: 'transparent', paddingHorizontal: 0}, additionalStyle, error && formFieldStyles.errorInput]}>
           <SegmentedControl
             backgroundColor={Platform.OS === 'ios' ? 'transparent' : formFieldColors.surface}
-            style={{height: '100%', zIndex:0}}
+            style={{height: '100%', zIndex:Platform.OS === 'ios' ? 0 : 1, borderRadius: 16, elevation: 0}}
             values={options.map((o) => o.label)}
             onChange={(event) => {
               const nextIndex = event.nativeEvent.selectedSegmentIndex
@@ -61,6 +54,8 @@ export function StyledSegmented({
             fontStyle={styles.segmentLabel}
             activeFontStyle={styles.segmentLabelActive}
             appearance='light'
+            selectedIndex={selectedIndex}
+            sliderStyle={{borderRadius:46}}
           />
           <>
           {/* left edge cleanup */}
@@ -73,6 +68,7 @@ export function StyledSegmented({
               bottom: 14,
               width: 2,
               backgroundColor: formFieldColors.surface,
+              elevation: 0
             }}
           />
 
@@ -85,6 +81,7 @@ export function StyledSegmented({
               top: 14,
               bottom: 14,
               width: 3,
+              elevation: 0,
               backgroundColor: formFieldColors.surface,
             }}
           />
@@ -98,8 +95,9 @@ export function StyledSegmented({
               left: 0,
               width: 15,
               height: 15,
-
-              borderTopLeftRadius: 16,
+              
+              elevation: 0,
+              borderTopLeftRadius: 26,
               borderTopWidth: 4,
               borderLeftWidth: 4,
               borderColor: formFieldColors.surface,
@@ -116,6 +114,7 @@ export function StyledSegmented({
               width: 16,
               height: 15,
 
+              elevation: 0,
               borderTopRightRadius: 20,
               borderTopWidth: 4,
               borderRightWidth: 4,
@@ -133,6 +132,7 @@ export function StyledSegmented({
               width: 15.5,
               height: 14,
 
+              elevation: 0,
               borderBottomLeftRadius: 14,
               borderBottomWidth: 4,
               borderLeftWidth: 4,
@@ -150,6 +150,7 @@ export function StyledSegmented({
               width: 16,
               height: 14,
 
+              elevation: 0,
               borderBottomRightRadius: 14,
               borderBottomWidth: 4,
               borderRightWidth: 4,
