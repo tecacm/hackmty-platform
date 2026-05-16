@@ -18,6 +18,7 @@ export function NavigationProvider({
               login: '',
               register: 'register',
               home: 'home',
+              application: 'application',
               'user-detail': 'users/:id',
             },
           },

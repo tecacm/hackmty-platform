@@ -1,5 +1,3 @@
-
-import { ApplicantRole } from './applicant-types'
 import React, { type ReactNode } from 'react'
 import { Text } from 'react-native'
 import { TextLink } from 'solito/link'
@@ -10,6 +8,7 @@ import applicationFieldsConfig from 'app/data/application-fields.json'
 import applicationTypesConfig from 'app/data/application-types.json'
 import type { FileSelectorProps } from 'app/components/styled-file-input'
 import { formFieldColors } from 'app/components/form-field-styles'
+import { ApplicantRole } from './applicant-types'
 
 // Load sections from JSON
 export const SECTIONS = applicationFieldsConfig.sections as any
@@ -168,7 +167,7 @@ type ApplicantParagraphField = {
 export type ApplicantBaseField = ApplicantFormField
 export type ApplicantField = ApplicantFormField | ApplicantDividerField | ApplicantParagraphField
 
-type ApplicationTypeConfig = {
+export type ApplicationTypeConfig = {
   id: string
   label: string
   fields: Array<string | { name: string; section?: string }>
@@ -203,18 +202,22 @@ const getFieldsByNames = (names: Array<string | { name: string; section?: string
   names.map(resolveFieldRef).filter((field): field is ApplicantField => Boolean(field))
 
 const applicationTypes = (applicationTypesConfig.applicationTypes || []) as ApplicationTypeConfig[]
+const applicationTypeMap = new Map(applicationTypes.map((type) => [type.id, type]))
 
-// Dynamically build role configurations from JSON - no hardcoding
-const roleConfigurations = new Map(
-  applicationTypes.map((type) => [type.id, type])
-)
+export const getApplicationTypes = (): ApplicationTypeConfig[] => applicationTypes
+
+export const getApplicantRoleConfig = (role: string | ApplicantRole): ApplicationTypeConfig | undefined =>
+  applicationTypeMap.get(role as string)
+
+export const getApplicantRoleLabel = (role: string | ApplicantRole): string =>
+  getApplicantRoleConfig(role)?.label ?? String(role)
 
 // Discover all available roles from JSON
-export const getAvailableRoles = (): string[] => Array.from(roleConfigurations.keys())
+export const getAvailableRoles = (): ApplicantRole[] => Array.from(applicationTypeMap.keys()) as ApplicantRole[]
 
 // Main export function - now generic, works with any role from JSON
 export const getApplicantFieldsForRole = (role: string | ApplicantRole): ApplicantField[] => {
-  const roleConfig = roleConfigurations.get(role as string)
+  const roleConfig = getApplicantRoleConfig(role)
   if (!roleConfig) return []
   return getFieldsByNames(roleConfig.fields)
 }

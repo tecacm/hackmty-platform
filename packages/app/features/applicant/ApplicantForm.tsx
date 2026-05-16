@@ -26,6 +26,12 @@ type SectionRow<T> =
   | { type: 'divider'; field: T }
   | { type: 'fields'; fields: T[] }
 
+function getDefaultValueForField(field: { fieldType?: string; multiple?: boolean }) {
+  if (field.fieldType === 'checkbox') return false
+  if (field.multiple) return []
+  return ''
+}
+
 function FormDivider() {
   return <View style={styles.divider} />
 }
@@ -92,6 +98,11 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
   const dynamicHeadingSize = Math.round(Math.min(50, Math.max(24, width * 0.07)))
 
+  const defaultValues = allFields.reduce<Record<string, unknown>>((accumulator, field: any) => {
+    accumulator[field.name] = getDefaultValueForField(field)
+    return accumulator
+  }, {})
+
   useEffect(() => {
     setIsReady(true)
   }, [])
@@ -100,21 +111,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
   const { control, handleSubmit, watch, formState: { errors } } = useForm<Partial<ApplicantFormData>>({
     defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      country: '',
-      university: '',
-      resume: '',
-      phone: '',
-      gender: '',
-      consentFoodAllergies: false,
-      firstHackathon: '',
-      participatedRoles: [],
-      studyingOrWorking: '',
-      workPlace: '',
-      age: undefined,
-      year: '',
+      ...defaultValues,
       ...(initialValues as object),
     } as Partial<ApplicantFormData>,
   })
@@ -152,7 +149,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
   return (
     <View style={styles.container}>
       {Platform.OS === 'web' && (
-        <Text style={[styles.heading, { fontSize: dynamicHeadingSize }]}> 
+        <Text style={[styles.heading, { fontSize: dynamicHeadingSize }, styles.shadow]}> 
           Applying as {role.charAt(0).toUpperCase() + role.slice(1)}
         </Text>
       )}
@@ -217,6 +214,12 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                           }
 
                           if (ff.fieldType === 'radio') {
+                            const radioValue = Array.isArray(value)
+                              ? value
+                              : typeof value === 'string'
+                                ? value
+                                : undefined
+
                             return (
                               <FormRadio
                                 title={ff.label}
@@ -224,7 +227,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                                 multiple={!!ff.multiple}
                                 layout={ff.layout || 'vertical'}
                                 subtitle={ff.subtitle}
-                                value={value}
+                                value={radioValue}
                                 onChange={(next: any) => onChange(next)}
                                 required={!!ff.required}
                                 variant="form"
@@ -419,5 +422,19 @@ const styles = StyleSheet.create({
   },
   inputShadow: {
     
-   }
+  },
+  shadow: {
+     ...Platform.select({
+      native: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 2,
+      },
+      web: {
+        textShadow: '0px 12px 32px rgba(34, 0, 44, 0.12)',
+      }
+    })
+  },
 })
