@@ -32,6 +32,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   shadowStyle: {
+    color: '#ececec',
     ...Platform.select({
       native: {
         shadowColor: '#000000',
