@@ -3,17 +3,17 @@
     {
       "id": "hacker",
       "label": "Hacker",
-      "fields": ["firstName", "lastName", "email", "phone", "age", "gender", "divider_personal_info", "studyingOrWorking", "workPlace", "paragraph_policies_header", "country", "city", "university", "major", "year", "levelOfStudy", "tshirt", "diet", "codeOfConduct", "consentFoodAllergies", "firstHackathon", "excited", "projects", "github", "linkedin", "devpost", "personalSite", "resume", "privacyPolicy", "mlhEmails"]
+      "fields": ["firstName", "lastName", "email", "phone", "age", "gender", "divider_personal_info", "studyingOrWorking", "workPlace", "country", "city", "university", "major", "year", "levelOfStudy", "tshirt", "diet", "codeOfConduct", "consentFoodAllergies", "firstHackathon", "excited", "projects", "github", "linkedin", "devpost", "personalSite", "resume", "privacyPolicy", "mlhEmails"]
     },
     {
       "id": "volunteer",
       "label": "Volunteer",
-      "fields": ["firstName", "lastName", "email", "phone", "age", "gender", "divider_personal_info", "studyingOrWorking", "workPlace", "paragraph_policies_header", "country", "city", "university", "major", "year", "levelOfStudy", "tshirt", "diet", "codeOfConduct", "consentFoodAllergies", "firstHackathon", "participatedRoles", "daysToAttend", "nightShifts", "englishConfidence", "privacyPolicy", "mlhEmails", "anythingElseWeShouldKnow", "friends", "excited", "discover"]
+      "fields": ["firstName", "lastName", "email", "phone", "age", "gender", "divider_personal_info", "studyingOrWorking", "workPlace", "country", "city", "university", "major", "year", "levelOfStudy", "tshirt", "diet", "codeOfConduct", "consentFoodAllergies", "firstHackathon", "participatedRoles", "daysToAttend", "nightShifts", "englishConfidence", "privacyPolicy", "mlhEmails", "anythingElseWeShouldKnow", "friends", "excited", "discover"]
     },
     {
       "id": "mentor",
       "label": "Mentor",
-      "fields": ["firstName", "lastName", "email", "phone", "age", "gender", "divider_personal_info", "studyingOrWorking", "workPlace", "paragraph_policies_header", "country", "city", "university", "major", "year", "levelOfStudy", "diet", "codeOfConduct", "consentFoodAllergies", "firstHackathon", "participatedRoles", "privacyPolicy", "mlhEmails", "anythingElseWeShouldKnow"]
+      "fields": ["firstName", "lastName", "email", "phone", "age", "gender", "divider_personal_info", "studyingOrWorking", "workPlace", "country", "city", "university", "major", "year", "levelOfStudy", "diet", "codeOfConduct", "consentFoodAllergies", "firstHackathon", "participatedRoles", "privacyPolicy", "mlhEmails", "anythingElseWeShouldKnow"]
     },
     {
       "id": "sponsor",
