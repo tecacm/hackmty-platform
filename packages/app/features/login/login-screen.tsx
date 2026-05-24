@@ -1,7 +1,6 @@
 'use client'
 
-import { TextLink } from 'solito/link'
-import { Button, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 import { SolitoImage } from 'solito/image'
 import { LinearGradient } from 'app/components/linear-gradient'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
@@ -20,6 +19,13 @@ import { StyledInput } from 'app/components/styled-input'
 import { PillButton } from 'app/components/pill-button'
 import { SimpleTextLink } from 'app/components/simple-text-link'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
+import { Controller, useForm } from 'react-hook-form'
+import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+
+type LoginFormValues = {
+  email: string
+  password: string
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -45,7 +51,12 @@ const styles = StyleSheet.create({
         filter: 'drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.4))',
       }
     })
-  }
+  },
+  authError: {
+    color: '#ffd3d3',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
 })
 
 export function LoginScreen() {
@@ -53,7 +64,19 @@ export function LoginScreen() {
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
   const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const images = [rectoria, pavoreal, ciap, photo2024, skyview];
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  })
 
   useEffect(() => {
     if (headerHeight > stableHeaderHeight) {
@@ -64,7 +87,36 @@ export function LoginScreen() {
   const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
 
   const goToRegister = () => navigateTo('/register')
-  const goToHome = () => navigateTo('/home')
+
+  const onSubmit = async ({ email, password }: LoginFormValues) => {
+    if (isSubmitting) return
+
+    setAuthError(null)
+    setIsSubmitting(true)
+
+    try {
+      if (!isSupabaseConfigured) {
+        setAuthError('Supabase is not configured for this environment.')
+        return
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+
+      if (error) {
+        setAuthError(error.message || 'Invalid email or password.')
+        return
+      }
+
+      navigateTo('/home')
+    } catch {
+      setAuthError('Unable to log in. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const background = (
     <>
@@ -103,20 +155,54 @@ export function LoginScreen() {
           </View>
         </View>
         <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
-          <StyledInput label="Email Address" placeholder="Enter your email" textContentType={"emailAddress"} additionalStyle={styles.shadowStyle}/>
-          <StyledInput label="Password" placeholder="Enter your password" textContentType={"password"} additionalStyle={{marginBottom:10 ,...styles.shadowStyle}}/>
-          <PillButton title="Login" onPress={goToHome} additionalStyle={{marginBottom: '10'}} />
+          <Controller
+            control={control}
+            name="email"
+            rules={{
+              required: 'Email is required',
+              pattern: {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: 'Invalid email',
+              },
+            }}
+            render={({ field: { onChange, value } }) => (
+              <StyledInput
+                label="Email Address"
+                placeholder="Enter your email"
+                textContentType="emailAddress"
+                keyboardType="email-address"
+                additionalStyle={styles.shadowStyle}
+                onChangeText={onChange}
+                value={value}
+                error={errors.email?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="password"
+            rules={{ required: 'Password is required' }}
+            render={({ field: { onChange, value } }) => (
+              <StyledInput
+                label="Password"
+                placeholder="Enter your password"
+                textContentType="password"
+                additionalStyle={{ marginBottom: 10, ...styles.shadowStyle }}
+                onChangeText={onChange}
+                value={value}
+                error={errors.password?.message}
+              />
+            )}
+          />
+          {authError ? <Text style={styles.authError}>{authError}</Text> : null}
+          <PillButton
+            title={isSubmitting ? 'Logging in...' : 'Login'}
+            onPress={handleSubmit(onSubmit)}
+            additionalStyle={{ marginBottom: '10', opacity: isSubmitting ? 0.7 : 1 }}
+          />
           <SimpleTextLink text="Don't have an account? Sign Up" onPress={goToRegister}/>
           <SimpleTextLink text="Forgot your password?" onPress={() => {}}/>
         </View>
     </ParallaxScrollView>
   )
-}
-
-const H1 = ({ children }: { children: React.ReactNode }) => {
-  return <Text style={{ fontWeight: '800', fontSize: 24, color : 'white'}}>{children}</Text>
-}
-
-const P = ({ children }: { children: React.ReactNode }) => {
-  return <Text style={{ textAlign: 'center' }}>{children}</Text>
 }
