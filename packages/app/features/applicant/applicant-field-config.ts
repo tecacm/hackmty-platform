@@ -29,8 +29,11 @@ const dataReferences: Record<string, any[]> = {
 }
 
 // Map for resolving special content refs
-const contentReferences: Record<string, string> = Object.values(applicationFieldsConfig.headers || {}).reduce(
-  (accumulator, sectionHeaders) => ({ ...accumulator, ...(sectionHeaders as Record<string, string>) }),
+const contentReferences: Record<string, string> = Object.entries(applicationFieldsConfig.headers || {}).reduce(
+  (accumulator, [headerKey, headerDef]) => ({
+    ...accumulator,
+    [headerKey]: (headerDef as any)?.label,
+  }),
   {}
 )
 
@@ -182,7 +185,16 @@ const allFieldsFromJson = [
     processFieldDefinition({ ...(fieldDef as any), sectionKey: (fieldDef as any)?.section, fieldKey })
   ),
 ]
-const fieldsByName = new Map(allFieldsFromJson.map(f => [f.name, f]))
+const fieldsByName = new Map<string, ApplicantField>()
+allFieldsFromJson.forEach((field) => {
+  if (field.name) {
+    fieldsByName.set(field.name, field)
+  }
+  const fieldKey = (field as any).fieldKey
+  if (typeof fieldKey === 'string') {
+    fieldsByName.set(fieldKey, field)
+  }
+})
 
 // Helper to get fields by name
 const resolveFieldRef = (fieldRef: string | { name: string; section?: string }): ApplicantField | null => {
