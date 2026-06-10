@@ -38,7 +38,6 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   shadowStyle: {
-    color: '#ececec',
     ...Platform.select({
       native: {
         shadowColor: '#000000',
@@ -149,8 +148,10 @@ export function LoginScreen() {
             <SolitoImage
               src={logoImage}
               height={300}
-              width={200} 
+              width={200}
               alt={"The HackMTY Logo"}
+              contentFit="contain"
+              resizeMode="contain"
             />
           </View>
         </View>
