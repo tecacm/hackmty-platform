@@ -198,7 +198,7 @@ export function LoginScreen() {
           <PillButton
             title={isSubmitting ? 'Logging in...' : 'Login'}
             onPress={handleSubmit(onSubmit)}
-            additionalStyle={{ marginBottom: '10', opacity: isSubmitting ? 0.7 : 1 }}
+            additionalStyle={{ marginBottom: 10, opacity: isSubmitting ? 0.7 : 1 }}
           />
           <SimpleTextLink text="Don't have an account? Sign Up" onPress={goToRegister}/>
           <SimpleTextLink text="Forgot your password?" onPress={() => {}}/>
