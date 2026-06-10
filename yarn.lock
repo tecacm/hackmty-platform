@@ -3396,6 +3396,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@supabase/ssr@npm:^0.12.0":
+  version: 0.12.0
+  resolution: "@supabase/ssr@npm:0.12.0"
+  dependencies:
+    cookie: "npm:^1.0.2"
+  peerDependencies:
+    "@supabase/supabase-js": ^2.108.0
+  checksum: 10/a1f224dce6d8f14d48a1dd86d0959238c21a8ea809614eaf14628556218c2c1a13e8ee844f7e88fb2f66fa91fbe36df0ab49073f4bda451a4b7a216007c784ce
+  languageName: node
+  linkType: hard
+
 "@supabase/storage-js@npm:2.106.1":
   version: 2.106.1
   resolution: "@supabase/storage-js@npm:2.106.1"
@@ -4759,6 +4770,13 @@ __metadata:
   version: 2.0.0
   resolution: "convert-source-map@npm:2.0.0"
   checksum: 10/c987be3ec061348cdb3c2bfb924bec86dea1eacad10550a85ca23edb0fe3556c3a61c7399114f3331ccb3499d7fd0285ab24566e5745929412983494c3926e15
+  languageName: node
+  linkType: hard
+
+"cookie@npm:^1.0.2":
+  version: 1.1.1
+  resolution: "cookie@npm:1.1.1"
+  checksum: 10/85538153054791155cf4d38d2e807e3b9382d71bf71d92fc46fca348515ea574049d0d9ef8eb84d2d54a681ad1d7a7316b1989b901dace50a6c0f4c3858dbdb2
   languageName: node
   linkType: hard
 
@@ -8468,6 +8486,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "next-app@workspace:apps/next"
   dependencies:
+    "@supabase/ssr": "npm:^0.12.0"
     "@types/node": "npm:17.0.21"
     app: "npm:*"
     eslint-config-next: "npm:13.2.0"
