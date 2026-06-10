@@ -152,9 +152,6 @@ export function LoginScreen() {
               alt={"The HackMTY Logo"}
               contentFit="contain"
               resizeMode="contain"
-              onLayout={undefined}
-              transition={null}
-              recyclingKey={null}
             />
           </View>
         </View>
