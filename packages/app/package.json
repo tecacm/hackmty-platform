@@ -24,5 +24,8 @@
     "react": "*",
     "react-native": "*"
   },
+  "devDependencies": {
+    "expo-image": "~55.0.9"
+  },
   "sideEffects": false
 }

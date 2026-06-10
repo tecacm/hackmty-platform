@@ -3861,6 +3861,7 @@ __metadata:
     dripsy: "npm:^4.3.3"
     expo-blur: "npm:^55.0.13"
     expo-document-picker: "npm:~14.0.7"
+    expo-image: "npm:~55.0.9"
     expo-linear-gradient: "npm:^15.0.8"
     moti: "npm:^0.30.0"
     react-native: "npm:*"
