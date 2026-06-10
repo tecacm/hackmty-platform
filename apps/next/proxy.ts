@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 
 const PROTECTED_ROUTES = ['/home', '/application']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (!PROTECTED_ROUTES.some((route) => pathname.startsWith(route))) {
