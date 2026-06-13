@@ -1,0 +1,2096 @@
+:root {
+  --header-h: 56px;
+  --hero-shadow: 1;
+  --ink: #0e0e10;
+  --ink-2: #1a1a1d;
+  --ink-soft: #58575a;
+  --ink-mute: #8a898d;
+  --paper: #f5f1e7;
+  --paper-2: #ece6d5;
+  --hairline: rgba(14,14,16,0.10);
+  --hairline-2: rgba(14,14,16,0.18);
+  --purple: #5b2a82;
+  --purple-deep: #3d1a59;
+  --purple-soft: #7a47a2;
+  --gold: #d4a84b;
+  --gold-soft: #e8c478;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ===================================================
+   HEADER
+   =================================================== */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--ink);
+  color: #fff;
+  height: var(--header-h);
+  display: flex;
+  align-items: stretch;
+  padding-right: 20px;
+}
+
+.mlh-badge-link {
+  display: flex;
+  align-items: flex-start;
+  align-self: flex-start;
+  margin: 0 0 0 20px;
+  flex-shrink: 0;
+}
+.mlh-badge-img {
+  display: block;
+  height: 118px;
+  width: auto;
+}
+.mlh-badge .mlh-mark {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 1.2px;
+  line-height: 1;
+}
+.mlh-badge .mlh-sub {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 4.5px;
+  letter-spacing: 0.6px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+.mlh-badge .mlh-chip {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 8px;
+  letter-spacing: 1px;
+  background: var(--ink);
+  color: #fff;
+  padding: 2px 4px;
+  margin-top: 6px;
+  width: 100%;
+}
+.mlh-badge .mlh-year {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  margin-top: 4px;
+  line-height: 1;
+}
+.mlh-badge .mlh-season {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 5px;
+  letter-spacing: 0.8px;
+  margin-top: 1px;
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 40px;
+}
+.brand-block img { display: block; }
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: center;
+}
+.brand-link:hover { transform: scale(1.08); }
+.brand-block .hm-img { height: 36px; }
+.brand-block .divider { width: 1px; height: 26px; background: rgba(255,255,255,0.18); }
+.brand-block .tec-img { height: 28px; }
+
+.nav-links {
+  display: flex;
+  margin-left: auto;
+  margin-right: auto;
+  align-items: stretch;
+  flex-shrink: 1;
+  min-width: 0;
+}
+.nav-links a {
+  display: flex;
+  align-items: center;
+  padding: 0 13px;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  text-decoration: none;
+  position: relative;
+  isolation: isolate;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+.nav-links a:hover { color: var(--gold-soft); }
+.nav-links a.active {
+  background: transparent;
+  color: #fff;
+}
+.nav-links a.active::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  right: 4px;
+  height: calc(100% - 18px);
+  transform: translateY(-50%);
+  background: var(--purple-soft);
+  border-radius: 6px;
+  z-index: -1;
+}
+.nav-links a.active::after { display: none; }
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 14px;
+  margin-left: 10px;
+  border-left: 1px solid rgba(255,255,255,0.12);
+  flex-shrink: 0;
+}
+.lang {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #fff;
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  align-self: center;
+  margin-right: 14px;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s;
+}
+.lang:hover { background: rgba(255,255,255,0.08); transform: scale(1.08); }
+.nav-right .socials { display: flex; gap: 12px; }
+.nav-right .socials a {
+  color: rgba(255,255,255,0.85);
+  display: inline-flex;
+  transition: color 0.2s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.nav-right .socials a:hover { color: var(--gold); transform: scale(1.18); }
+.nav-right .socials svg { display: block; width: 17px; height: 17px; }
+.nav-right .socials .social-img { display: block; width: 17px; height: 17px; filter: brightness(0) invert(1); opacity: 0.85; transition: opacity 0.2s; }
+.nav-right .socials a:hover .social-img { opacity: 1; filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(15deg); }
+
+/* ===================================================
+   HERO — backdrop carousel
+   =================================================== */
+.hero {
+  position: relative;
+  min-height: calc(100svh - var(--header-h));
+  background: #050507;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 48px 60px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero-stage { position: absolute; inset: 0; z-index: 0; }
+.hero-stage .slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.4s ease-in-out;
+}
+.hero-stage .slide.on { opacity: 1; }
+.hero-stage .slide img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.hero-stage .slide::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(5,5,7,0.55) 0%, rgba(5,5,7,0.35) 35%, rgba(5,5,7,0.65) 75%, rgba(5,5,7,0.92) 100%),
+    radial-gradient(ellipse at center, rgba(91,42,130,0.18) 0%, transparent 60%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* subtle grain */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.hero > * { position: relative; z-index: 4; }
+.hero > .hero-stage { position: absolute; inset: 0; z-index: 0; }
+
+.hero-meta {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 38px;
+}
+.hero-meta .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: inline-block;
+  box-shadow: 0 0 12px rgba(212,168,75,0.8);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.hero-title {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: clamp(64px, 11vw, 160px);
+  line-height: 0.9;
+  letter-spacing: -0.055em;
+  color: #fff;
+  text-align: center;
+  margin: 0;
+  cursor: default;
+  transform-origin: center;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  text-shadow: 0 2px 0 rgba(0,0,0, calc(var(--hero-shadow) * 0.35)), 0 6px 24px rgba(0,0,0, calc(var(--hero-shadow) * 0.55)), 0 18px 60px rgba(0,0,0, calc(var(--hero-shadow) * 0.45));
+}
+.hero-title:hover { transform: scale(1.04); }
+.hero-title .apos {
+  color: var(--gold);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0;
+  font-size: 0.95em;
+  margin: 0 -0.04em 0 -0.02em;
+  display: inline-block;
+}
+
+.hero-where {
+  margin-top: 28px;
+  font-family: 'Montserrat', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  color: rgba(255,255,255,0.85);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.hero-where .date {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+.hero-where .sep {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+}
+.hero-where .where {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: 0.01em;
+  color: rgba(255,255,255,0.88);
+  text-align: center;
+  max-width: 820px;
+  text-shadow:
+    0 1px 2px rgba(0,0,0, calc(var(--hero-shadow) * 0.7)),
+    0 2px 4px rgba(0,0,0, calc(var(--hero-shadow) * 0.55)),
+    0 6px 22px rgba(0,0,0, calc(var(--hero-shadow) * 0.7)),
+    0 14px 44px rgba(0,0,0, calc(var(--hero-shadow) * 0.55));
+}
+
+.countdown {
+  margin-top: 44px;
+  display: flex;
+  gap: 64px;
+  align-items: flex-start;
+}
+.countdown .unit {
+  text-align: center;
+  min-width: 72px;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: default;
+}
+.countdown .unit:hover { transform: scale(1.12); }
+.countdown .unit b {
+  display: block;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 64px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 0 rgba(0,0,0, calc(var(--hero-shadow) * 0.3)), 0 6px 18px rgba(0,0,0, calc(var(--hero-shadow) * 0.5)), 0 14px 40px rgba(0,0,0, calc(var(--hero-shadow) * 0.35));
+}
+.countdown .unit span {
+  display: block;
+  margin-top: 14px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  color: rgba(255,255,255,0.85);
+}
+
+/* carousel controls */
+.hero-arrows {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  pointer-events: none;
+  z-index: 5;
+}
+.hero-arrows button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.2s, border-color 0.2s;
+}
+.hero-arrows button:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.4);
+}
+.hero-arrows svg { width: 18px; height: 18px; }
+
+.hero-dots {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+.hero-dots button {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: width 0.3s, background 0.3s;
+}
+.hero-dots button.on {
+  width: 28px;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.hero-bottom-meta {
+  position: absolute;
+  bottom: 32px;
+  right: 48px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  z-index: 5;
+}
+.hero-bottom-meta b { color: var(--gold); font-weight: 500; }
+
+.hero-bottom-left {
+  position: absolute;
+  bottom: 32px;
+  left: 48px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  z-index: 5;
+}
+
+/* ===================================================
+   INTRO + STATS
+   =================================================== */
+.section {
+  padding: 140px 48px;
+  border-bottom: 1px solid var(--hairline);
+}
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.section.center { text-align: center; }
+
+.eyebrow {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+.eyebrow::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--ink-soft);
+}
+
+.intro h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: clamp(48px, 6vw, 84px);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  margin: 0 auto 36px;
+  max-width: 920px;
+}
+.intro h2 .accent {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--purple);
+  letter-spacing: -0.02em;
+}
+.intro .lede {
+  font-size: 19px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 580px;
+  margin: 0 auto;
+  font-weight: 400;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-top: 96px;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+.stat {
+  padding: 36px 28px;
+  text-align: left;
+  border-right: 1px solid var(--hairline);
+}
+.stat:last-child { border-right: none; }
+.stat .label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.stat .num {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 14px;
+}
+.stat .num b {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 88px;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+}
+.stat .num span {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 32px;
+  letter-spacing: -0.02em;
+  color: var(--ink-soft);
+}
+
+/* ===================================================
+   ABOUT US
+   =================================================== */
+.about-section {
+  background: var(--paper-2);
+}
+.about-head {
+  text-align: center;
+  margin-bottom: 72px;
+}
+.about-head .eyebrow {
+  margin-bottom: 24px;
+  color: var(--ink-soft);
+}
+.about-head .eyebrow::before {
+  background: var(--ink-soft);
+}
+.about-head h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: clamp(48px, 6vw, 84px);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  margin: 0 auto 28px;
+  max-width: 920px;
+}
+.about-head h2 i {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--purple);
+  letter-spacing: -0.02em;
+}
+.about-head .lede {
+  font-size: 19px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 620px;
+  margin: 0 auto;
+  font-weight: 400;
+}
+.about-section .stats {
+  margin: 0 0 88px;
+}
+
+.about-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.about-card {
+  background: #fff;
+  border-radius: 4px;
+  padding: 40px 32px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 340px;
+  transition: transform 0.3s ease;
+}
+.about-card:hover { transform: translateY(-4px); }
+.about-card .ix {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.about-card .ix svg { width: 20px; height: 20px; }
+.about-card h4 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.about-card p {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin: 0;
+  margin-top: auto;
+}
+.about-card.feature {
+  background: var(--ink);
+  color: #fff;
+}
+.about-card.feature h4 { color: #fff; }
+.about-card.feature p { color: rgba(255,255,255,0.65); }
+.about-card.feature .ix {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+/* ===================================================
+   LOCATION
+   =================================================== */
+.location { background: var(--paper); }
+
+.loc-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 22px;
+  margin-bottom: 56px;
+}
+.loc-head .loc-head-l {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.loc-head .eyebrow {
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--ink);
+  font-weight: 600;
+  margin-bottom: 0;
+}
+.loc-head .eyebrow::before,
+.loc-head .eyebrow::after {
+  content: none;
+}
+.loc-head h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: clamp(56px, 7vw, 96px);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  margin: 0;
+}
+.loc-head h2 i {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--purple);
+}
+
+/* ---------------------------------------------------
+   FLOATING MAP
+   The map sits inside the .container so it has the same
+   horizontal rhythm as the rest of the page. A floating
+   editorial card overlays it (position via --card-x /
+   --card-y CSS vars, wired to size-tools).
+   --------------------------------------------------- */
+.loc-map-bleed {
+  position: relative;
+  /* Break out of the .container so the slider can grow the map past the
+     1200px container cap, all the way to the viewport edges. */
+  width: min(var(--map-w, 1104px), 100vw);
+  max-width: 100vw;
+  margin-left: 50%;
+  transform: translateX(-50%);
+  height: var(--map-h, clamp(440px, 60vh, 620px));
+  background: #e8e2d2;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 40px 80px -32px rgba(14,14,16,0.28),
+    0 16px 32px -16px rgba(14,14,16,0.18);
+}
+.loc-map-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  filter: grayscale(0.18) contrast(0.96) saturate(0.92);
+}
+
+/* Floating editorial info card. Position is driven by two CSS
+   custom properties so the size-tools panel can nudge it live. */
+.loc-card {
+  --card-x: 32px;
+  --card-y: 32px;
+  position: absolute;
+  left: var(--card-x);
+  bottom: var(--card-y);
+  width: min(360px, calc(100% - 64px));
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  padding: 26px 26px 22px;
+  box-shadow:
+    0 30px 60px -20px rgba(14,14,16,0.35),
+    0 12px 24px -12px rgba(14,14,16,0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 2;
+}
+.loc-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+.loc-card-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.loc-card-eyebrow .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--purple);
+  box-shadow: 0 0 0 4px rgba(91,42,130,0.18);
+  animation: locDot 2.2s ease-in-out infinite;
+}
+@keyframes locDot {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(91,42,130,0.18); }
+  50%      { box-shadow: 0 0 0 7px rgba(91,42,130,0.05); }
+}
+.loc-card-coord {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: var(--ink-mute);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+.loc-card-name {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  margin: -4px 0 0;
+}
+.loc-card-name i {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--purple);
+}
+.loc-card-addr {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.loc-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+.loc-card-row {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  align-items: baseline;
+  gap: 12px;
+}
+.loc-card-lbl {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  font-weight: 500;
+}
+.loc-card-val {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.loc-card-cta {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--ink);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  transition: background 0.2s, transform 0.2s;
+}
+.loc-card-cta:hover { background: var(--purple); }
+.loc-card-cta:active { transform: translateY(1px); }
+.loc-card-cta svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* Mobile: card sits below the map rather than floating on top */
+@media (max-width: 720px) {
+  .loc-map-bleed {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: none;
+  }
+  .loc-map-iframe { position: relative; height: 56vh; min-height: 320px; }
+  .loc-card {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: auto;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid var(--ink);
+    box-shadow: none;
+  }
+}
+
+/* ===================================================
+   REGISTRATION BANNER
+   Pill-shaped status banner sitting between the about
+   and location sections, on the mountain sky.
+   =================================================== */
+.reg-banner-section {
+  background: transparent;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  border-bottom: none;
+}
+.reg-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background: #fff;
+  border: 2.5px solid var(--gold);
+  border-radius: var(--reg-radius, 32px);
+  padding: 28px 48px;
+  box-shadow:
+    0 30px 60px -24px rgba(14,14,16,0.30),
+    0 12px 24px -12px rgba(14,14,16,0.18);
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+.reg-banner:hover {
+  transform: translateY(-6px);
+  box-shadow:
+    0 44px 80px -28px rgba(14,14,16,0.38),
+    0 18px 36px -16px rgba(14,14,16,0.22);
+}
+.reg-banner-text {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: clamp(20px, 2.6vw, 34px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--purple);
+  text-align: center;
+  line-height: 1;
+}
+@media (max-width: 720px) {
+  .reg-banner { padding: 22px 28px; }
+}
+
+/* ===================================================
+   STAY IN TOUCH
+   =================================================== */
+.stay {
+  background: var(--purple);
+  color: #fff;
+  padding: 140px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.stay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+.stay::after {
+  content: '';
+  position: absolute;
+  top: -200px;
+  right: -200px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(212,168,75,0.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.stay .container {
+  position: relative;
+  display: grid;
+  grid-template-columns: 0.85fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+/* IG card */
+.ig-card {
+  background: #fff;
+  color: var(--ink);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.18);
+  max-width: 440px;
+  width: 100%;
+  justify-self: start;
+}
+.ig-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 16px;
+}
+.ig-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(45deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5);
+  flex-shrink: 0;
+}
+.ig-avatar .inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ig-avatar img { width: 24px; height: auto; display: block; }
+.ig-handle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ig-handle .h-name {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ig-handle .h-name svg { width: 12px; height: 12px; color: #0095f6; }
+.ig-handle .h-loc {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.ig-more {
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.ig-media {
+  position: relative;
+  aspect-ratio: 1;
+  background:
+    radial-gradient(ellipse at 60% 30%, rgba(212,168,75,0.25) 0%, transparent 55%),
+    linear-gradient(180deg, var(--purple-deep) 0%, var(--purple) 100%);
+  overflow: hidden;
+}
+.ig-media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0);
+  background-size: 18px 18px;
+}
+.ig-media-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #fff;
+  padding: 28px;
+}
+.ig-media-content .wm {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  color: rgba(255,255,255,0.85);
+}
+.ig-media-content .yr {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 132px;
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  background: linear-gradient(180deg, #ffd980 0%, var(--gold) 60%, #a07a2c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ig-media-content .dt {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 18px;
+  color: rgba(255,255,255,0.65);
+}
+.ig-media-content .reel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+}
+.ig-media-content .reel svg { width: 14px; height: 14px; }
+
+.ig-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px 8px;
+}
+.ig-actions svg {
+  width: 24px;
+  height: 24px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.ig-actions .save { margin-left: auto; }
+
+.ig-foot {
+  padding: 0 16px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ig-foot .likes {
+  font-weight: 600;
+  font-size: 13px;
+  display: block;
+  margin-bottom: 4px;
+}
+.ig-foot .cap b { font-weight: 600; }
+.ig-foot .tag { color: #1c4980; }
+.ig-foot .when {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-top: 6px;
+  display: block;
+}
+
+/* Right side text + CTAs */
+.stay-content {
+  display: flex;
+  flex-direction: column;
+  gap: 80px;
+}
+.stay-block .stay-eyebrow {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+  margin-bottom: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.stay-block .stay-eyebrow::before {
+  content: '';
+  width: 24px; height: 1px;
+  background: rgba(255,255,255,0.4);
+}
+.stay-block h3 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: clamp(44px, 5vw, 72px);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  margin: 0 0 28px;
+  color: #fff;
+}
+.stay-block h3 i {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--gold);
+}
+
+.stay-form {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 999px;
+  padding: 6px 6px 6px 24px;
+  max-width: 520px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.stay-form:focus-within {
+  border-color: var(--gold);
+  background: rgba(255,255,255,0.12);
+}
+.stay-form input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px;
+  padding: 14px 0;
+}
+.stay-form input::placeholder { color: rgba(255,255,255,0.45); }
+.stay-form button {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+.stay-form button:hover { background: var(--gold-soft); }
+.stay-form button svg { width: 13px; height: 13px; }
+
+.stay-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255,255,255,0.15);
+}
+
+.contact-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 520px;
+}
+.contact-chip {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 999px;
+  padding: 16px 24px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  text-decoration: none;
+}
+.contact-chip:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.35);
+}
+.contact-chip svg { width: 16px; height: 16px; color: var(--gold); }
+.contact-chip b { font-weight: 600; }
+
+/* ===================================================
+   FOOTER
+   =================================================== */
+.site-footer {
+  background: var(--ink);
+  color: rgba(255,255,255,0.55);
+  padding: 64px 48px 32px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+}
+.site-footer .container {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 48px;
+}
+.footer-brand .hm-img {
+  height: 40px;
+  margin-bottom: 18px;
+}
+.footer-brand p {
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 280px;
+  margin: 0 0 18px;
+}
+.footer-brand .badges {
+  display: flex;
+  gap: 12px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.footer-brand .badges span {
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: rgba(255,255,255,0.7);
+}
+.footer-col h5 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  font-weight: 500;
+  margin: 0 0 18px;
+}
+.footer-col a {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  padding: 6px 0;
+  transition: color 0.2s;
+}
+.footer-col a:hover { color: var(--gold); }
+
+.footer-bottom {
+  max-width: 1200px;
+  margin: 64px auto 0;
+  padding-top: 28px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+}
+.footer-bottom .easter {
+  cursor: pointer;
+  color: rgba(255,255,255,0.5);
+}
+.footer-bottom .easter:hover { color: var(--gold); }
+
+/* responsive */
+@media (max-width: 760px) {
+  .stay .container { grid-template-columns: 1fr; gap: 64px; }
+  .ig-card { justify-self: center; }
+  .stats { grid-template-columns: 1fr; }
+  .stat { border-right: none; border-bottom: 1px solid var(--hairline); }
+  .stat:last-child { border-bottom: none; }
+  .about-cards { grid-template-columns: 1fr; }
+  .about-head, .loc-head { grid-template-columns: 1fr; gap: 32px; }
+  .site-footer .container { grid-template-columns: 1fr 1fr; }
+}
+
+/* ===================================================
+   SIZE TOOLS — dev panel for live header sizing
+   =================================================== */
+.size-tools {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 9999;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.size-tools .st-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(14,14,16,0.92);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.size-tools .st-panel {
+  background: rgba(14,14,16,0.92);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 10px;
+  padding: 14px 16px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.size-tools.collapsed .st-panel {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  display: none;
+}
+.size-tools .st-title {
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 2px;
+}
+.size-tools .st-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+}
+.size-tools .st-row span {
+  color: rgba(255,255,255,0.85);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+.size-tools .st-row input[type=range] {
+  width: 100%;
+  accent-color: var(--gold, #d4a84b);
+}
+.size-tools .st-row output {
+  text-align: right;
+  color: var(--gold, #d4a84b);
+  font-weight: 600;
+}
+.size-tools .st-reset {
+  align-self: flex-end;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.22);
+  color: rgba(255,255,255,0.75);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.size-tools .st-reset:hover { background: rgba(255,255,255,0.08); }
+
+/* ===================================================
+   ABOUT — neat 3-card layout w/ Tec ACM feature card
+   =================================================== */
+.about-section .about-head .lede {
+  max-width: 560px;
+}
+
+.tec-card { position: relative; }
+.tec-card .tec-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  margin-bottom: 4px;
+}
+.tec-card .tec-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: none;
+}
+.tec-card h4 i {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--gold);
+}
+.tec-card p b {
+  color: #fff;
+  font-weight: 700;
+}
+.tec-card .tec-meta {
+  display: block;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.14);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(255,255,255,0.55);
+}
+/* Feature card uses .ix in the default markup; tec-card replaces it with .tec-mark
+   so we don't need the icon circle here. */
+.about-card.feature.tec-card .ix { display: none; }
+
+/* ============================================================
+   INLINE STYLES FROM HTML
+   ============================================================ */
+/* ===================================================
+     MOUNTAIN BG — purple cerro + sun + clouds
+     Sits behind the post-hero sections (about / location / stay).
+     =================================================== */
+  /* Float keyframes start at the resting position (0) and drift to a
+     small offset, alternating. This means the handoff from the entrance
+     transition (which ends at translate*(0)) into the infinite float
+     has no visible jump — the cloud is already at the 0% keyframe. */
+  @keyframes cloudFloat0 {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(42px); }
+  }
+  @keyframes cloudFloat1 {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-42px); }
+  }
+  @keyframes cloudFloat2 {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(28px); }
+  }
+
+  /* ============================================================
+     Mountain background container.
+     - position: fixed, pinned to BOTTOM of the viewport
+     - bottom shifts UP by --mb-lift once the footer enters view,
+       so the cerro+clouds appear to "sit" on top of the footer
+       instead of being hidden behind it.
+     - All scenery elements (sun, cerro, clouds) are now
+       position: absolute INSIDE this container, so they all
+       move together when --mb-lift changes.
+     ============================================================ */
+  .mountain-bg {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--mb-lift, 0px);
+    height: 100vh;
+    pointer-events: none;
+    z-index: -4;
+    overflow: visible;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    will-change: opacity, bottom;
+  }
+  .mountain-bg.is-visible { opacity: 1; }
+
+  /* Entrance — each layer rises up + fades in when .is-visible is added.
+     Cerro leads, sun follows a beat behind, then the clouds drift up last.
+     Sits on top of the per-layer transform (translate-from + scale). */
+  .mountain-bg .mb-sun,
+  .mountain-bg .mb-cerro,
+  .mountain-bg .mb-cloud-a,
+  .mountain-bg .mb-cloud-b,
+  .mountain-bg .mb-cloud-bottom {
+    opacity: 0;
+    transition:
+      opacity 1.1s ease,
+      transform 1.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .mountain-bg.is-visible .mb-sun,
+  .mountain-bg.is-visible .mb-cerro,
+  .mountain-bg.is-visible .mb-cloud-a,
+  .mountain-bg.is-visible .mb-cloud-b,
+  .mountain-bg.is-visible .mb-cloud-bottom { opacity: 1; }
+
+  /* Sun — soft disc that peeks up from behind the cerro */
+  .mountain-bg .mb-sun {
+    position: absolute;
+    left: 50%;
+    bottom: 200px;
+    width: 800px;
+    height: 800px;
+    margin-left: -400px;
+    transform: translateY(60px) scale(calc(0.7 * var(--sun-size, 1)));
+    transform-origin: center bottom;
+    z-index: 1;
+    filter: blur(2px) drop-shadow(0 0 80px rgba(255,200,160,0.45));
+    transition-delay: 0.25s;
+  }
+  .mountain-bg.is-visible .mb-sun { transform: translateY(0) scale(calc(0.7 * var(--sun-size, 1))); }
+  .mountain-bg .mb-sun circle { fill: #ffd4b8; }
+
+  /* Cerro — the wide mountain silhouette. Sits on the bottom edge.
+     --cerro-x shifts it horizontally, --cerro-size multiplies its scale. */
+  .mountain-bg .mb-cerro {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 4000px;
+    height: auto;
+    margin-left: -2000px;
+    transform: translate(var(--cerro-x, 2%), 80px) scale(calc(0.6 * var(--cerro-size, 1)));
+    transform-origin: center bottom;
+    z-index: 2;
+  }
+  .mountain-bg.is-visible .mb-cerro { transform: translate(var(--cerro-x, 2%), 0) scale(calc(0.6 * var(--cerro-size, 1))); }
+  .mountain-bg .mb-cerro path { fill: #b486e0; }
+
+  /* Floating side clouds — all pinned to the bottom of the viewport.
+     Each gets a 2-stage transform: a one-shot rise-in (handled by JS
+     adding .is-settled after the entrance), then the gentle infinite
+     float once it has settled. */
+  .mountain-bg .mb-cloud-a {
+    position: absolute;
+    bottom: calc(140px + var(--cloud-a-lift, 0px));
+    left: calc(-6vw + var(--cloud-a-x, 0px));
+    width: calc(clamp(300px, 80vw, 800px) * var(--cloud-size, 1));
+    height: auto;
+    z-index: 3;
+    transform: translateY(50px);
+    transition-delay: 0.4s;
+  }
+  .mountain-bg.is-visible .mb-cloud-a { transform: translateY(0); }
+  .mountain-bg.is-settled .mb-cloud-a {
+    transition: none;
+    animation: cloudFloat0 4s ease-in-out infinite alternate;
+  }
+
+  .mountain-bg .mb-cloud-b {
+    position: absolute;
+    bottom: calc(80px + var(--cloud-b-lift, 0px));
+    right: calc(-20vw - var(--cloud-b-x, 0px));
+    width: calc(clamp(200px, 70vw, 750px) * var(--cloud-size, 1));
+    height: auto;
+    z-index: 3;
+    transform: translateY(50px);
+    transition-delay: 0.5s;
+  }
+  .mountain-bg.is-visible .mb-cloud-b { transform: translateY(0); }
+  .mountain-bg.is-settled .mb-cloud-b {
+    transition: none;
+    animation: cloudFloat1 4.5s ease-in-out infinite alternate;
+  }
+
+  .mountain-bg .mb-cloud-bottom {
+    position: absolute;
+    bottom: calc(-2vh + var(--cloud-bottom-lift, 0px));
+    left: 50%;
+    width: calc(clamp(300px, 100vw, 800px) * var(--cloud-size, 1));
+    margin-left: -400px;
+    height: auto;
+    z-index: 4;
+    transform: translateY(60px);
+    transition-delay: 0.45s;
+  }
+  .mountain-bg.is-visible .mb-cloud-bottom { transform: translateY(0); }
+  .mountain-bg.is-settled .mb-cloud-bottom {
+    transition: none;
+    animation: cloudFloat2 5s ease-in-out infinite alternate;
+  }
+  .mountain-bg .mb-cloud-a path,
+  .mountain-bg .mb-cloud-b path,
+  .mountain-bg .mb-cloud-bottom path { fill: #e2beff; }
+
+  /* Mobile tweaks — shrink the cerro so it doesn't overwhelm small screens */
+  @media (max-width: 900px) {
+    .mountain-bg .mb-cerro {
+      transform: translate(var(--cerro-x, 2%), 80px) scale(calc(0.45 * var(--cerro-size, 1)));
+    }
+    .mountain-bg.is-visible .mb-cerro {
+      transform: translate(var(--cerro-x, 2%), 0) scale(calc(0.45 * var(--cerro-size, 1)));
+    }
+    .mountain-bg .mb-sun { bottom: 140px; transform: translateY(60px) scale(calc(0.55 * var(--sun-size, 1))); }
+    .mountain-bg.is-visible .mb-sun { transform: translateY(0) scale(calc(0.55 * var(--sun-size, 1))); }
+    .mountain-bg .mb-cloud-a { bottom: 40px; }
+    .mountain-bg .mb-cloud-b { bottom: 0; }
+  }
+
+  /* All post-hero sections sit on the mountain sky. Make them transparent
+     so the cerro + clouds + sun show through edge-to-edge. */
+  .about-section,
+  .location,
+  .stay {
+    background: transparent !important;
+    border-bottom: none !important;
+  }
+  .about-section,
+  .location,
+  .stay { position: relative; z-index: 1; }
+
+  /* Body is one continuous purple sky: light lavender at the top (where the
+     about section starts, just past the hero) → the brand purple at the bottom,
+     matching the mountain. No beige, no warm tones — pure purple atmosphere. */
+  body {
+    background:
+      linear-gradient(180deg,
+        #efe2f6 0%,
+        #e1c4f1 12%,
+        #c89dec 30%,
+        #a878d0 50%,
+        #8553b3 70%,
+        var(--purple) 88%,
+        var(--purple) 100%
+      ) !important;
+    background-attachment: fixed !important;
+  }
+
+  /* Keep the stay banner's golden glow + dotted texture, but as OVERLAYS only —
+     the mountain sky behind shows through. */
+  .stay::before,
+  .stay::after { z-index: 0; }
+  .stay > .container { position: relative; z-index: 1; }
+
+  /* Footer is the solid dark cap. The mountain-bg lifts up via --mb-lift
+     as the footer enters view, so the cerro+clouds rest on top of the
+     footer band instead of being hidden behind it. */
+  .site-footer {
+    background: var(--ink) !important;
+    position: relative;
+    z-index: 5;
+  }
+
+  /* Floating cards on the purple sky — stronger purple-tinted shadow so they
+     feel like cutouts above the sky rather than flat panels. */
+  .about-card {
+    box-shadow:
+      0 30px 60px -22px rgba(30,10,55,0.45),
+      0 12px 28px -14px rgba(30,10,55,0.3) !important;
+  }
+  .loc-grid {
+    box-shadow:
+      0 40px 80px -28px rgba(30,10,55,0.5),
+      0 14px 32px -16px rgba(30,10,55,0.32) !important;
+    background: #ffffff !important;
+  }
+
+  /* On the purple sky, all section heads read in WHITE — mirrors the
+     vintage-poster vibe of last year's site. */
+  .about-head .eyebrow,
+  .loc-head .eyebrow { color: rgba(255,255,255,0.85) !important; }
+  .about-head .eyebrow::before,
+  .loc-head .eyebrow::before { background: rgba(255,255,255,0.7) !important; }
+  .about-head h2,
+  .loc-head h2 { color: #ffffff !important; text-shadow: 0 2px 24px rgba(30,10,55,0.35); }
+  .about-head h2 i,
+  .loc-head h2 i { color: #f0d9b0 !important; }
+  .about-head .lede,
+  .loc-lede { color: rgba(255,255,255,0.85) !important; }
+
+  /* The about "stats" bar uses dark hairlines from the paper theme — swap to
+     light ones so it reads on the sky. */
+  .about-section .stats { border-top-color: rgba(255,255,255,0.25) !important; border-bottom-color: rgba(255,255,255,0.25) !important; }
+  .about-section .stat .label,
+  .about-section .stat .num { color: #ffffff !important; }
+  .about-section .stat .num i { color: #f0d9b0 !important; }
+
+  /* Freeze the cloud animations once the footer enters view — the sky "settles"
+     right where the dark footer takes over. */
+  .mountain-bg.is-frozen .mb-cloud-a,
+  .mountain-bg.is-frozen .mb-cloud-b,
+  .mountain-bg.is-frozen .mb-cloud-bottom {
+    animation-play-state: paused !important;
+  }
+
+  /* Soften the dev size-tools panel so it doesn't look like a bug on the new sky */
+  .size-tools .st-toggle { opacity: 0.75; }
+  .size-tools .st-toggle:hover { opacity: 1; }
+  /* Wider label column + cap panel height so 9+ sliders stay usable */
+  .size-tools .st-row { grid-template-columns: 92px 1fr 48px; }
+  .size-tools .st-panel { max-height: 70vh; overflow-y: auto; }
+
+  /* ====================================================================
+     ABOUT — title fix: keep the gold accent on "in Latin America" but
+     match the rest of the title's weight (800) and drop the italic so it
+     doesn't read as thinner. */
+  .about-head h2 i,
+  .loc-head h2 i {
+    font-style: normal !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  /* ====================================================================
+     ABOUT CARDS V2 — vintage-poster style, 2×2 grid on the purple sky.
+     Centered uppercase eyebrow + large purple outline icon + centered body.
+     ==================================================================== */
+  .about-cards.v2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .about-card.v2 {
+    background: #ffffff;
+    border-radius: 28px;
+    padding: 56px 44px 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 22px;
+    box-shadow:
+      0 30px 60px -22px rgba(30,10,55,0.45),
+      0 12px 28px -14px rgba(30,10,55,0.30);
+    transition: transform 0.35s ease, box-shadow 0.35s ease;
+    border: 1px solid rgba(30,10,55,0.04);
+    position: relative;
+    overflow: hidden;
+  }
+  .about-card.v2:hover {
+    transform: translateY(-6px);
+    box-shadow:
+      0 38px 70px -22px rgba(30,10,55,0.50),
+      0 16px 32px -14px rgba(30,10,55,0.32);
+  }
+  .about-card.v2 .v2-eyebrow {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink, #0e0e10);
+    margin: 0;
+  }
+  .about-card.v2 .v2-icon {
+    width: 88px;
+    height: 88px;
+    color: var(--purple, #5b2a82);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 6px 0 4px;
+  }
+  .about-card.v2 .v2-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .about-card.v2 .v2-icon.tec-mark {
+    width: 72px;
+    height: 72px;
+    padding: 8px;
+    background: transparent;
+  }
+  .about-card.v2 .v2-icon.tec-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: none;
+  }
+  .about-card.v2 .v2-body {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: rgba(14,14,16,0.78);
+    max-width: 40ch;
+    margin: 0;
+    font-weight: 400;
+  }
+  .about-card.v2 .v2-body b {
+    color: var(--ink, #0e0e10);
+    font-weight: 700;
+  }
+  .about-card.v2 .v2-meta {
+    margin-top: auto;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(14,14,16,0.45);
+  }
+
+  /* Feature variant — dark ink card with gold accents, keeps the rhythm */
+  .about-card.v2.feature {
+    background: var(--ink, #0e0e10);
+    border-color: rgba(255,255,255,0.06);
+  }
+  .about-card.v2.feature .v2-eyebrow { color: var(--gold, #d4a84b); }
+  .about-card.v2.feature .v2-icon { color: var(--gold, #d4a84b); }
+  .about-card.v2.feature .v2-body { color: rgba(255,255,255,0.75); }
+  .about-card.v2.feature .v2-body b { color: #ffffff; }
+  .about-card.v2.feature .v2-meta { color: rgba(255,255,255,0.45); }
+
+  /* Tablet / mobile: stack to 1 column */
+  @media (max-width: 880px) {
+    .about-cards.v2 { grid-template-columns: 1fr; gap: 20px; }
+    .about-card.v2 { padding: 44px 28px 40px; border-radius: 22px; }
+    .about-card.v2 .v2-icon { width: 72px; height: 72px; }
+  }
+
+  /* Gold band separating the hero photo from the purple sky below. */
+  .hero-gold-band {
+    width: 100%;
+    height: 10px;
+    background: var(--gold, #d4a84b);
+    position: relative;
+    z-index: 4;
+    box-shadow: 0 6px 18px -8px rgba(212,168,75,0.55);
+  }
+
+  /* ====================================================================
+     HERO CREST — large HM shield watermark sitting behind the title.
+     Lives between the photo carousel (z:0) and the title text (z:4), so
+     the H1 visually anchors inside the shield's negative space without
+     either element competing.
+     - z-index 2 (overrides the blanket `.hero > * { z-index: 4 }` rule
+       so it sits BELOW the title, not on top of it)
+     - opacity scales down at small viewports so it never overpowers
+     - decorative drop-shadow gives it a soft glow against bright photos
+     ==================================================================== */
+  .hero > .hero-crest {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: auto;
+    height: calc(clamp(380px, 56vh, 620px) * var(--crest-size, 1));
+    transform: translate(-50%, calc(-50% + var(--crest-y, -24px)));
+    z-index: 2;
+    opacity: var(--crest-opacity, 0.42);
+    pointer-events: none;
+    user-select: none;
+    filter: drop-shadow(0 18px 60px rgba(0,0,0,0.45));
+    transition: opacity 0.6s ease;
+  }
+  @media (max-width: 720px) {
+    .hero > .hero-crest {
+      height: calc(clamp(280px, 48vh, 420px) * var(--crest-size, 1));
+    }
+  }
+
+  /* ====================================================================
+     WAITLIST — the closing section, lives on the purple sky between the
+     location card and the dark footer. Editorial centered layout:
+         eyebrow  —  headline  —  pill button
+     The pill button mirrors the .reg-banner styling (gold border, white
+     fill, soft elevation shadow) and uses the same hover-lift transition
+     so it reads as a sibling to the "Registration opening soon" banner. */
+  .waitlist {
+    position: relative;
+    z-index: 1;
+    padding: 120px 48px 160px;
+    text-align: center;
+  }
+  .waitlist .container {
+    max-width: 880px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+  .waitlist .wl-eyebrow {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.78);
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0;
+  }
+  .waitlist .wl-eyebrow::before,
+  .waitlist .wl-eyebrow::after {
+    content: '';
+    width: 28px;
+    height: 1px;
+    background: rgba(255,255,255,0.55);
+    display: inline-block;
+  }
+  .waitlist h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: clamp(34px, 4.4vw, 56px);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    color: #ffffff;
+    margin: 0;
+    max-width: 18ch;
+    text-wrap: balance;
+    text-shadow: 0 2px 24px rgba(30,10,55,0.35);
+  }
+  .waitlist h2 i {
+    font-style: normal;
+    font-weight: 800;
+    color: #f0d9b0;
+    letter-spacing: -0.025em;
+  }
+  .waitlist .wl-lede {
+    font-family: 'Montserrat', sans-serif;
+    font-size: clamp(15px, 1.15vw, 17px);
+    line-height: 1.6;
+    font-weight: 400;
+    color: rgba(255,255,255,0.88);
+    margin: 4px 0 8px;
+    max-width: 56ch;
+    text-wrap: pretty;
+  }
+
+  /* CTA button — same visual language as .reg-banner but sized down to a
+     pill control. Hover lift + shadow growth, identical timing curve. */
+  .waitlist .wl-cta {
+    margin-top: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    background: #ffffff;
+    border: 2.5px solid var(--gold, #d4a84b);
+    border-radius: 999px;
+    padding: 20px 38px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--purple, #5b2a82);
+    text-decoration: none;
+    box-shadow:
+      0 22px 44px -22px rgba(14,14,16,0.32),
+      0 10px 20px -12px rgba(14,14,16,0.20);
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+                box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    will-change: transform;
+  }
+  .waitlist .wl-cta:hover {
+    transform: translateY(-6px);
+    box-shadow:
+      0 38px 70px -26px rgba(14,14,16,0.40),
+      0 16px 32px -16px rgba(14,14,16,0.24);
+  }
+  .waitlist .wl-cta:hover .wl-arrow {
+    transform: translate(3px, -3px);
+  }
+  .waitlist .wl-arrow {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    color: var(--purple, #5b2a82);
+  }
+  .waitlist .wl-form-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--gold, #d4a84b);
+    margin-right: 2px;
+    flex-shrink: 0;
+  }
+  .waitlist .wl-note {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.55);
+    margin: 6px 0 0;
+  }
+  @media (max-width: 720px) {
+    .waitlist { padding: 80px 24px 120px; }
+    .waitlist .wl-cta { padding: 18px 28px; font-size: 13px; }
+  }
+
+  /* ====================================================================
+     FOOTER LOGOS — paired HM shield + Tec ACM lockup, mirroring the
+     header's brand-block (logo / divider / logo). */
+  .footer-logos {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 22px;
+  }
+  .footer-logos .footer-hm {
+    height: 56px;
+    width: auto;
+    display: block;
+  }
+  .footer-logos .footer-tec {
+    height: 32px;
+    width: auto;
+    display: block;
+    /* Lift the wordmark off the dark footer ground without recoloring the
+       gold accent — a soft white drop behind the purple letters keeps it
+       legible. */
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.18));
+  }
+  .footer-logos .footer-divider {
+    width: 1px;
+    height: 36px;
+    background: rgba(255,255,255,0.18);
+  }
+  @media (max-width: 720px) {
+    .footer-logos .footer-hm { height: 48px; }
+    .footer-logos .footer-tec { height: 28px; }
+  }
+
+/* ====================================================================
+   LANDING PAGE WRAPPER — ensures the page fills and scrolls correctly
+   inside the Next.js body which has display:flex from globals.css
+   ==================================================================== */
+.hackmty-landing {
+  flex: 1;
+  display: block;
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  font-family: 'Montserrat', sans-serif !important;
+}
+.hackmty-landing *,
+.hackmty-landing *::before,
+.hackmty-landing *::after {
+  font-family: 'Montserrat', sans-serif !important;
+}
