@@ -115,7 +115,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: 40px;
+  margin-left: 146px; /* badge left(20) + badge width(~86) + gap(40) */
 }
 .brand-block img { display: block; }
 .brand-link {
