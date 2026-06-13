@@ -1,6 +1,11 @@
 import { Pressable, Text, StyleSheet, Platform } from 'react-native'
 
-export function SimpleTextLink({ text, onPress }) {
+interface SimpleTextLinkProps {
+  text: string
+  onPress: () => void
+}
+
+export function SimpleTextLink({ text, onPress }: SimpleTextLinkProps) {
   return (
     <Pressable 
       onPress={onPress}

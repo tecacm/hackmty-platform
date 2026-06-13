@@ -21,7 +21,7 @@ import { PillButton } from 'app/components/pill-button'
 import { SimpleTextLink } from 'app/components/simple-text-link'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { FormCheckbox } from 'app/components/form-checkbox'
-import { useForm, Controller } from "react-hook-form"
+import { useForm, Controller, SubmitHandler } from "react-hook-form"
 
 const styles = StyleSheet.create({
   container: {
@@ -34,7 +34,6 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   shadowStyle: {
-    color: '#ececec',
     ...Platform.select({
       native: {
         shadowColor: '#000000',
@@ -58,7 +57,17 @@ export function RegisterScreen() {
   const [isWide, setIsWide] = useState(false);
   const { width } = useWindowDimensions();
   const images = [rectoria, pavoreal, ciap, photo2024, skyview];
-  const { control, handleSubmit, watch, formState: { errors } } = useForm({
+  type RegisterFormValues = {
+    firstName: string
+    lastName: string
+    email: string
+    password: string
+    confirmPassword: string
+    agreeMLH: boolean
+    subscribeMailingList: boolean
+  }
+
+  const { control, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormValues>({
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -71,7 +80,7 @@ export function RegisterScreen() {
   })
   const password = watch("password")
 
-  const onSubmit = (data) => {
+  const onSubmit: SubmitHandler<RegisterFormValues> = (data) => {
     console.log("Hackathon Registration Data:", data)
     // Send to Supabase/Firebase/Auth0
   }
@@ -217,7 +226,7 @@ export function RegisterScreen() {
               />
             )}
           />
-          <PillButton title="Register" onPress={handleSubmit(onSubmit)} additionalStyle={{marginBottom: '10'}} />
+          <PillButton title="Register" onPress={handleSubmit(onSubmit)} additionalStyle={{marginBottom: 10}} />
           <SimpleTextLink text="Already have an account? Login" onPress={goToLogin}/>
         </View>
     </ParallaxScrollView>

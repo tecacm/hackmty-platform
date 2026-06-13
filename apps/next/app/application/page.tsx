@@ -1,3 +1,12 @@
 'use client'
 
-export { ApplicationScreen as default } from 'app/features/home/application-screen'
+import { Suspense } from 'react'
+import { ApplicationScreen } from 'app/features/home/application-screen'
+
+export default function ApplicationPage() {
+  return (
+    <Suspense>
+      <ApplicationScreen />
+    </Suspense>
+  )
+}

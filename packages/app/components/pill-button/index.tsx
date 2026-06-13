@@ -1,6 +1,12 @@
-import { Pressable, Text, StyleSheet, Platform } from 'react-native'
+import { Pressable, Text, StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native'
 
-export function PillButton({ title, onPress, additionalStyle={} }) {
+interface PillButtonProps {
+  title: string
+  onPress: () => void
+  additionalStyle?: StyleProp<ViewStyle>
+}
+
+export function PillButton({ title, onPress, additionalStyle = {} }: PillButtonProps) {
   return (
     <Pressable
       onPress={onPress}
