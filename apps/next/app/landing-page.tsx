@@ -128,22 +128,23 @@ export default function LandingPage() {
 
   return (
     <div className="hackmty-landing">
+      {/* MLH Trust Badge — fixed, top-right, above everything */}
+      <a
+        id="mlh-trust-badge"
+        href="https://mlh.io/na?utm_source=na-hackathon&utm_medium=TrustBadge&utm_campaign=2026-season&utm_content=white"
+        target="_blank"
+        rel="noopener"
+        style={{ display: 'block', position: 'fixed', left: 20, top: 0, zIndex: 10000 }}
+      >
+        <img
+          src="https://logged-assets.s3.amazonaws.com/trust-badge/2027/mlh-trust-badge-2027-white.svg"
+          alt="Major League Hacking 2026 Hackathon Season"
+          style={{ display: 'block', height: 150, width: 'auto' }}
+        />
+      </a>
+
       {/* ===================== HEADER ===================== */}
       <header className="site-header" style={{ backgroundColor: 'rgba(10, 10, 11, 0.965)' }}>
-        <a
-          className="mlh-badge-link"
-          href="https://mlh.io/na?utm_source=na-hackathon&utm_medium=TrustBadge&utm_campaign=2026-season&utm_content=white"
-          target="_blank"
-          rel="noopener"
-          aria-label="MLH 2027 Season Member Event"
-        >
-          <img
-            src="/assets/mlh-trust-badge-2027-white.svg"
-            alt="Major League Hacking 2026 Hackathon Season"
-            className="mlh-badge-img"
-            style={{ height: 150 }}
-          />
-        </a>
         <div className="brand-block">
           <a className="brand-link" href="/" aria-label="HackMTY home">
             <img src="/assets/hackmty-logo.webp" alt="HackMTY" className="hm-img" />
