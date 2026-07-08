@@ -22,6 +22,7 @@ import { SimpleTextLink } from 'app/components/simple-text-link'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { FormCheckbox } from 'app/components/form-checkbox'
 import { useForm, Controller } from "react-hook-form"
+import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 
 const styles = StyleSheet.create({
   container: {
@@ -47,8 +48,23 @@ const styles = StyleSheet.create({
         filter: 'drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.4))',
       }
     })
-  }
+  },
+  authError: {
+    color: '#ffd3d3',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
 })
+
+type RegisterFormValues = {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  confirmPassword: string
+  agreeMLH: boolean
+  subscribeMailingList: boolean
+}
 
 export function RegisterScreen() {
   const { navigateTo } = useSmartNavigate();
@@ -56,9 +72,11 @@ export function RegisterScreen() {
   const headerHeight = useHeaderHeightSafe();
   const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
   const [isWide, setIsWide] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { width } = useWindowDimensions();
+  const [authError, setAuthError] = useState<string | null>(null);
   const images = [rectoria, pavoreal, ciap, photo2024, skyview];
-  const { control, handleSubmit, watch, formState: { errors } } = useForm({
+  const { control, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormValues>({
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -71,8 +89,39 @@ export function RegisterScreen() {
   })
   const password = watch("password")
 
-  const onSubmit = (data) => {
-    console.log("Hackathon Registration Data:", data)
+  const onSubmit = async (formData: RegisterFormValues) => {
+      if (isSubmitting) return
+ try {
+      if (!isSupabaseConfigured) {
+        setAuthError('Supabase is not configured for this environment.')
+        return
+      }
+
+      const { error } = await supabase.auth.signUp({
+        email: formData.email.trim(),
+        password: formData.password,
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            agree_mlh: formData.agreeMLH,
+            subscribe_mailing_list: formData.subscribeMailingList,
+          },
+        },
+      })
+
+      if (error) {
+        setAuthError(error.message || 'Invalid sign up data.')
+        return
+      }
+
+      navigateTo('/login')
+    } catch {
+      setAuthError('Unable to sign up. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+
     // Send to Supabase/Firebase/Auth0
   }
 
@@ -217,6 +266,7 @@ export function RegisterScreen() {
               />
             )}
           />
+          {authError ? <Text style={styles.authError}>{authError}</Text> : null}
           <PillButton title="Register" onPress={handleSubmit(onSubmit)} additionalStyle={{marginBottom: '10'}} />
           <SimpleTextLink text="Already have an account? Login" onPress={goToLogin}/>
         </View>
