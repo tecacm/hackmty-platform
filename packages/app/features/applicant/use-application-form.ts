@@ -4,6 +4,7 @@ import {
   getApplicantFieldsForRole,
   getApplicantRoleConfig,
   SECTIONS,
+  dataReferences,
   type ApplicantField
 } from './applicant-field-config'
 import type { ApplicantRole, ApplicantFormData } from './applicant-types'
@@ -165,19 +166,25 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         const sectionId = rel.section_override_id || field.default_section_id
         const section = sectionsData?.find((s) => s.id === sectionId)
 
+        const uiMetadata = field.ui_metadata || {}
+        const optionsRef = uiMetadata.optionsRef
+
         // Resolve options with translations
-        const resolvedOptions = field.options?.map((opt: any) => ({
+        let resolvedOptions = field.options?.map((opt: any) => ({
           label: getVal(opt.label),
           value: opt.value
         }))
+
+        // Resolve options from static references (e.g. graduationYears) if not set in DB
+        if (!resolvedOptions && optionsRef && dataReferences[optionsRef]) {
+          resolvedOptions = dataReferences[optionsRef]
+        }
 
         // Resolve text content for paragraphs from text_blocks
         let resolvedContent = null
         if (field.content_ref && textBlocksMap[field.content_ref]) {
           resolvedContent = getVal(textBlocksMap[field.content_ref])
         }
-
-        const uiMetadata = field.ui_metadata || {}
 
         return {
           name: field.id,

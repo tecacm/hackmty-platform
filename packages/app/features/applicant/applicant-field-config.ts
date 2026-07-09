@@ -21,7 +21,7 @@ const graduationYearOptions = Array.from({ length: 6 }, (_, index) => {
 })
 
 // Map for resolving data references in JSON
-const dataReferences: Record<string, any[]> = {
+export const dataReferences: Record<string, any[]> = {
   universities,
   countries,
   majors,

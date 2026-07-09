@@ -1,17 +1,23 @@
 'use client'
-import { useServerInsertedHTML } from 'next/navigation'
+import { useState } from 'react'
 import { StyleSheet } from 'react-native'
 
 export function StylesProvider({ children }: { children: React.ReactNode }) {
-  useServerInsertedHTML(() => {
-    // @ts-ignore
-    const sheet = StyleSheet.getSheet()
-    return (
+  // Cache the sheet text content and ID in component state so they match
+  // during hydration and remain stable across client-side page updates.
+  // @ts-ignore
+  const [initialStyles] = useState(() => StyleSheet.getSheet().textContent)
+  // @ts-ignore
+  const [sheetId] = useState(() => StyleSheet.getSheet().id)
+
+  return (
+    <>
       <style
-        dangerouslySetInnerHTML={{ __html: sheet.textContent }}
-        id={sheet.id}
+        id={sheetId}
+        dangerouslySetInnerHTML={{ __html: initialStyles }}
+        suppressHydrationWarning
       />
-    )
-  })
-  return <>{children}</>
+      {children}
+    </>
+  )
 }

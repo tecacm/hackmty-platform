@@ -42,14 +42,22 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
     fontSize: 16,
     border: 'none',
     outline: 'none',
-    appearance: 'none', // Remove default dropdown arrow
-    WebkitAppearance: 'none', // For Safari
-    MozAppearance: 'none', // For Firefox
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747474' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 0px center',
+    backgroundSize: '18px',
+    cursor: 'pointer',
   }
 
   return (
     <View style={formFieldStyles.container}>
-      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
+      <Text style={[formFieldStyles.label, additionalStyle]}>
+        {label}
+        {required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}
+      </Text>
       <View style={combinedStyle}>
         <select
           aria-label={label}
