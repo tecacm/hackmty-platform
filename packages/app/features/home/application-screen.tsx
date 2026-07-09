@@ -1,6 +1,6 @@
 'use client'
 
-import { Dimensions, Text, View, useWindowDimensions } from 'react-native'
+import { Dimensions, Text, View, useWindowDimensions, ActivityIndicator } from 'react-native'
 import { SolitoImage } from 'solito/image'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
@@ -11,6 +11,7 @@ import { useSearchParams } from 'solito/navigation'
 import { ApplicantForm } from 'app/features/applicant/ApplicantForm'
 import { ApplicantRole } from 'app/features/applicant/applicant-types'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
+import { useApplicationForm } from 'app/features/applicant/use-application-form'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
 
 
@@ -58,10 +59,17 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
   const applicantRole: ApplicantRole = roleFromParams ?? ''
   const applicantRoleLabel = getApplicantRoleLabel(applicantRole)
 
-  const onSubmit = (data: unknown) => {
-    console.log("Hackathon Registration Data:", data)
-    // Send to Supabase/Firebase/Auth0
-  }
+  const {
+    isLoading: isConfigLoading,
+    error: configError,
+    fields,
+    initialValues,
+    disabledFields,
+    status,
+    onSubmit,
+    onSaveDraft,
+    systemLinks
+  } = useApplicationForm(applicantRole, 'en')
 
   useEffect(() => {
     setIsHydrated(true)
@@ -145,12 +153,28 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
       }}
     >
         <View style={[styles.container, { width: '90%', maxWidth: 1000 }]}>
-          <ApplicantForm
-            role={applicantRole}
-            onSubmit={(data) => {
-              console.log('Hacker application submitted', data)
-            }}
-          />
+          {isConfigLoading ? (
+            <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
+              <ActivityIndicator size="large" color="#ffffff" />
+              <Text style={{ color: '#ffffff', fontSize: 16 }}>Loading application...</Text>
+            </View>
+          ) : configError ? (
+            <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
+              <Text style={{ color: '#ff4444', fontSize: 18, fontWeight: '700' }}>Failed to Load Application</Text>
+              <Text style={{ color: '#ffffff', textAlign: 'center' }}>{configError}</Text>
+            </View>
+          ) : (
+            <ApplicantForm
+              role={applicantRole}
+              fields={fields}
+              initialValues={initialValues}
+              disabledFields={disabledFields}
+              status={status}
+              onSubmit={onSubmit}
+              onSaveDraft={onSaveDraft}
+              systemLinks={systemLinks}
+            />
+          )}
         </View>          
     </ParallaxScrollView>
   )

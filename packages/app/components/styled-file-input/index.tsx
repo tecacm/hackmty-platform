@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, TextStyle, ViewStyle } from 'react-native'
+import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
 
 type StyledFileInputProps = {
@@ -71,6 +72,7 @@ export function StyledFileInput({
 }: StyledFileInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [localError, setLocalError] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
   const {
     acceptedMimeTypes = [],
     acceptedExtensions = [],
@@ -81,7 +83,9 @@ export function StyledFileInput({
   } = fileSelectorProps
 
   const openPicker = () => {
-    inputRef.current?.click()
+    if (!isUploading) {
+      inputRef.current?.click()
+    }
   }
 
   return (
@@ -91,16 +95,20 @@ export function StyledFileInput({
       </Text>
       <Pressable
         onPress={openPicker}
+        disabled={isUploading}
         style={({ pressed }) => [
           formFieldStyles.fieldShell,
           styles.trigger,
           additionalStyle,
           error && formFieldStyles.errorInput,
           pressed && styles.triggerPressed,
+          isUploading && { opacity: 0.6 }
         ]}
       >
-        <Text style={[styles.triggerText, !value && styles.placeholderText]}>{getDisplayLabel(value, placeholder)}</Text>
-        <Text style={styles.actionText}>Browse</Text>
+        <Text style={[styles.triggerText, !value && styles.placeholderText]}>
+          {isUploading ? 'Uploading file...' : getDisplayLabel(value, placeholder)}
+        </Text>
+        <Text style={styles.actionText}>{isUploading ? 'Uploading...' : 'Browse'}</Text>
       </Pressable>
       <input
         ref={inputRef}
@@ -108,7 +116,7 @@ export function StyledFileInput({
         accept={buildAcceptValue(acceptedMimeTypes, acceptedExtensions)}
         hidden
         title={label}
-        onChange={(event) => {
+        onChange={async (event) => {
           const file = event.target.files?.[0]
           if (!file) {
             setLocalError('')
@@ -133,8 +141,42 @@ export function StyledFileInput({
           }
 
           setLocalError('')
-          onValueChange(file.name)
-          event.target.value = ''
+
+          // FALLBACK PATH: If Supabase is not configured, fallback to just setting name
+          if (!isSupabaseConfigured) {
+            onValueChange(file.name)
+            event.target.value = ''
+            return
+          }
+
+          try {
+            setIsUploading(true)
+            
+            const { data: { user }, error: authError } = await supabase.auth.getUser()
+            if (authError || !user) {
+              throw new Error('Please log in before uploading files.')
+            }
+
+            const fileExt = file.name.split('.').pop()
+            const filePath = `${user.id}/resume.${fileExt}`
+
+            // Upload the file payload directly to storage
+            const { error: uploadError } = await supabase.storage
+              .from('resumes')
+              .upload(filePath, file, { upsert: true })
+
+            if (uploadError) throw uploadError
+
+            // Save the storage file path
+            onValueChange(filePath)
+          } catch (err: any) {
+            console.error('File upload error:', err)
+            setLocalError(err.message || 'Failed to upload file.')
+            onValueChange('')
+          } finally {
+            setIsUploading(false)
+            event.target.value = ''
+          }
         }}
       />
       {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}

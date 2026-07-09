@@ -1,8 +1,7 @@
-'use client'
-
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, ReactNode } from 'react'
 import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native'
 import { useForm, Controller } from 'react-hook-form'
+import { TextLink } from 'solito/link'
 import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
 import { StyledAutocomplete } from 'app/components/styled-autocomplete'
@@ -11,15 +10,20 @@ import { StyledFileInput } from 'app/components/styled-file-input'
 import { FormCheckbox } from 'app/components/form-checkbox'
 import FormRadio from 'app/components/form-radio'
 import { PillButton } from 'app/components/pill-button'
-import { getApplicantFieldsForRole } from './applicant-field-config'
+import { getApplicantFieldsForRole, type ApplicantField } from './applicant-field-config'
 import applicationFieldsConfig from 'app/data/application-fields.json'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
 import { formFieldColors } from 'app/components/form-field-styles'
 
 type ApplicantFormProps = {
   role: ApplicantRole
+  fields?: ApplicantField[]
   initialValues?: Partial<ApplicantFormData>
+  disabledFields?: string[]
+  status?: string | null
   onSubmit: (data: ApplicantFormData) => void
+  onSaveDraft?: (data: ApplicantFormData) => void
+  systemLinks?: Record<string, { text: any; href: string }>
 }
 
 type SectionRow<T> =
@@ -90,8 +94,53 @@ function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): Sectio
   return rows
 }
 
-export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantFormProps) {
-  const allFields = getApplicantFieldsForRole(role)
+// Helper to create React component for hyperlinked labels
+const createMLHLink = (text: string, href: string) =>
+  React.createElement(
+    TextLink,
+    { href, style: { color: applicationFieldsConfig.styles.linkColor, textDecorationLine: applicationFieldsConfig.styles.linkDecoration }, children: text }
+  )
+
+// Helper function to build React components from composite label definitions
+const buildCompositeLabel = (labelDef: any, systemLinks: Record<string, { text: any; href: string }> = {}): ReactNode => {
+  if (!labelDef) return ''
+  if (typeof labelDef === 'string') return labelDef
+  if (!labelDef.parts) return ''
+  
+  const titleColor = formFieldColors.titleText
+  
+  const parts = labelDef.parts.map((part: any) => {
+    if (part.type === 'text') return part.content
+    if (part.type === 'space') return ' '
+    if (part.type === 'link' && part.linkRef) {
+      const linkDef = systemLinks[part.linkRef] || (applicationFieldsConfig.links as any)[part.linkRef]
+      if (!linkDef) return part.linkRef
+      const linkText = typeof linkDef.text === 'object' && linkDef.text !== null
+        ? (linkDef.text.en || linkDef.text)
+        : linkDef.text
+      return createMLHLink(linkText, linkDef.href)
+    }
+    return null
+  }).filter(Boolean)
+  
+  return React.createElement(
+    Text,
+    { style: { color: titleColor } },
+    ...parts
+  )
+}
+
+export function ApplicantForm({
+  role,
+  fields: propFields,
+  initialValues = {},
+  disabledFields = [],
+  status = null,
+  onSubmit,
+  onSaveDraft,
+  systemLinks = {}
+}: ApplicantFormProps) {
+  const allFields = propFields || getApplicantFieldsForRole(role)
   const { width } = useWindowDimensions()
   const [isReady, setIsReady] = useState(false)
   const isWide = width >= 520
@@ -109,7 +158,9 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
   type SectionRef = string | { id: string; label?: string; order?: number }
 
-  const { control, handleSubmit, watch, formState: { errors } } = useForm<Partial<ApplicantFormData>>({
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+
+  const { control, handleSubmit, watch, reset, formState: { errors, isDirty } } = useForm<Partial<ApplicantFormData>>({
     defaultValues: {
       ...defaultValues,
       ...(initialValues as object),
@@ -117,6 +168,38 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
   })
 
   const currentValues = watch()
+
+  // Populate form with initial values when they are loaded and ready
+  useEffect(() => {
+    if (isReady && initialValues && Object.keys(initialValues).length > 0) {
+      reset({
+        ...defaultValues,
+        ...(initialValues as object),
+      } as Partial<ApplicantFormData>)
+    }
+  }, [initialValues, isReady, reset])
+
+  // Auto-save draft on change when form is dirty
+  useEffect(() => {
+    if (!onSaveDraft || !isReady || !isDirty) return
+
+    setSaveStatus('saving')
+    const handler = setTimeout(async () => {
+      try {
+        await onSaveDraft(currentValues as ApplicantFormData)
+        reset(currentValues) // Reset form defaultValues to currentValues to clear isDirty flag
+        setSaveStatus('saved')
+      } catch (err) {
+        console.error('Failed to auto-save draft:', err)
+        setSaveStatus('idle')
+      }
+    }, 1500)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [currentValues, onSaveDraft, isReady, isDirty, reset])
+
   const roleFieldNames = new Set(allFields.map((field: any) => field.name))
 
   const fields = allFields.filter((field: any) => {
@@ -189,20 +272,25 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                   if ((field as any).fieldType === 'divider' || (field as any).fieldType === 'paragraph') return null
 
                   const ff: any = field
+                  const resolvedLabel = typeof ff.label === 'object' && ff.label !== null
+                    ? buildCompositeLabel(ff.label, systemLinks)
+                    : ff.label
+
+                  const displayLabelString = typeof ff.label === 'string' ? ff.label : (ff.validationLabel ?? 'This field')
 
                   return (
                     <View key={ff.name} style={[styles.rowField, isWide ? styles.rowFieldWide : styles.rowFieldNarrow]}>
                       <Controller
                         control={control}
                         name={ff.name as any}
-                        rules={{ required: ff.required ? `${ff.validationLabel ?? ff.label ?? "This" } is required` : false }}
+                        rules={{ required: ff.required ? `${ff.validationLabel ?? displayLabelString} is required` : false }}
                         render={({ field: { onChange, value } }) => {
                           if (ff.fieldType === 'checkbox') {
                             const checked = !!value
                             return (
                               <FormCheckbox
                                 variant="form"
-                                label={ff.label}
+                                label={resolvedLabel}
                                 subtitle={ff.subtitle}
                                 required={!!ff.required}
                                 value={checked}
@@ -222,7 +310,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
                             return (
                               <FormRadio
-                                title={ff.label}
+                                title={resolvedLabel}
                                 options={ff.options || []}
                                 multiple={!!ff.multiple}
                                 layout={ff.layout || 'vertical'}
@@ -242,7 +330,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                           if (ff.fieldType === 'select' && ff.options?.length) {
                             return (
                               <StyledSelect
-                                label={ff.label}
+                                label={resolvedLabel}
                                 value={controlledValue}
                                 placeholder={ff.placeholder}
                                 options={ff.options}
@@ -258,7 +346,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                           if (ff.fieldType === 'autocomplete' && ff.autocompleteData?.length) {
                             return (
                               <StyledAutocomplete
-                                label={ff.label}
+                                label={resolvedLabel}
                                 placeholder={ff.placeholder}
                                 subtitle={ff.subtitle}
                                 required={ff.required}
@@ -275,7 +363,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                           if (ff.fieldType === 'segmented' && ff.options?.length) {
                             return (
                               <StyledSegmented
-                                label={ff.label}
+                                label={resolvedLabel}
                                 value={controlledValue}
                                 options={ff.options}
                                 subtitle={ff.subtitle}
@@ -290,7 +378,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                           if (ff.fieldType === 'file') {
                             return (
                               <StyledFileInput
-                                label={ff.label}
+                                label={resolvedLabel}
                                 value={controlledValue}
                                 placeholder={ff.placeholder}
                                 subtitle={ff.subtitle}
@@ -305,7 +393,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
                           return (
                             <StyledInput
-                              label={ff.label}
+                              label={resolvedLabel}
                               placeholder={ff.placeholder}
                               subtitle={ff.subtitle}
                               required={ff.required}
@@ -315,6 +403,7 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
                               onChangeText={onChange}
                               value={controlledValue}
                               error={(errors as any)[ff.name]?.message}
+                              editable={!disabledFields.includes(ff.name)}
                             />
                           )
                         }}
@@ -328,7 +417,31 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
         </View>
       ))}
 
-      <PillButton title="Submit" onPress={handleSubmit((data) => onSubmit(data as ApplicantFormData))} /> 
+      <View style={styles.buttonRow}>
+        <PillButton
+          title={status === 'submitted' ? 'Submitted' : 'Submit'}
+          onPress={handleSubmit(async (data) => {
+            try {
+              await onSubmit(data as ApplicantFormData)
+              alert('Application submitted successfully!')
+            } catch (e) {
+              alert('Failed to submit application.')
+            }
+          })}
+          additionalStyle={styles.submitButton}
+        />
+      </View>
+
+      {saveStatus === 'saving' && (
+        <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 10, fontStyle: 'italic', textAlign: 'center' }}>
+          Saving draft progress...
+        </Text>
+      )}
+      {saveStatus === 'saved' && (
+        <Text style={{ color: '#10b981', fontSize: 13, marginTop: 10, fontWeight: '600', textAlign: 'center' }}>
+          ✓ Progress saved automatically
+        </Text>
+      )}
     </View>
   )
 }
@@ -436,5 +549,21 @@ const styles = StyleSheet.create({
         textShadow: '0px 12px 32px rgba(34, 0, 44, 0.12)',
       }
     })
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 16,
+    width: '100%',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  draftButton: {
+    backgroundColor: '#6b7280',
+    flex: 1,
+    maxWidth: 200,
+  },
+  submitButton: {
+    flex: 1,
+    maxWidth: 200,
   },
 })

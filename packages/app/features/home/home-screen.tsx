@@ -1,6 +1,6 @@
 'use client'
 
-import { Dimensions, Text, View, useWindowDimensions } from 'react-native'
+import { Dimensions, Text, View, useWindowDimensions, ActivityIndicator } from 'react-native'
 import { SolitoImage } from 'solito/image'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
@@ -9,6 +9,7 @@ import { StyleSheet, Platform } from 'react-native'
 import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import { PillButton } from 'app/components/pill-button'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
+import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
 import { getApplicationTypes, getApplicantFieldsForRole, getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { formFieldColors, formFieldStyles } from 'app/components/form-field-styles'
@@ -116,7 +117,9 @@ export function HomeScreen() {
   const [isWide, setIsWide] = useState(false);
   const { width } = useWindowDimensions();
   const [height, setHeight] = useState(0);
-  const applicationTypes = getApplicationTypes()
+  
+  const [rolesList, setRolesList] = useState<Array<{ id: string; label: string; fieldCount: number }>>([])
+  const [isRolesLoading, setIsRolesLoading] = useState(true)
 
   const handleApply = (role: string) => {
     navigateTo({
@@ -124,6 +127,69 @@ export function HomeScreen() {
       query: { role },
     })
   }
+
+  useEffect(() => {
+    async function loadRoles() {
+      setIsRolesLoading(true)
+      
+      if (!isSupabaseConfigured) {
+        const staticTypes = getApplicationTypes()
+        const items = staticTypes.map(t => ({
+          id: t.id,
+          label: t.label,
+          fieldCount: getApplicantFieldsForRole(t.id).length
+        }))
+        setRolesList(items)
+        setIsRolesLoading(false)
+        return
+      }
+
+      try {
+        const { data: types, error: typesError } = await supabase
+          .from('application_types')
+          .select('id, label')
+        
+        if (typesError) throw typesError
+
+        const { data: relations, error: relError } = await supabase
+          .from('application_type_fields')
+          .select('application_type_id, field_id')
+
+        if (relError) throw relError
+
+        const countsMap: Record<string, number> = {}
+        relations?.forEach(r => {
+          countsMap[r.application_type_id] = (countsMap[r.application_type_id] || 0) + 1
+        })
+
+        const getVal = (val: any) => {
+          if (!val) return ''
+          if (typeof val === 'object') return val.en || val
+          return val
+        }
+
+        const items = (types || []).map(t => ({
+          id: t.id,
+          label: getVal(t.label),
+          fieldCount: countsMap[t.id] || 0
+        }))
+        setRolesList(items)
+      } catch (err) {
+        console.error('Failed to load dynamic roles, falling back to static config:', err)
+        const staticTypes = getApplicationTypes()
+        const items = staticTypes.map(t => ({
+          id: t.id,
+          label: t.label,
+          fieldCount: getApplicantFieldsForRole(t.id).length
+        }))
+        setRolesList(items)
+      } finally {
+        setIsRolesLoading(false)
+      }
+    }
+
+    loadRoles()
+  }, [])
 
   useEffect(() => {
     setIsHydrated(true)
@@ -205,25 +271,28 @@ export function HomeScreen() {
             <Text style={formFieldStyles.label}>Choose the role that matches your profile and continue to the application for that track.</Text>
 
             <View style={styles.roleList}>
-              {applicationTypes.map((applicationType) => {
-                const fieldCount = getApplicantFieldsForRole(applicationType.id).length
-                const applicantRoleLabel = getApplicantRoleLabel(applicationType.id)
+              {isRolesLoading ? (
+                <ActivityIndicator size="large" color="#5a0061" style={{ marginVertical: 30 }} />
+              ) : (
+                rolesList.map((applicationType) => {
+                  const applicantRoleLabel = getApplicantRoleLabel(applicationType.id)
 
-                return (
-                  <View key={applicationType.id} style={styles.roleCard}>
-                    <View style={styles.roleCardHeader}>
-                      <Text style={styles.roleCardCount}>{fieldCount} questions</Text>
-                      <Text style={styles.roleCardLabel}>{applicationType.label}</Text>
-                      <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                  return (
+                    <View key={applicationType.id} style={styles.roleCard}>
+                      <View style={styles.roleCardHeader}>
+                        <Text style={styles.roleCardCount}>{applicationType.fieldCount} questions</Text>
+                        <Text style={styles.roleCardLabel}>{applicationType.label}</Text>
+                        <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                      </View>
+                      <PillButton
+                        title={`Apply as ${applicationType.label}`}
+                        onPress={() => handleApply(applicationType.id)}
+                        additionalStyle={styles.roleButton}
+                      />
                     </View>
-                    <PillButton
-                      title={`Apply as ${applicationType.label}`}
-                      onPress={() => handleApply(applicationType.id)}
-                      additionalStyle={styles.roleButton}
-                    />
-                  </View>
-                )
-              })}
+                  )
+                })
+              )}
             </View>
           </View>
         </View>          

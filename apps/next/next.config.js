@@ -69,12 +69,20 @@ const withTurpopack = {
  */
 module.exports = {
   transpilePackages: [
+    'app',
     'react-native',
     'react-native-web',
     'solito',
     'react-native-reanimated',
     'moti',
     'react-native-gesture-handler',
+    'react-native-safe-area-context',
+    '@react-native-segmented-control/segmented-control',
+    'dripsy',
+    'expo-image',
+    'expo-blur',
+    'expo-document-picker',
+    'expo-linear-gradient',
   ],
 
   compiler: {
