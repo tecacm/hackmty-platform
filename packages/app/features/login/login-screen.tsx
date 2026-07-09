@@ -181,6 +181,7 @@ export function LoginScreen() {
                 onChangeText={onChange}
                 value={value}
                 error={errors.email?.message}
+                onSubmitEditing={handleSubmit(onSubmit)}
               />
             )}
           />
@@ -197,6 +198,7 @@ export function LoginScreen() {
                 onChangeText={onChange}
                 value={value}
                 error={errors.password?.message}
+                onSubmitEditing={handleSubmit(onSubmit)}
               />
             )}
           />

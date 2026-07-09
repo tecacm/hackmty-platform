@@ -212,6 +212,7 @@ export function ForgotPasswordScreen() {
               onChangeText={onChange}
               value={value}
               error={errors.email?.message}
+              onSubmitEditing={handleSubmit(onSubmit)}
             />
           )}
         />

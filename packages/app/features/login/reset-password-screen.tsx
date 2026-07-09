@@ -214,6 +214,7 @@ export function ResetPasswordScreen() {
               onChangeText={onChange}
               value={value}
               error={errors.password?.message}
+              onSubmitEditing={handleSubmit(onSubmit)}
             />
           )}
         />
@@ -234,6 +235,7 @@ export function ResetPasswordScreen() {
               onChangeText={onChange}
               value={value}
               error={errors.confirmPassword?.message}
+              onSubmitEditing={handleSubmit(onSubmit)}
             />
           )}
         />

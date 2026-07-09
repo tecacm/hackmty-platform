@@ -195,7 +195,7 @@ export function RegisterScreen() {
                   name="firstName"
                   rules={{ required: 'First name is required' }}
                   render={({ field: { onChange, value } }) => (
-                    <StyledInput label="First Name" placeholder="Enter your first name" textContentType={"name"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.firstName?.message}/>
+                    <StyledInput label="First Name" placeholder="Enter your first name" textContentType={"name"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.firstName?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
                   )}
                 />
               </View>
@@ -205,7 +205,7 @@ export function RegisterScreen() {
                   name="lastName"
                   rules={{ required: 'Last name is required' }}
                   render={({ field: { onChange, value } }) => (
-                    <StyledInput label="Last Name" placeholder="Enter your last name" textContentType={"familyName"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.lastName?.message}/>
+                    <StyledInput label="Last Name" placeholder="Enter your last name" textContentType={"familyName"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.lastName?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
                   )}
                 />
               </View>
@@ -215,7 +215,7 @@ export function RegisterScreen() {
             name="email"
             rules={{ required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' } }}
             render={({ field: { onChange, value } }) => (
-                <StyledInput label="Email Address" placeholder="Enter your email" textContentType={"emailAddress"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.email?.message}/>
+                <StyledInput label="Email Address" placeholder="Enter your email" textContentType={"emailAddress"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.email?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
             )}
           />
           <Controller
@@ -223,7 +223,7 @@ export function RegisterScreen() {
             name="password"
             rules={{ required: 'Password is required' }}
             render={({ field: { onChange, value } }) => (
-                <StyledInput label="Password" placeholder="Enter your password" textContentType={"password"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.password?.message}/>
+                <StyledInput label="Password" placeholder="Enter your password" textContentType={"password"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.password?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
             )}
           />
           <Controller
@@ -234,7 +234,7 @@ export function RegisterScreen() {
               validate: (value) => value === password || 'The passwords do not match'
             }}
             render={({ field: { onChange, value } }) => (
-                <StyledInput label="Confirm Password" placeholder="Confirm your password" textContentType={"password"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.confirmPassword?.message}/>
+                <StyledInput label="Confirm Password" placeholder="Confirm your password" textContentType={"password"} additionalStyle={styles.shadowStyle} onChangeText={onChange} value={value} error={errors.confirmPassword?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
             )}
           />
           <Controller
