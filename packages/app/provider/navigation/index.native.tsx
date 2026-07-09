@@ -15,7 +15,7 @@ export function NavigationProvider({
           config: {
             initialRouteName: 'login',
             screens: {
-              login: '',
+              login: 'login',
               register: 'register',
               tabs: {
                 path: '',

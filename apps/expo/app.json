@@ -20,7 +20,9 @@
     },
     "plugins": [
       "expo-image",
-      "./sdk-lockdown"
+      "./sdk-lockdown",
+      "expo-splash-screen",
+      "expo-status-bar"
     ],
     "android": {
       "package": "com.hackmty"
