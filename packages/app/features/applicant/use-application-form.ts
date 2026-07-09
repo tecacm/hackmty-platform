@@ -213,7 +213,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       // 8. Fetch user's profile details to prefill info
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('first_name, last_name')
+        .select('first_name, last_name, phone, gender, university, major, graduation_year, level_of_study, tshirt_size, dietary_restrictions, github, devpost, linkedin, personal_site, resume_url')
         .eq('id', user.id)
         .maybeSingle()
 
@@ -243,11 +243,25 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         disabled.push('email')
       }
 
-      const phoneVal = user?.phone || user?.user_metadata?.phone
+      // Prefill phone from profiles first, fallback to user metadata (but do not disable so it remains editable)
+      const phoneVal = profileData?.phone || user?.phone || user?.user_metadata?.phone
       if (phoneVal) {
         profileValues.phone = phoneVal
-        disabled.push('phone')
       }
+
+      // Prefill other profile values
+      if (profileData?.gender) profileValues.gender = profileData.gender
+      if (profileData?.university) profileValues.university = profileData.university
+      if (profileData?.major) profileValues.major = profileData.major
+      if (profileData?.graduation_year) profileValues.year = profileData.graduation_year
+      if (profileData?.level_of_study) profileValues.levelOfStudy = profileData.level_of_study
+      if (profileData?.tshirt_size) profileValues.tshirt = profileData.tshirt_size
+      if (profileData?.dietary_restrictions) profileValues.diet = profileData.dietary_restrictions
+      if (profileData?.github) profileValues.github = profileData.github
+      if (profileData?.devpost) profileValues.devpost = profileData.devpost
+      if (profileData?.linkedin) profileValues.linkedin = profileData.linkedin
+      if (profileData?.personal_site) profileValues.personalSite = profileData.personal_site
+      if (profileData?.resume_url) profileValues.resume = profileData.resume_url
 
       setDisabledFields(disabled)
 
@@ -311,6 +325,37 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         )
 
       if (saveError) throw saveError
+
+      // Mirror core values to the user profiles table on draft save
+      const getStr = (val: any) => typeof val === 'string' ? val : null
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          first_name: getStr(answers.firstName),
+          last_name: getStr(answers.lastName),
+          agree_mlh: Boolean(answers.privacyPolicy && answers.codeOfConduct),
+          subscribe_mailing_list: Boolean(answers.mlhEmails),
+          phone: getStr(answers.phone),
+          gender: getStr(answers.gender),
+          university: getStr(answers.university),
+          major: getStr(answers.major),
+          graduation_year: getStr(answers.year),
+          level_of_study: getStr(answers.levelOfStudy),
+          tshirt_size: getStr(answers.tshirt),
+          dietary_restrictions: getStr(answers.diet),
+          github: getStr(answers.github),
+          devpost: getStr(answers.devpost),
+          linkedin: getStr(answers.linkedin),
+          personal_site: getStr(answers.personalSite),
+          resume_url: getStr(answers.resume)
+        })
+
+      if (profileError) {
+        console.warn('Failed to sync profile information on draft save:', profileError)
+      }
+
       setStatus('draft')
       setInitialValues(answers)
       console.log('Draft saved successfully!')
@@ -350,14 +395,29 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       if (saveError) throw saveError
 
       // 2. Mirror core values to the user profiles table
+      const getStr = (val: any) => typeof val === 'string' ? val : null
+
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
-          first_name: typeof answers.firstName === 'string' ? answers.firstName : null,
-          last_name: typeof answers.lastName === 'string' ? answers.lastName : null,
+          first_name: getStr(answers.firstName),
+          last_name: getStr(answers.lastName),
           agree_mlh: Boolean(answers.privacyPolicy && answers.codeOfConduct),
-          subscribe_mailing_list: Boolean(answers.mlhEmails)
+          subscribe_mailing_list: Boolean(answers.mlhEmails),
+          phone: getStr(answers.phone),
+          gender: getStr(answers.gender),
+          university: getStr(answers.university),
+          major: getStr(answers.major),
+          graduation_year: getStr(answers.year),
+          level_of_study: getStr(answers.levelOfStudy),
+          tshirt_size: getStr(answers.tshirt),
+          dietary_restrictions: getStr(answers.diet),
+          github: getStr(answers.github),
+          devpost: getStr(answers.devpost),
+          linkedin: getStr(answers.linkedin),
+          personal_site: getStr(answers.personalSite),
+          resume_url: getStr(answers.resume)
         })
 
       if (profileError) {
