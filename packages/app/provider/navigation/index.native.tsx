@@ -20,6 +20,8 @@ export function NavigationProvider({
               home: 'home',
               application: 'application',
               'user-detail': 'users/:id',
+              'forgot-password': 'forgot-password',
+              'reset-password': 'reset-password',
             },
           },
         }),

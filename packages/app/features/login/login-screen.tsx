@@ -145,14 +145,19 @@ export function LoginScreen() {
     >
         <View style={styles.container}>
           <View style={styles.shadowStyle}>
-            <SolitoImage
-              src={logoImage}
-              height={300}
-              width={200}
-              alt={"The HackMTY Logo"}
-              contentFit="contain"
-              resizeMode="contain"
-            />
+            {(() => {
+              const ImageComponent = SolitoImage as any
+              return (
+                <ImageComponent
+                  src={logoImage}
+                  height={300}
+                  width={200}
+                  alt="The HackMTY Logo"
+                  contentFit="contain"
+                  resizeMode="contain"
+                />
+              )
+            })()}
           </View>
         </View>
         <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
@@ -202,7 +207,7 @@ export function LoginScreen() {
             additionalStyle={{ marginBottom: 10, opacity: isSubmitting ? 0.7 : 1 }}
           />
           <SimpleTextLink text="Don't have an account? Sign Up" onPress={goToRegister}/>
-          <SimpleTextLink text="Forgot your password?" onPress={() => {}}/>
+          <SimpleTextLink text="Forgot your password?" onPress={() => navigateTo('/forgot-password')}/>
         </View>
     </ParallaxScrollView>
   )

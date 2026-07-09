@@ -2,6 +2,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
 import { LoginScreen } from 'app/features/login/login-screen'
 import { RegisterScreen } from 'app/features/login/register-screen'
+import { ForgotPasswordScreen } from 'app/features/login/forgot-password-screen'
+import { ResetPasswordScreen } from 'app/features/login/reset-password-screen'
 import { UserDetailScreen } from 'app/features/user/detail-screen'
 import { HomeScreen } from 'app/features/home/home-screen'  
 import { ApplicationScreen } from 'app/features/home/application-screen'
@@ -10,7 +12,9 @@ import { formFieldColors } from 'app/components/form-field-styles'
 
 const Stack = createNativeStackNavigator<{
   login: undefined
-  register: undefined,
+  register: undefined
+  'forgot-password': undefined
+  'reset-password': undefined
   home: undefined
   application: {
     role?: string
@@ -40,6 +44,26 @@ export function NativeNavigation() {
       <Stack.Screen
         name="register"
         component={RegisterScreen}
+        options={{
+          headerShown: true,
+          headerTitle: '',
+          headerTransparent: true,
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="forgot-password"
+        component={ForgotPasswordScreen}
+        options={{
+          headerShown: true,
+          headerTitle: '',
+          headerTransparent: true,
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="reset-password"
+        component={ResetPasswordScreen}
         options={{
           headerShown: true,
           headerTitle: '',

@@ -35,7 +35,6 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   shadowStyle: {
-    color: '#ececec',
     ...Platform.select({
       native: {
         shadowColor: '#000000',
@@ -175,12 +174,17 @@ export function RegisterScreen() {
     >
         <View style={styles.container}>
           <View style={styles.shadowStyle}>
-            <SolitoImage
-              src={logoImage}
-              height={300}
-              width={200} 
-              alt={"The HackMTY Logo"}
-            />
+            {(() => {
+              const ImageComponent = SolitoImage as any
+              return (
+                <ImageComponent
+                  src={logoImage}
+                  height={300}
+                  width={200}
+                  alt="The HackMTY Logo"
+                />
+              )
+            })()}
           </View>
         </View>
         <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
