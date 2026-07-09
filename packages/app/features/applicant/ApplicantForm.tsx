@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ReactNode } from 'react'
+import React, { useState, useEffect, useRef, ReactNode } from 'react'
 import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native'
 import { useForm, Controller } from 'react-hook-form'
 import { TextLink } from 'solito/link'
@@ -168,14 +168,21 @@ export function ApplicantForm({
   })
 
   const currentValues = watch()
+  const isInitialized = useRef(false)
 
-  // Populate form with initial values when they are loaded and ready
+  // Reset initialization flag when role changes
   useEffect(() => {
-    if (isReady && initialValues && Object.keys(initialValues).length > 0) {
+    isInitialized.current = false
+  }, [role])
+
+  // Populate form with initial values when they are loaded and ready (only once per mount/role change)
+  useEffect(() => {
+    if (isReady && initialValues && Object.keys(initialValues).length > 0 && !isInitialized.current) {
       reset({
         ...defaultValues,
         ...(initialValues as object),
       } as Partial<ApplicantFormData>)
+      isInitialized.current = true
     }
   }, [initialValues, isReady, reset])
 
@@ -187,7 +194,8 @@ export function ApplicantForm({
     const handler = setTimeout(async () => {
       try {
         await onSaveDraft(currentValues as ApplicantFormData)
-        reset(currentValues) // Reset form defaultValues to currentValues to clear isDirty flag
+        // Reset defaultValues to currentValues to clear isDirty flag, but keep active user inputs intact
+        reset(currentValues, { keepValues: true })
         setSaveStatus('saved')
       } catch (err) {
         console.error('Failed to auto-save draft:', err)
