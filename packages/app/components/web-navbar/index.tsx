@@ -1,0 +1,244 @@
+'use client'
+
+import React, { useEffect, useState, useRef } from 'react'
+import { View, Text, Pressable, StyleSheet, Platform, Image } from 'react-native'
+import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
+import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+
+export function WebNavbar() {
+  if (Platform.OS !== 'web') return null
+
+  const { navigateTo } = useSmartNavigate()
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [initials, setInitials] = useState('👤')
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<any>(null)
+
+  useEffect(() => {
+    async function loadUserProfile() {
+      if (!isSupabaseConfigured) return
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, avatar_url')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (profile) {
+          if (profile.first_name || profile.last_name) {
+            const first = (profile.first_name || '').charAt(0).toUpperCase()
+            const last = (profile.last_name || '').charAt(0).toUpperCase()
+            setInitials(`${first}${last}` || '👤')
+          }
+
+          if (profile.avatar_url) {
+            const { data } = supabase.storage
+              .from('avatars')
+              .getPublicUrl(profile.avatar_url)
+            if (data?.publicUrl) {
+              setAvatarUrl(data.publicUrl)
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load user profile in WebNavbar:', err)
+      }
+    }
+
+    loadUserProfile()
+
+    // Handle clicks outside to close dropdown on Web
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  const handleSignOut = async () => {
+    setIsOpen(false)
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut()
+    }
+    navigateTo('/login')
+  }
+
+  return (
+    <View style={styles.navbarContainer}>
+      <View style={styles.navbarInner}>
+        {/* Left Side: Brand Logo */}
+        <Pressable onPress={() => navigateTo('/home')} style={styles.brandContainer}>
+          <Text style={styles.brandText}>HackMTY</Text>
+        </Pressable>
+
+        {/* Center: Main Links */}
+        <View style={styles.linksContainer}>
+          <Pressable onPress={() => navigateTo('/home')} style={styles.navLink}>
+            <Text style={styles.navLinkText}>Home</Text>
+          </Pressable>
+          <Pressable onPress={() => navigateTo('/profile')} style={styles.navLink}>
+            <Text style={styles.navLinkText}>Profile</Text>
+          </Pressable>
+        </View>
+
+        {/* Right Side: Avatar Dropdown */}
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
+          <Pressable onPress={() => setIsOpen(!isOpen)} style={styles.avatarButton}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarFallback}>
+                <Text style={styles.avatarFallbackText}>{initials}</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {isOpen && (
+            <View style={styles.dropdownMenu}>
+              <Pressable
+                onPress={() => {
+                  setIsOpen(false)
+                  navigateTo('/profile')
+                }}
+                style={styles.dropdownItem}
+              >
+                <Text style={styles.dropdownItemText}>My Profile</Text>
+              </Pressable>
+              <View style={styles.divider} />
+              <Pressable onPress={handleSignOut} style={styles.dropdownItem}>
+                <Text style={[styles.dropdownItemText, { color: '#ff6b6b' }]}>Sign Out</Text>
+              </Pressable>
+            </View>
+          )}
+        </div>
+      </View>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  navbarContainer: {
+    width: '100%',
+    height: 64,
+    backgroundColor: 'rgba(29, 4, 31, 0.8)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 1000,
+    ...Platform.select({
+      web: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      } as any,
+    }),
+  },
+  navbarInner: {
+    maxWidth: 1200,
+    width: '100%',
+    height: '100%',
+    marginHorizontal: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+  },
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandText: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  linksContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+  },
+  navLink: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  navLinkText: {
+    color: '#e1e1e1',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  avatarButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#c2b75f',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#3b1c3f',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarFallbackText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 50,
+    right: 0,
+    width: 160,
+    backgroundColor: 'rgba(29, 4, 31, 0.95)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      } as any,
+    }),
+  },
+  dropdownItem: {
+    width: '100%',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  dropdownItemText: {
+    color: '#e1e1e1',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginVertical: 4,
+  },
+})

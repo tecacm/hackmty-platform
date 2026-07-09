@@ -1,6 +1,7 @@
 'use client'
 
 import { Dimensions, Text, View, useWindowDimensions, ActivityIndicator } from 'react-native'
+import { WebNavbar } from 'app/components/web-navbar'
 import { SolitoImage } from 'solito/image'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
@@ -139,19 +140,21 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
   );
 
   return (
-    <ParallaxScrollView
-      background={background}
-      style={{ backgroundColor: '#5a0061cc' }}
-      contentContainerStyle={{
-        alignItems: 'center',
-        gap: 16,
-        paddingTop: topOffset,
-        paddingBottom: insets.bottom,
-        paddingLeft: insets.left,
-        paddingRight: insets.right,
-        overflow: 'visible',
-      }}
-    >
+    <>
+      <WebNavbar />
+      <ParallaxScrollView
+        background={background}
+        style={{ backgroundColor: '#5a0061cc' }}
+        contentContainerStyle={{
+          alignItems: 'center',
+          gap: 16,
+          paddingTop: Platform.OS === 'web' ? 104 : topOffset,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+          overflow: 'visible',
+        }}
+      >
         <View style={[styles.container, { width: '90%', maxWidth: 1000 }]}>
           {isConfigLoading ? (
             <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
@@ -177,5 +180,6 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
           )}
         </View>          
     </ParallaxScrollView>
+    </>
   )
 }

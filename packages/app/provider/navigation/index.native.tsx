@@ -17,7 +17,13 @@ export function NavigationProvider({
             screens: {
               login: '',
               register: 'register',
-              home: 'home',
+              tabs: {
+                path: '',
+                screens: {
+                  home: 'home',
+                  profile: 'profile',
+                },
+              },
               application: 'application',
               'user-detail': 'users/:id',
               'forgot-password': 'forgot-password',
