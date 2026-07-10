@@ -421,9 +421,9 @@ export function ProfileScreen() {
       >
         <View style={styles.formContainer}>
           {isLoading ? (
-            <View style={{ paddingVertical: 80, alignItems: 'center', gap: 12 }}>
-              <ActivityIndicator size="large" color={formFieldColors.theme} />
-              <Text style={{ color: formFieldColors.text, fontSize: 16 }}>Loading profile details...</Text>
+            <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
+              <ActivityIndicator size="large" color="#ffffff" />
+              <Text style={{ color: '#ffffff', fontSize: 16 }}>Loading profile details...</Text>
             </View>
           ) : (
             <View style={styles.innerCard}>

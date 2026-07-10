@@ -4,6 +4,9 @@ import React, { useEffect, useState, useRef } from 'react'
 import { View, Text, Pressable, StyleSheet, Platform, Image } from 'react-native'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+import logoImage from 'app/assets/images/hackmty-logo.webp'
+import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
+import { SolitoImage } from 'solito/image'
 
 export function WebNavbar() {
   if (Platform.OS !== 'web') return null
@@ -75,22 +78,41 @@ export function WebNavbar() {
     <View style={styles.navbarContainer}>
       <View style={styles.navbarInner}>
         {/* Left Side: Brand Logo */}
-        <Pressable onPress={() => navigateTo('/home')} style={styles.brandContainer}>
-          <Text style={styles.brandText}>HackMTY</Text>
-        </Pressable>
-
+        <View style={styles.brandGroup}>
+          <Pressable onPress={() => navigateTo('/home')} style={styles.brandContainer}>
+            <SolitoImage
+              src={logoImage}
+              height={35}
+              alt="The HackMTY Logo"
+              contentFit="contain"
+              resizeMode="contain"
+            />    
+          </Pressable>
+          <View style={{width: 2, height: 35, backgroundColor: "rgba(255,255,255,0.18)"}} />
+          <Pressable onPress={() => navigateTo('https://tec.acm.org')} style={styles.brandContainer}>
+            <SolitoImage
+              src={tecAcm}
+              height={35}
+              alt="The TecACM Logo"
+              contentFit="contain"
+              resizeMode="contain"
+            />    
+          </Pressable>
+        </View>
         {/* Center: Main Links */}
-        <View style={styles.linksContainer}>
+        <View pointerEvents="box-none" style={styles.linksOverlay}>
+          <View style={styles.linksContainer}>
           <Pressable onPress={() => navigateTo('/home')} style={styles.navLink}>
             <Text style={styles.navLinkText}>Home</Text>
           </Pressable>
           <Pressable onPress={() => navigateTo('/profile')} style={styles.navLink}>
             <Text style={styles.navLinkText}>Profile</Text>
           </Pressable>
+          </View>
         </View>
 
         {/* Right Side: Avatar Dropdown */}
-        <div ref={dropdownRef} style={{ position: 'relative' }}>
+        <View ref={dropdownRef} style={styles.dropdownWrapper}>
           <Pressable onPress={() => setIsOpen(!isOpen)} style={styles.avatarButton}>
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
@@ -118,7 +140,7 @@ export function WebNavbar() {
               </Pressable>
             </View>
           )}
-        </div>
+        </View>
       </View>
     </View>
   )
@@ -128,7 +150,7 @@ const styles = StyleSheet.create({
   navbarContainer: {
     width: '100%',
     height: 64,
-    backgroundColor: 'rgba(29, 4, 31, 0.8)',
+    backgroundColor: 'rgba(10, 10, 11, 0.87)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 1000,
@@ -143,6 +165,7 @@ const styles = StyleSheet.create({
     }),
   },
   navbarInner: {
+    position: 'relative',
     maxWidth: 1200,
     width: '100%',
     height: '100%',
@@ -151,6 +174,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
+  },
+  brandGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexShrink: 0,
   },
   brandContainer: {
     flexDirection: 'row',
@@ -166,6 +195,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 24,
+  },
+  linksOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   navLink: {
     paddingVertical: 8,
@@ -203,6 +241,9 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
+  },
+  dropdownWrapper: {
+    position: 'relative',
   },
   dropdownMenu: {
     position: 'absolute',
