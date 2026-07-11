@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { View, Text, Pressable, StyleSheet, Platform, Image } from 'react-native'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+import { usePathname } from 'next/navigation'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
 import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
 import { SolitoImage } from 'solito/image'
@@ -12,6 +13,7 @@ export function WebNavbar() {
   if (Platform.OS !== 'web') return null
 
   const { navigateTo } = useSmartNavigate()
+  const pathname = usePathname()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [initials, setInitials] = useState('👤')
   const [isOpen, setIsOpen] = useState(false)
@@ -25,6 +27,19 @@ export function WebNavbar() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
+        // Load from local cache first to avoid load latency
+        const cacheKey = `user_profile_${user.id}`
+        if (typeof window !== 'undefined') {
+          const cached = localStorage.getItem(cacheKey)
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached)
+              if (parsed.initials) setInitials(parsed.initials)
+              if (parsed.avatarUrl) setAvatarUrl(parsed.avatarUrl)
+            } catch (e) {}
+          }
+        }
+
         const { data: profile } = await supabase
           .from('profiles')
           .select('first_name, last_name, avatar_url')
@@ -32,19 +47,31 @@ export function WebNavbar() {
           .maybeSingle()
 
         if (profile) {
+          let currentInitials = '👤'
           if (profile.first_name || profile.last_name) {
             const first = (profile.first_name || '').charAt(0).toUpperCase()
             const last = (profile.last_name || '').charAt(0).toUpperCase()
-            setInitials(`${first}${last}` || '👤')
+            currentInitials = `${first}${last}` || '👤'
+            setInitials(currentInitials)
           }
 
+          let currentAvatarUrl: string | null = null
           if (profile.avatar_url) {
             const { data } = supabase.storage
               .from('avatars')
               .getPublicUrl(profile.avatar_url)
             if (data?.publicUrl) {
-              setAvatarUrl(data.publicUrl)
+              currentAvatarUrl = data.publicUrl
+              setAvatarUrl(currentAvatarUrl)
             }
+          }
+
+          // Persist to cache
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(cacheKey, JSON.stringify({
+              initials: currentInitials,
+              avatarUrl: currentAvatarUrl,
+            }))
           }
         }
       } catch (err) {
@@ -81,32 +108,70 @@ export function WebNavbar() {
         <View style={styles.brandGroup}>
           <Pressable onPress={() => navigateTo('/home')} style={styles.brandContainer}>
             <SolitoImage
-              src={logoImage}
-              height={35}
-              alt="The HackMTY Logo"
-              contentFit="contain"
-              resizeMode="contain"
+              {...({
+                src: logoImage,
+                height: 35,
+                width: 120,
+                alt: 'The HackMTY Logo',
+                contentFit: 'contain',
+                resizeMode: 'contain',
+              } as any)}
             />    
           </Pressable>
           <View style={{width: 2, height: 35, backgroundColor: "rgba(255,255,255,0.18)"}} />
           <Pressable onPress={() => navigateTo('https://tec.acm.org')} style={styles.brandContainer}>
             <SolitoImage
-              src={tecAcm}
-              height={35}
-              alt="The TecACM Logo"
-              contentFit="contain"
-              resizeMode="contain"
+              {...({
+                src: tecAcm,
+                height: 35,
+                width: 120,
+                alt: 'The TecACM Logo',
+                contentFit: 'contain',
+                resizeMode: 'contain',
+              } as any)}
             />    
           </Pressable>
         </View>
         {/* Center: Main Links */}
         <View pointerEvents="box-none" style={styles.linksOverlay}>
           <View style={styles.linksContainer}>
-          <Pressable onPress={() => navigateTo('/home')} style={styles.navLink}>
-            <Text style={styles.navLinkText}>Home</Text>
+          <Pressable
+            onPress={() => navigateTo('/home')}
+            style={({ hovered }) => [
+              styles.navLink,
+              pathname === '/home' && styles.navLinkActive,
+            ]}
+          >
+            {({ hovered }) => (
+              <Text
+                style={[
+                  styles.navLinkText,
+                  hovered && styles.navLinkTextHover,
+                  pathname === '/home' && styles.navLinkTextActive,
+                ]}
+              >
+                Applications
+              </Text>
+            )}
           </Pressable>
-          <Pressable onPress={() => navigateTo('/profile')} style={styles.navLink}>
-            <Text style={styles.navLinkText}>Profile</Text>
+          <Pressable
+            onPress={() => navigateTo('/profile')}
+            style={({ hovered }) => [
+              styles.navLink,
+              pathname === '/profile' && styles.navLinkActive,
+            ]}
+          >
+            {({ hovered }) => (
+              <Text
+                style={[
+                  styles.navLinkText,
+                  hovered && styles.navLinkTextHover,
+                  pathname === '/profile' && styles.navLinkTextActive,
+                ]}
+              >
+                Profile
+              </Text>
+            )}
           </Pressable>
           </View>
         </View>
@@ -149,8 +214,8 @@ export function WebNavbar() {
 const styles = StyleSheet.create({
   navbarContainer: {
     width: '100%',
-    height: 64,
-    backgroundColor: 'rgba(10, 10, 11, 0.87)',
+    height: 50,
+    backgroundColor: 'rgba(23, 23, 26, 0.91)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 1000,
@@ -190,6 +255,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: 0.5,
+    fontFamily: 'Montserrat, "Helvetica Neue", Helvetica, Arial, sans-serif',
   },
   linksContainer: {
     flexDirection: 'row',
@@ -206,14 +272,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   navLink: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
     borderRadius: 8,
+    ...Platform.select({
+      web: {
+        transition: 'all 0.2s ease',
+      } as any
+    })
+  },
+  navLinkActive: {
+    backgroundColor: '#7a47a2',
   },
   navLinkText: {
-    color: '#e1e1e1',
-    fontSize: 16,
+    color: '#ffffff',
+    fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'Montserrat, "Helvetica Neue", Helvetica, Arial, sans-serif',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    ...Platform.select({
+      web: {
+        transition: 'color 0.2s ease',
+      } as any
+    })
+  },
+  navLinkTextHover: {
+    color: '#c2b75f',
+  },
+  navLinkTextActive: {
+    color: '#ffffff',
   },
   avatarButton: {
     width: 40,
@@ -241,6 +329,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Montserrat, "Helvetica Neue", Helvetica, Arial, sans-serif',
   },
   dropdownWrapper: {
     position: 'relative',
@@ -274,8 +363,11 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: {
     color: '#e1e1e1',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'Montserrat, "Helvetica Neue", Helvetica, Arial, sans-serif',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   divider: {
     height: 1,

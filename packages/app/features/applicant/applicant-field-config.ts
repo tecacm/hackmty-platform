@@ -174,6 +174,7 @@ export type ApplicationTypeConfig = {
   id: string
   label: string
   fields: Array<string | { name: string; section?: string }>
+  close_at?: string | null
 }
 
 // Build all fields from JSON configuration

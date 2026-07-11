@@ -69,7 +69,8 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
     status,
     onSubmit,
     onSaveDraft,
-    systemLinks
+    systemLinks,
+    isClosed
   } = useApplicationForm(applicantRole, 'en')
 
   useEffect(() => {
@@ -176,6 +177,7 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
               onSubmit={onSubmit}
               onSaveDraft={onSaveDraft}
               systemLinks={systemLinks}
+              isClosed={isClosed}
             />
           )}
         </View>          

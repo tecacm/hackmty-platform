@@ -19,6 +19,7 @@ export type UseApplicationFormResult = {
   onSubmit: (data: ApplicantFormData) => Promise<void>
   onSaveDraft: (data: ApplicantFormData) => Promise<void>
   systemLinks: Record<string, { text: any; href: string }>
+  isClosed: boolean
 }
 
 export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): UseApplicationFormResult {
@@ -29,6 +30,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
   const [disabledFields, setDisabledFields] = useState<string[]>([])
   const [status, setStatus] = useState<string | null>(null)
   const [systemLinks, setSystemLinks] = useState<Record<string, { text: any; href: string }>>({})
+  const [isClosed, setIsClosed] = useState(false)
 
   // Fetch form configurations and user responses
   const loadData = useCallback(async () => {
@@ -42,6 +44,12 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       setFields(staticFields)
       setInitialValues({})
       setStatus(null)
+      const staticRole = getApplicantRoleConfig(role)
+      if (staticRole?.close_at) {
+        setIsClosed(new Date(staticRole.close_at).getTime() < Date.now())
+      } else {
+        setIsClosed(false)
+      }
       setIsLoading(false)
       return
     }
@@ -287,6 +295,18 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         setStatus(null)
       }
 
+      // Fetch role close_at
+      let deadlineClosed = false
+      const { data: typeData } = await supabase
+        .from('application_types')
+        .select('close_at')
+        .eq('id', role)
+        .maybeSingle()
+      if (typeData?.close_at) {
+        deadlineClosed = new Date(typeData.close_at).getTime() < Date.now()
+      }
+      setIsClosed(deadlineClosed)
+
     } catch (err: any) {
       console.error('Error loading Supabase configuration:', err)
       setError(err.message || 'Failed to load form configuration')
@@ -301,6 +321,10 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
 
   // Save full answers as draft
   const onSaveDraft = async (answers: ApplicantFormData) => {
+    if (isClosed) {
+      throw new Error('Registration has closed. You cannot save drafts.')
+    }
+
     if (!isSupabaseConfigured) {
       console.log('Offline: Mock saving draft:', answers)
       setInitialValues(answers)
@@ -367,6 +391,10 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
 
   // Submit final application answers
   const onSubmit = async (answers: ApplicantFormData) => {
+    if (isClosed) {
+      throw new Error('Registration has closed. You cannot submit applications.')
+    }
+
     if (!isSupabaseConfigured) {
       console.log('Offline: Mock submitting application:', answers)
       setStatus('submitted')
@@ -442,6 +470,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
     status,
     onSubmit,
     onSaveDraft,
-    systemLinks
+    systemLinks,
+    isClosed
   }
 }

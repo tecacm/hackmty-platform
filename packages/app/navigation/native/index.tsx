@@ -52,16 +52,15 @@ function TabNavigator() {
         name="home"
         component={HomeScreen}
         options={{ 
-          tabBarLabel: 'Home',
-          // 2. Direct plain object resolution via Platform.select as shown in the docs
+          tabBarLabel: 'Applications',
           tabBarIcon: Platform.select({
             ios: {
               type: 'sfSymbol',
-              name: 'house.fill',
+              name: 'doc.text',
             },
             android: {
               type: 'materialSymbol',
-              name: 'home',
+              name: 'assignment',
             },
           }) as any,
         }}

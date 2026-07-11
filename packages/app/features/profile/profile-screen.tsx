@@ -241,6 +241,22 @@ export function ProfileScreen() {
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
       if (data?.publicUrl) {
         setAvatarDisplayUrl(data.publicUrl)
+        
+        // Sync local cache
+        if (typeof window !== 'undefined') {
+          const cacheKey = `user_profile_${userId}`
+          const cached = localStorage.getItem(cacheKey)
+          let initials = '👤'
+          if (cached) {
+            try {
+              initials = JSON.parse(cached).initials || '👤'
+            } catch (e) {}
+          }
+          localStorage.setItem(cacheKey, JSON.stringify({
+            initials,
+            avatarUrl: data.publicUrl,
+          }))
+        }
       }
 
       setFeedbackMessage({ text: 'Profile photo updated successfully!', isError: false })
@@ -308,6 +324,17 @@ export function ProfileScreen() {
         })
 
       if (saveError) throw saveError
+
+      // Sync local cache
+      if (typeof window !== 'undefined') {
+        const cacheKey = `user_profile_${userId}`
+        const first = (firstName || '').charAt(0).toUpperCase()
+        const last = (lastName || '').charAt(0).toUpperCase()
+        localStorage.setItem(cacheKey, JSON.stringify({
+          initials: `${first}${last}` || '👤',
+          avatarUrl: avatarDisplayUrl,
+        }))
+      }
 
       setFeedbackMessage({ text: 'Profile changes saved successfully!', isError: false })
     } catch (err: any) {
