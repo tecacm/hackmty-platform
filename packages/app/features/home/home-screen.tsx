@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
 
 export function HomeScreen() {
   const { navigateTo, replaceTo } = useSmartNavigate();
-  const { hasPermission } = useUserPermissions();
+  const { hasPermission, role } = useUserPermissions();
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -301,7 +301,12 @@ export function HomeScreen() {
     </>
   );
   const draftApps = userApps.filter(app => app.status === 'draft')
-  const submittedApps = userApps.filter(app => app.status === 'submitted')
+  const submittedApps = userApps.filter(app => {
+    if (role === 'user' || role === 'admin') {
+      return app.status === 'submitted' || app.status === 'accepted' || app.status === 'rejected'
+    }
+    return app.status === 'accepted' || app.status === 'rejected'
+  })
   const activeRoleIds = userApps.map(app => app.application_type_id)
   const availableRoles = rolesList.filter(role => !activeRoleIds.includes(role.id))
 
@@ -400,7 +405,7 @@ export function HomeScreen() {
           <View style={styles.contentContainer}>
             
             {/* Drafts Section */}
-            {draftApps.length > 0 && (
+            {draftApps.length > 0 && hasPermission('applications', 'create') && (
               <View style={{ width: '100%' }}>
                 <Text style={[styles.heading, styles.shadow]}>Drafts</Text>
                 <Text style={formFieldStyles.label}>
@@ -443,7 +448,7 @@ export function HomeScreen() {
             )}
 
             {/* Divider if drafts and (submitted or available) exist */}
-            {draftApps.length > 0 && (submittedApps.length > 0 || availableRoles.length > 0) && (
+            {draftApps.length > 0 && hasPermission('applications', 'create') && (submittedApps.length > 0 || (availableRoles.length > 0 && hasPermission('applications', 'create'))) && (
               <View style={styles.sectionDivider} />
             )}
 
@@ -479,7 +484,7 @@ export function HomeScreen() {
                           )}
                         </View>
                         <PillButton
-                          title={isClosed ? "View Application" : "View / Edit Application"}
+                          title={(isClosed || app.status === 'accepted' || app.status === 'rejected') ? "View Application" : "View / Edit Application"}
                           onPress={() => handleApply(app.application_type_id)}
                           additionalStyle={styles.roleButton}
                         />
