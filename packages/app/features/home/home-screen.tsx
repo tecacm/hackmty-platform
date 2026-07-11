@@ -162,6 +162,14 @@ export function HomeScreen() {
 
   useEffect(() => {
     async function loadRoles() {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const hash = window.location.hash
+        if (hash.includes('type=invite') || hash.includes('type=recovery')) {
+          replaceTo('/reset-password' + hash)
+          return
+        }
+      }
+
       setIsRolesLoading(true)
       
       if (!isSupabaseConfigured) {

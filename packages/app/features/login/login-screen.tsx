@@ -83,6 +83,15 @@ export function LoginScreen() {
     }
   }, [headerHeight, stableHeaderHeight]);
 
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const hash = window.location.hash
+      if (hash.includes('type=invite') || hash.includes('type=recovery')) {
+        navigateTo('/reset-password' + hash)
+      }
+    }
+  }, [])
+
   const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
 
   const goToRegister = () => navigateTo('/register')
