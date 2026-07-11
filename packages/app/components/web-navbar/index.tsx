@@ -12,7 +12,7 @@ import { SolitoImage } from 'solito/image'
 export function WebNavbar() {
   if (Platform.OS !== 'web') return null
 
-  const { navigateTo } = useSmartNavigate()
+  const { navigateTo, replaceTo } = useSmartNavigate()
   const pathname = usePathname()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [initials, setInitials] = useState('👤')
@@ -98,7 +98,7 @@ export function WebNavbar() {
     if (isSupabaseConfigured) {
       await supabase.auth.signOut()
     }
-    navigateTo('/login')
+    replaceTo('/login')
   }
 
   return (

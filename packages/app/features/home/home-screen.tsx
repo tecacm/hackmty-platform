@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
 })
 
 export function HomeScreen() {
-  const { navigateTo } = useSmartNavigate();
+  const { navigateTo, replaceTo } = useSmartNavigate();
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -171,6 +171,12 @@ export function HomeScreen() {
       }
 
       try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          replaceTo('/login')
+          return
+        }
+
         const { data: types, error: typesError } = await supabase
           .from('application_types')
           .select('id, label, close_at')
@@ -203,15 +209,12 @@ export function HomeScreen() {
         setRolesList(items)
 
         // Query user's applications to show status (draft/submitted)
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: apps } = await supabase
+        const { data: apps } = await supabase
             .from('applications')
             .select('application_type_id, status')
             .eq('user_id', user.id)
-          if (apps) {
-            setUserApps(apps)
-          }
+        if (apps) {
+          setUserApps(apps)
         }
       } catch (err) {
         console.error('Failed to load dynamic roles, falling back to static config:', err)

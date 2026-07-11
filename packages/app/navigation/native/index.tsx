@@ -1,10 +1,11 @@
-import React from 'react'
-import { Platform } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { Platform, View, ActivityIndicator } from 'react-native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import {
   createBottomTabNavigator,
   createBottomTabScreen,
 } from '@react-navigation/bottom-tabs';
+import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 
 
 
@@ -87,31 +88,69 @@ function TabNavigator() {
 }
 
 export function NativeNavigation() {
+  const [session, setSession] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(isSupabaseConfigured)
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setIsLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      setIsLoading(false)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1d041f' }}>
+        <ActivityIndicator size="large" color="#c2b75f" />
+      </View>
+    )
+  }
+
+  const isAuthenticated = !isSupabaseConfigured || session !== null
+
   return (
     <Stack.Navigator
       screenOptions={{
         contentStyle: { backgroundColor: 'transparent' },
       }}
     >
-      <Stack.Screen name="login" component={LoginScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
-      <Stack.Screen name="register" component={RegisterScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
-      <Stack.Screen name="forgot-password" component={ForgotPasswordScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
-      <Stack.Screen name="reset-password" component={ResetPasswordScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
-      <Stack.Screen name="tabs" component={TabNavigator} options={{ headerShown: false }} />
-      <Stack.Screen 
-        name="application" 
-        component={ApplicationScreen} 
-        options={{
-          headerTitleAlign: 'center',
-          headerShown: true,
-          headerLargeTitleEnabled: true,
-          headerTransparent: Platform.OS === 'ios',
-          headerShadowVisible: true,
-          headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
-          headerBackTitle: 'Applications',
-        }} 
-      />
-      <Stack.Screen name="user-detail" component={UserDetailScreen} options={{ title: 'User' }} />
+      {isAuthenticated ? (
+        <>
+          <Stack.Screen name="tabs" component={TabNavigator} options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="application" 
+            component={ApplicationScreen} 
+            options={{
+              headerTitleAlign: 'center',
+              headerShown: true,
+              headerLargeTitleEnabled: true,
+              headerTransparent: Platform.OS === 'ios',
+              headerShadowVisible: true,
+              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
+              headerBackTitle: 'Applications',
+            }} 
+          />
+          <Stack.Screen name="user-detail" component={UserDetailScreen} options={{ title: 'User' }} />
+        </>
+      ) : (
+        <>
+          <Stack.Screen name="login" component={LoginScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
+          <Stack.Screen name="register" component={RegisterScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
+          <Stack.Screen name="forgot-password" component={ForgotPasswordScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
+          <Stack.Screen name="reset-password" component={ResetPasswordScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
+        </>
+      )}
     </Stack.Navigator>
   )
 }

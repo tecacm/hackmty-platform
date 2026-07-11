@@ -25,6 +25,14 @@ export function useSmartNavigate() {
     // Strip leading slash for comparison with native route names
     const targetName = typeof target === 'string' ? target.replace(/^\//, '') : target.pathname.replace(/^\//, '')
 
+    const hasTabs = routes && routes.some(r => r.name === 'tabs')
+    if ((targetName === 'home' || targetName === 'tabs') && !hasTabs) {
+      return
+    }
+    if (targetName === 'login' && hasTabs) {
+      return
+    }
+
     let urlToPush = target
     if (typeof target !== 'string') {
       // Solito App router push requires a string href
@@ -47,5 +55,33 @@ export function useSmartNavigate() {
     }
   }
 
-  return { navigateTo }
+  const replaceTo = (target: NavigateTarget) => {
+    // Strip leading slash for comparison with native route names
+    const targetName = typeof target === 'string' ? target.replace(/^\//, '') : target.pathname.replace(/^\//, '')
+
+    const hasTabs = routes && routes.some(r => r.name === 'tabs')
+    if ((targetName === 'home' || targetName === 'tabs') && !hasTabs) {
+      return
+    }
+    if (targetName === 'login' && hasTabs) {
+      return
+    }
+
+    let urlToPush = target
+    if (typeof target !== 'string') {
+      const searchParams = new URLSearchParams()
+      if (target.query) {
+        Object.entries(target.query).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            searchParams.append(key, String(value))
+          }
+        })
+      }
+      const qs = searchParams.toString()
+      urlToPush = qs ? `${target.pathname}?${qs}` : target.pathname
+    }
+    router.replace(urlToPush as string)
+  }
+
+  return { navigateTo, replaceTo }
 }

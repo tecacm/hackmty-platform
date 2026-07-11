@@ -88,6 +88,8 @@ module.exports = {
     'expo-image',
     'expo-blur',
     'expo-document-picker',
+    'expo-image-picker',
+    'expo-file-system',
     'expo-linear-gradient',
   ],
 

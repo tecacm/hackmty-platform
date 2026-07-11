@@ -65,7 +65,7 @@ const defaultDietOptions = [
 ]
 
 export function ProfileScreen() {
-  const { navigateTo } = useSmartNavigate()
+  const { navigateTo, replaceTo } = useSmartNavigate()
   const insets = useSafeArea()
   const { width } = useWindowDimensions()
   const [height, setHeight] = useState(0)
@@ -132,7 +132,7 @@ export function ProfileScreen() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-          navigateTo('/login')
+          replaceTo('/login')
           return
         }
 
@@ -225,7 +225,10 @@ export function ProfileScreen() {
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, payload, { upsert: true })
+        .upload(filePath, payload, { 
+          upsert: true,
+          contentType: mimeType
+        })
 
       if (uploadError) throw uploadError
 
@@ -243,7 +246,7 @@ export function ProfileScreen() {
         setAvatarDisplayUrl(data.publicUrl)
         
         // Sync local cache
-        if (typeof window !== 'undefined') {
+        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
           const cacheKey = `user_profile_${userId}`
           const cached = localStorage.getItem(cacheKey)
           let initials = '👤'
@@ -268,6 +271,42 @@ export function ProfileScreen() {
     }
   }
 
+  const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    const lookup = new Uint8Array(256)
+    for (let i = 0; i < chars.length; i++) {
+      lookup[chars.charCodeAt(i)] = i
+    }
+    let bufferLength = base64.length * 0.75
+    const len = base64.length
+    let i = 0
+    let p = 0
+    let encoded1, encoded2, encoded3, encoded4
+
+    if (base64[base64.length - 1] === '=') {
+      bufferLength--
+      if (base64[base64.length - 2] === '=') {
+        bufferLength--
+      }
+    }
+
+    const arrayBuffer = new ArrayBuffer(bufferLength)
+    const bytes = new Uint8Array(arrayBuffer)
+
+    for (i = 0; i < len; i += 4) {
+      encoded1 = lookup[base64.charCodeAt(i)]
+      encoded2 = lookup[base64.charCodeAt(i + 1)]
+      encoded3 = lookup[base64.charCodeAt(i + 2)]
+      encoded4 = lookup[base64.charCodeAt(i + 3)]
+
+      bytes[p++] = (encoded1 << 2) | (encoded2 >> 4)
+      bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2)
+      bytes[p++] = ((encoded3 & 3) << 6) | (encoded4 & 63)
+    }
+
+    return arrayBuffer
+  }
+
   const openImagePicker = async () => {
     if (isUploading) return
 
@@ -278,6 +317,8 @@ export function ProfileScreen() {
       let payload: any
       if (Platform.OS === 'web') {
         payload = picked.uri // File object
+      } else if (picked.base64) {
+        payload = base64ToArrayBuffer(picked.base64)
       } else {
         const formData = new FormData()
         formData.append('file', {
@@ -326,7 +367,7 @@ export function ProfileScreen() {
       if (saveError) throw saveError
 
       // Sync local cache
-      if (typeof window !== 'undefined') {
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         const cacheKey = `user_profile_${userId}`
         const first = (firstName || '').charAt(0).toUpperCase()
         const last = (lastName || '').charAt(0).toUpperCase()
@@ -407,7 +448,7 @@ export function ProfileScreen() {
     if (isSupabaseConfigured) {
       await supabase.auth.signOut()
     }
-    navigateTo('/login')
+    replaceTo('/login')
   }
 
   // Prefill references from static assets
@@ -439,7 +480,7 @@ export function ProfileScreen() {
         contentContainerStyle={{
           alignItems: 'center',
           gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : insets.top + 40,
+          paddingTop: Platform.OS === 'web' ? 104 : insets.top,
           paddingBottom: insets.bottom + 40,
           paddingLeft: insets.left,
           paddingRight: insets.right,

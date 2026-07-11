@@ -1,4 +1,4 @@
-export async function pickAvatar(): Promise<{ uri: any; name: string; type: string } | null> {
+export async function pickAvatar(): Promise<{ uri: any; name: string; type: string; base64?: string } | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'

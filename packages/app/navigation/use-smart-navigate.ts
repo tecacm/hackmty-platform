@@ -32,5 +32,23 @@ export function useSmartNavigate() {
     }
   }
 
-  return { navigateTo }
+  const replaceTo = (target: NavigateTarget) => {
+    if (typeof target === 'string') {
+      router.replace(target)
+    } else {
+      const searchParams = new URLSearchParams()
+      if (target.query) {
+        Object.entries(target.query).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            searchParams.append(key, String(value))
+          }
+        })
+      }
+      const qs = searchParams.toString()
+      const url = qs ? `${target.pathname}?${qs}` : target.pathname
+      router.replace(url)
+    }
+  }
+
+  return { navigateTo, replaceTo }
 }

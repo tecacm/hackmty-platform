@@ -8,7 +8,8 @@ import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 import { useEffect, useState, useLayoutEffect } from 'react'
 import { StyleSheet, Platform } from 'react-native'
 import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
-import { useSearchParams } from 'solito/navigation'
+import { useSearchParams, useRouter } from 'solito/navigation'
+import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { ApplicantForm } from 'app/features/applicant/ApplicantForm'
 import { ApplicantRole } from 'app/features/applicant/applicant-types'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
@@ -49,6 +50,7 @@ type ApplicationScreenProps = {
 
 export function ApplicationScreen({ navigation, role }: ApplicationScreenProps = {}) {
   const params = useSearchParams()
+  const router = useRouter()
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -72,6 +74,18 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
     systemLinks,
     isClosed
   } = useApplicationForm(applicantRole, 'en')
+
+  useEffect(() => {
+    async function checkAuth() {
+      if (isSupabaseConfigured) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.replace('/login')
+        }
+      }
+    }
+    checkAuth()
+  }, [router])
 
   useEffect(() => {
     setIsHydrated(true)
