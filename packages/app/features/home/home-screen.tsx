@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: formFieldColors.theme,
-    fontSize: 40,
+    fontSize: 30,
     fontWeight: '700',
     marginBottom: 10,
   },
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   },
   roleCardMeta: {
     color: '#5b4d61',
-    fontSize: 15,
+    fontSize: 14,
     lineHeight: 22,
   },
   roleCardCount: {
@@ -112,6 +112,17 @@ const styles = StyleSheet.create({
   },
   roleButton: {
     width: '100%',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 })
 
@@ -320,6 +331,45 @@ export function HomeScreen() {
     }
   }
 
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return { backgroundColor: '#f3e8ff' }
+      case 'submitted':
+        return { backgroundColor: '#ecfeff' }
+      case 'accepted':
+        return { backgroundColor: '#f0fdf4' }
+      default:
+        return { backgroundColor: '#f1f5f9' }
+    }
+  }
+
+  const getStatusBadgeTextStyle = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return { color: '#7e22ce' }
+      case 'submitted':
+        return { color: '#0e7490' }
+      case 'accepted':
+        return { color: '#15803d' }
+      default:
+        return { color: '#475569' }
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'Draft'
+      case 'submitted':
+        return 'Under Review'
+      case 'accepted':
+        return 'Accepted'
+      default:
+        return status
+    }
+  }
+
   return (
     <>
       <WebNavbar />
@@ -329,7 +379,7 @@ export function HomeScreen() {
         contentContainerStyle={{
           alignItems: 'center',
           gap: 24,
-          paddingTop: Platform.OS === 'web' ? 104 : insets.top + 40,
+          paddingTop: Platform.OS === 'web' ? 104 : insets.top,
           paddingBottom: insets.bottom + 40,
           paddingLeft: insets.left,
           paddingRight: insets.right,
@@ -355,16 +405,20 @@ export function HomeScreen() {
                     return (
                       <View key={app.application_type_id} style={styles.roleCard}>
                         <View style={styles.roleCardHeader}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={styles.roleCardCount}>Status: Draft (In Progress)</Text>
-                            {countdownText !== '' && (
-                              <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13 }}>
-                                {countdownText}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+                            <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
+                            <View style={[styles.statusBadge, getStatusBadgeStyle(app.status)]}>
+                              <Text style={[styles.statusBadgeText, getStatusBadgeTextStyle(app.status)]}>
+                                {getStatusLabel(app.status)}
                               </Text>
-                            )}
+                            </View>
                           </View>
-                          <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
                           <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                          {countdownText !== '' && (
+                            <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
+                              {countdownText}
+                            </Text>
+                          )}
                         </View>
                         <PillButton
                           title={isClosed ? "Closed" : "Continue Application"}
@@ -399,16 +453,20 @@ export function HomeScreen() {
                     return (
                       <View key={app.application_type_id} style={styles.roleCard}>
                         <View style={styles.roleCardHeader}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={[styles.roleCardCount, { color: '#4caf50' }]}>Status: Submitted</Text>
-                            {countdownText !== '' && (
-                              <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13 }}>
-                                {countdownText}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+                            <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
+                            <View style={[styles.statusBadge, getStatusBadgeStyle(app.status)]}>
+                              <Text style={[styles.statusBadgeText, getStatusBadgeTextStyle(app.status)]}>
+                                {getStatusLabel(app.status)}
                               </Text>
-                            )}
+                            </View>
                           </View>
-                          <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
                           <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                          {countdownText !== '' && (
+                            <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
+                              {countdownText}
+                            </Text>
+                          )}
                         </View>
                         <PillButton
                           title={isClosed ? "View Application" : "View / Edit Application"}
@@ -444,16 +502,20 @@ export function HomeScreen() {
                       return (
                         <View key={applicationType.id} style={styles.roleCard}>
                           <View style={styles.roleCardHeader}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Text style={styles.roleCardCount}>{applicationType.fieldCount} questions</Text>
-                              {countdownText !== '' && (
-                                <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13 }}>
-                                  {countdownText}
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+                              <Text style={styles.roleCardLabel}>{applicationType.label}</Text>
+                              <View style={[styles.statusBadge, { backgroundColor: '#f1f5f9' }]}>
+                                <Text style={[styles.statusBadgeText, { color: '#475569' }]}>
+                                  {applicationType.fieldCount} questions
                                 </Text>
-                              )}
+                              </View>
                             </View>
-                            <Text style={styles.roleCardLabel}>{applicationType.label}</Text>
                             <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                            {countdownText !== '' && (
+                              <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
+                                {countdownText}
+                              </Text>
+                            )}
                           </View>
                           <PillButton
                             title={isClosed ? "Closed" : `Apply as ${applicationType.label}`}

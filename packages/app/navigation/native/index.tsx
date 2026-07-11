@@ -108,6 +108,7 @@ export function NativeNavigation() {
           headerTransparent: Platform.OS === 'ios',
           headerShadowVisible: true,
           headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
+          headerBackTitle: 'Applications',
         }} 
       />
       <Stack.Screen name="user-detail" component={UserDetailScreen} options={{ title: 'User' }} />
