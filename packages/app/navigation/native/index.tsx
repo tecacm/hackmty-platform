@@ -17,6 +17,8 @@ import { UserDetailScreen } from 'app/features/user/detail-screen'
 import { HomeScreen } from 'app/features/home/home-screen'  
 import { ProfileScreen } from 'app/features/profile/profile-screen'
 import { ApplicationScreen } from 'app/features/home/application-screen'
+import { TeamsScreen } from 'app/features/teams/teams-screen'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { formFieldColors } from 'app/components/form-field-styles'
 
 type StackParamList = {
@@ -32,12 +34,15 @@ type StackParamList = {
 type TabParamList = {
   home: undefined
   profile: undefined
+  teams: undefined
 }
 
 const Stack = createNativeStackNavigator<StackParamList>()
 const Tab = createBottomTabNavigator<TabParamList>() // Using the unstable native navigator
 
 function TabNavigator() {
+  const { hasPermission } = useUserPermissions()
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -66,6 +71,25 @@ function TabNavigator() {
           }) as any,
         }}
       />
+      {hasPermission('teams', 'create') && (
+        <Tab.Screen
+          name="teams"
+          component={TeamsScreen}
+          options={{ 
+            tabBarLabel: 'Teams',
+            tabBarIcon: Platform.select({
+              ios: {
+                type: 'sfSymbol',
+                name: 'person.3.fill',
+              },
+              android: {
+                type: 'materialSymbol',
+                name: 'groups',
+              },
+            }) as any,
+          }}
+        />
+      )}
       <Tab.Screen
         name="profile"
         component={ProfileScreen}

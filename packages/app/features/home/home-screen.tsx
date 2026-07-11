@@ -13,6 +13,7 @@ import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
 import { getApplicationTypes, getApplicantFieldsForRole, getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { formFieldColors, formFieldStyles } from 'app/components/form-field-styles'
 
 
@@ -128,6 +129,7 @@ const styles = StyleSheet.create({
 
 export function HomeScreen() {
   const { navigateTo, replaceTo } = useSmartNavigate();
+  const { hasPermission } = useUserPermissions();
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -142,6 +144,11 @@ export function HomeScreen() {
   const [tick, setTick] = useState(0)
 
   const handleApply = (role: string) => {
+    const isExisting = userApps.some(app => app.application_type_id === role)
+    if (!isExisting && !hasPermission('applications', 'create')) {
+      return
+    }
+
     navigateTo({
       pathname: '/application',
       query: { role },
@@ -484,12 +491,12 @@ export function HomeScreen() {
             )}
 
             {/* Divider if submitted and available exist */}
-            {submittedApps.length > 0 && availableRoles.length > 0 && (
+            {submittedApps.length > 0 && availableRoles.length > 0 && hasPermission('applications', 'create') && (
               <View style={styles.sectionDivider} />
             )}
 
             {/* Available Application Types */}
-            {availableRoles.length > 0 && (
+            {availableRoles.length > 0 && hasPermission('applications', 'create') && (
               <View style={{ width: '100%' }}>
                 <Text style={[styles.heading, styles.shadow]}>Applications</Text>
                 <Text style={formFieldStyles.label}>Choose the role that matches your profile and continue to the application for that role.</Text>

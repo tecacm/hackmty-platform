@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { View, Text, Pressable, StyleSheet, Platform, Image } from 'react-native'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { usePathname } from 'next/navigation'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
@@ -13,6 +14,7 @@ export function WebNavbar() {
   if (Platform.OS !== 'web') return null
 
   const { navigateTo, replaceTo } = useSmartNavigate()
+  const { hasPermission } = useUserPermissions()
   const pathname = usePathname()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [initials, setInitials] = useState('👤')
@@ -173,6 +175,27 @@ export function WebNavbar() {
               </Text>
             )}
           </Pressable>
+          {hasPermission('teams', 'create') && (
+            <Pressable
+              onPress={() => navigateTo('/teams')}
+              style={({ hovered }) => [
+                styles.navLink,
+                pathname === '/teams' && styles.navLinkActive,
+              ]}
+            >
+              {({ hovered }) => (
+                <Text
+                  style={[
+                    styles.navLinkText,
+                    hovered && styles.navLinkTextHover,
+                    pathname === '/teams' && styles.navLinkTextActive,
+                  ]}
+                >
+                  Teams
+                </Text>
+              )}
+            </Pressable>
+          )}
           </View>
         </View>
 

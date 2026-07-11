@@ -26,6 +26,7 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { formFieldColors } from 'app/components/form-field-styles'
 import { dataReferences } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
 
 // Static fallback option arrays for selects
@@ -66,6 +67,7 @@ const defaultDietOptions = [
 
 export function ProfileScreen() {
   const { navigateTo, replaceTo } = useSmartNavigate()
+  const { role: userRole } = useUserPermissions()
   const insets = useSafeArea()
   const { width } = useWindowDimensions()
   const [height, setHeight] = useState(0)
@@ -520,6 +522,16 @@ export function ProfileScreen() {
                 </Pressable>
               </View>
 
+              {/* Account Role Section */}
+              <View style={styles.roleCardContainer}>
+                <View style={styles.roleHeaderRow}>
+                  <Text style={styles.roleLabel}>Account Type:</Text>
+                  <View style={styles.roleBadge}>
+                    <Text style={styles.roleBadgeText}>{userRole.toUpperCase()}</Text>
+                  </View>
+                </View>
+              </View>
+
               {feedbackMessage && (
                 <View
                   style={[
@@ -851,5 +863,70 @@ const styles = StyleSheet.create({
     color: '#d32f2f',
     fontSize: 15,
     fontWeight: '700',
+  },
+  roleCardContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    padding: 16,
+    width: '100%',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 8,
+  },
+  roleHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  roleLabel: {
+    color: '#a3a3a3',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  roleBadge: {
+    backgroundColor: '#ffd7001c',
+    borderWidth: 1,
+    borderColor: '#ffd700',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  roleBadgeText: {
+    color: '#ffd700',
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  permissionsContainer: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 8,
+  },
+  permissionsTitle: {
+    color: '#a3a3a3',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  pillsWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  permissionPill: {
+    backgroundColor: 'rgba(194, 183, 95, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(194, 183, 95, 0.3)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  permissionPillText: {
+    color: '#c2b75f',
+    fontSize: 11,
+    fontWeight: '500',
   },
 })
