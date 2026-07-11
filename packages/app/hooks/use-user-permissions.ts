@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 
-// Module-level state cache
+// Module-level cache state
 let cachedPermissions: string[] | null = null
 let cachedRole: string | null = null
+let currentUserId: string | null = null
 let isFetching = false
+
 const listeners = new Set<(state: { permissions: string[]; role: string; loading: boolean }) => void>()
 
 function notifyListeners() {
@@ -16,17 +18,79 @@ function notifyListeners() {
   listeners.forEach(listener => listener(state))
 }
 
-// Sync session auth changes to flush/refresh caching bounds
+async function loadPermissions() {
+  if (!isSupabaseConfigured) {
+    cachedPermissions = ['teams:create', 'teams:view', 'applications:create', 'applications:view', 'applications:modify', 'sponsor_portal:view']
+    cachedRole = 'admin'
+    notifyListeners()
+    return
+  }
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      cachedPermissions = []
+      cachedRole = 'user'
+      currentUserId = null
+      notifyListeners()
+      return
+    }
+
+    // Skip network request if user is unchanged and cache is loaded
+    if (user.id === currentUserId && cachedPermissions !== null) {
+      return
+    }
+
+    if (isFetching) return
+    isFetching = true
+    currentUserId = user.id
+
+    // 1. Fetch user role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const userRole = profile?.role || 'user'
+    cachedRole = userRole
+
+    // 2. Fetch role mapping configuration
+    const { data: mapping } = await supabase
+      .from('role_permissions')
+      .select('permission_id')
+      .eq('role', userRole)
+
+    if (mapping) {
+      cachedPermissions = mapping.map(m => m.permission_id)
+    } else {
+      cachedPermissions = []
+    }
+  } catch (err) {
+    console.error('Failed to load user permissions:', err)
+    cachedPermissions = []
+    cachedRole = 'user'
+  } finally {
+    isFetching = false
+    notifyListeners()
+  }
+}
+
+// Sync auth session changes globally
 if (isSupabaseConfigured) {
-  supabase.auth.onAuthStateChange((event, session) => {
+  supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_OUT' || !session) {
-      cachedPermissions = null
-      cachedRole = null
+      cachedPermissions = []
+      cachedRole = 'user'
+      currentUserId = null
       notifyListeners()
-    } else if (event === 'SIGNED_IN') {
-      cachedPermissions = null
-      cachedRole = null
-      notifyListeners()
+    } else {
+      // Trigger reload only on user change or if cache is empty
+      if (session.user.id !== currentUserId || cachedPermissions === null) {
+        cachedPermissions = null
+        notifyListeners()
+        await loadPermissions()
+      }
     }
   })
 }
@@ -44,63 +108,9 @@ export function useUserPermissions() {
     }
     listeners.add(listener)
 
-    async function loadPermissions() {
-      if (cachedPermissions !== null) {
-        setLoading(false)
-        return
-      }
-
-      if (!isSupabaseConfigured) {
-        cachedPermissions = ['teams:create', 'teams:view', 'applications:create', 'applications:view', 'applications:modify', 'sponsor_portal:view']
-        cachedRole = 'admin'
-        notifyListeners()
-        return
-      }
-
-      if (isFetching) return
-      isFetching = true
-
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          cachedPermissions = []
-          cachedRole = 'user'
-          notifyListeners()
-          return
-        }
-
-        // 1. Fetch user role
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle()
-
-        const userRole = profile?.role || 'user'
-        cachedRole = userRole
-
-        // 2. Fetch role mapping configuration
-        const { data: mapping } = await supabase
-          .from('role_permissions')
-          .select('permission_id')
-          .eq('role', userRole)
-
-        if (mapping) {
-          cachedPermissions = mapping.map(m => m.permission_id)
-        } else {
-          cachedPermissions = []
-        }
-      } catch (err) {
-        console.error('Failed to load user permissions:', err)
-        cachedPermissions = []
-        cachedRole = 'user'
-      } finally {
-        isFetching = false
-        notifyListeners()
-      }
+    if (cachedPermissions === null) {
+      loadPermissions()
     }
-
-    loadPermissions()
 
     return () => {
       listeners.delete(listener)
@@ -113,3 +123,4 @@ export function useUserPermissions() {
 
   return { permissions, role, hasPermission, loading }
 }
+

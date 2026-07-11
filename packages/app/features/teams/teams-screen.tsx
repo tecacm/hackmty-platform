@@ -370,6 +370,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  inviteTeammateBtn: {
+    width: '100%',
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#c2b75f',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      }
+    })
+  },
+  inviteTeammateBtnText: {
+    color: '#c2b75f',
+    fontSize: 15,
+    fontWeight: '700',
+  },
   leaveButtonText: {
     color: '#ef4444',
     fontSize: 16,
@@ -891,21 +911,6 @@ export function TeamsScreen() {
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Members ({team.members.length}/{maxTeamSize})</Text>
-                {team.members.length < maxTeamSize && (
-                  <Pressable 
-                    onPress={() => {
-                      setShowInviteModal(true)
-                      setInviteEmailInput('')
-                      setInviteResult(null)
-                    }} 
-                    style={({ pressed }) => [
-                      styles.inviteBtn,
-                      pressed && { opacity: 0.8 }
-                    ]}
-                  >
-                    <Text style={styles.inviteBtnText}>+ Invite</Text>
-                  </Pressable>
-                )}
               </View>
               {team.members.map((member, index) => {
                 const first = (member.first_name || '').charAt(0).toUpperCase()
@@ -956,6 +961,22 @@ export function TeamsScreen() {
                 )
               })}
 
+              {team.members.length < maxTeamSize && (
+                <Pressable 
+                  onPress={() => {
+                    setShowInviteModal(true)
+                    setInviteEmailInput('')
+                    setInviteResult(null)
+                  }} 
+                  style={({ pressed }) => [
+                    styles.inviteTeammateBtn,
+                    pressed && { opacity: 0.8 }
+                  ]}
+                >
+                  <Text style={styles.inviteTeammateBtnText}>+ Invite Teammate</Text>
+                </Pressable>
+              )}
+
               <View style={styles.divider} />
 
               {error && <Text style={styles.errorText}>{error}</Text>}
@@ -980,29 +1001,38 @@ export function TeamsScreen() {
               {invitations.length > 0 && (
                 <>
                   <Text style={styles.sectionTitle}>Pending Invitations</Text>
-                  {invitations.map((invite) => (
-                    <View key={invite.id} style={styles.inviteRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.inviteText}>
-                          You have been invited to join <Text style={{ fontWeight: 'bold' }}>{invite.teams?.name || 'a team'}</Text>
-                        </Text>
+                  {invitations.map((invite, index) => {
+                    const isLast = index === invitations.length - 1
+                    return (
+                      <View 
+                        key={invite.id} 
+                        style={[
+                          styles.inviteRow,
+                          isLast && { borderBottomWidth: 0 }
+                        ]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.inviteText}>
+                            You have been invited to join <Text style={{ fontWeight: 'bold' }}>{invite.teams?.name || 'a team'}</Text>
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <Pressable
+                            onPress={() => handleAcceptInvitation(invite.id)}
+                            style={styles.acceptBtn}
+                          >
+                            <Text style={styles.acceptBtnText}>Accept</Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => handleDeclineInvitation(invite.id)}
+                            style={styles.declineBtn}
+                          >
+                            <Text style={styles.declineBtnText}>Decline</Text>
+                          </Pressable>
+                        </View>
                       </View>
-                      <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <Pressable
-                          onPress={() => handleAcceptInvitation(invite.id)}
-                          style={styles.acceptBtn}
-                        >
-                          <Text style={styles.acceptBtnText}>Accept</Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => handleDeclineInvitation(invite.id)}
-                          style={styles.declineBtn}
-                        >
-                          <Text style={styles.declineBtnText}>Decline</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  ))}
+                    )
+                  })}
                   <View style={styles.divider} />
                 </>
               )}
