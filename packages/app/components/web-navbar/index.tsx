@@ -152,7 +152,7 @@ export function WebNavbar() {
                   pathname === '/home' && styles.navLinkTextActive,
                 ]}
               >
-                Applications
+                Application
               </Text>
             )}
           </Pressable>
@@ -191,7 +191,7 @@ export function WebNavbar() {
                     pathname === '/teams' && styles.navLinkTextActive,
                   ]}
                 >
-                  Teams
+                  My Team
                 </Text>
               )}
             </Pressable>

@@ -164,8 +164,11 @@ export function HomeScreen() {
     async function loadRoles() {
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         const hash = window.location.hash
-        if (hash.includes('type=invite') || hash.includes('type=recovery')) {
-          replaceTo('/reset-password' + hash)
+        if (hash.includes('type=invite')) {
+          window.location.replace('/complete-signup' + hash)
+          return
+        } else if (hash.includes('type=recovery')) {
+          window.location.replace('/reset-password' + hash)
           return
         }
       }

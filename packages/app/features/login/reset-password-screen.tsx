@@ -1,6 +1,6 @@
 'use client'
 
-import { Text, View } from 'react-native'
+import { Text, View, ActivityIndicator } from 'react-native'
 import { SolitoImage } from 'solito/image'
 import { LinearGradient } from 'app/components/linear-gradient'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
@@ -81,6 +81,7 @@ export function ResetPasswordScreen() {
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
   const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -106,6 +107,76 @@ export function ResetPasswordScreen() {
     }
   }, [headerHeight, stableHeaderHeight]);
 
+  useEffect(() => {
+    const initializeRecoverySession = async () => {
+      if (Platform.OS !== 'web' || typeof window === 'undefined') {
+        setIsInitializing(false)
+        return
+      }
+
+      try {
+        if (!isSupabaseConfigured) {
+          setIsInitializing(false)
+          return
+        }
+
+        const url = new URL(window.location.href)
+        const code = url.searchParams.get('code')
+        const hash = window.location.hash
+        let hasSession = false
+
+        // 1. If code exists, exchange code for session (PKCE Flow)
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) throw error
+          hasSession = true
+        } 
+        // 2. If access_token hash parameter exists, set session manually (Implicit Flow)
+        else if (hash && hash.includes('access_token=')) {
+          const params = new URLSearchParams(hash.substring(1)) // remove '#'
+          const accessToken = params.get('access_token')
+          const refreshToken = params.get('refresh_token')
+          if (accessToken && refreshToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            })
+            if (error) throw error
+            hasSession = true
+          }
+        }
+
+        // 3. Clean up the URL to prevent subsequent reload loops trying to reuse the single-use token/code
+        if (hasSession) {
+          const cleanUrl = window.location.pathname
+          window.history.replaceState({}, document.title, cleanUrl)
+        }
+
+        // 4. Asynchronous state verification check with retry bounds (up to 1.2 seconds)
+        let activeUser: any = null
+        for (let i = 0; i < 6; i++) {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            activeUser = user
+            break
+          }
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
+
+        if (!activeUser) {
+          setErrorMessage('No active recovery session found.')
+        }
+      } catch (err: any) {
+        console.error('Failed to resolve recovery session:', err)
+        setErrorMessage(err.message || 'Recovery link is expired or invalid.')
+      } finally {
+        setIsInitializing(false)
+      }
+    }
+
+    initializeRecoverySession()
+  }, [])
+
   const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
 
   const goToLogin = () => navigateTo('/login')
@@ -123,8 +194,6 @@ export function ResetPasswordScreen() {
         return
       }
 
-      // Supabase auto-authenticates the user when they click the email recovery link and redirect back to this page.
-      // So calling updateUser directly updates their password on their active session.
       const { error } = await supabase.auth.updateUser({
         password: password,
       })
@@ -189,68 +258,77 @@ export function ResetPasswordScreen() {
         </View>
       </View>
 
-      <View style={{ width: '80%', maxWidth: 600, paddingHorizontal: 20 }}>
-        <Text style={styles.title}>Reset Password</Text>
-        <Text style={styles.subtitle}>Enter and confirm your new account password.</Text>
-      </View>
+      {isInitializing ? (
+        <View style={{ marginVertical: 32, alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#c2b75f" />
+          <Text style={{ color: '#D8B8FF', marginTop: 12 }}>Establishing secure reset session...</Text>
+        </View>
+      ) : (
+        <>
+          <View style={{ width: '80%', maxWidth: 600, paddingHorizontal: 20 }}>
+            <Text style={styles.title}>Reset Password</Text>
+            <Text style={styles.subtitle}>Enter and confirm your new account password.</Text>
+          </View>
 
-      <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingHorizontal: 20 }}>
-        <Controller
-          control={control}
-          name="password"
-          rules={{
-            required: 'Password is required',
-            minLength: {
-              value: 6,
-              message: 'Password must be at least 6 characters long',
-            },
-          }}
-          render={({ field: { onChange, value } }) => (
-            <StyledInput
-              label="New Password"
-              placeholder="Enter new password"
-              textContentType="password"
-              additionalStyle={styles.shadowStyle}
-              onChangeText={onChange}
-              value={value}
-              error={errors.password?.message}
-              onSubmitEditing={handleSubmit(onSubmit)}
+          <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingHorizontal: 20 }}>
+            <Controller
+              control={control}
+              name="password"
+              rules={{
+                required: 'Password is required',
+                minLength: {
+                  value: 6,
+                  message: 'Password must be at least 6 characters long',
+                },
+              }}
+              render={({ field: { onChange, value } }) => (
+                <StyledInput
+                  label="New Password"
+                  placeholder="Enter new password"
+                  textContentType="password"
+                  additionalStyle={styles.shadowStyle}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.password?.message}
+                  onSubmitEditing={handleSubmit(onSubmit)}
+                />
+              )}
             />
-          )}
-        />
 
-        <Controller
-          control={control}
-          name="confirmPassword"
-          rules={{
-            required: 'Please confirm your password',
-            validate: (value) => value === passwordVal || 'Passwords do not match',
-          }}
-          render={({ field: { onChange, value } }) => (
-            <StyledInput
-              label="Confirm New Password"
-              placeholder="Confirm new password"
-              textContentType="password"
-              additionalStyle={styles.shadowStyle}
-              onChangeText={onChange}
-              value={value}
-              error={errors.confirmPassword?.message}
-              onSubmitEditing={handleSubmit(onSubmit)}
+            <Controller
+              control={control}
+              name="confirmPassword"
+              rules={{
+                required: 'Please confirm your password',
+                validate: (value) => value === passwordVal || 'Passwords do not match',
+              }}
+              render={({ field: { onChange, value } }) => (
+                <StyledInput
+                  label="Confirm New Password"
+                  placeholder="Confirm new password"
+                  textContentType="password"
+                  additionalStyle={styles.shadowStyle}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.confirmPassword?.message}
+                  onSubmitEditing={handleSubmit(onSubmit)}
+                />
+              )}
             />
-          )}
-        />
-        
-        {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
-        {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
+            
+            {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
+            {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
 
-        <PillButton
-          title={isSubmitting ? 'Saving...' : 'Save New Password'}
-          onPress={handleSubmit(onSubmit)}
-          additionalStyle={{ marginBottom: 10, opacity: isSubmitting ? 0.7 : 1 }}
-        />
-        
-        <SimpleTextLink text="Back to Login" onPress={goToLogin}/>
-      </View>
+            <PillButton
+              title={isSubmitting ? 'Saving...' : 'Save New Password'}
+              onPress={handleSubmit(onSubmit)}
+              additionalStyle={{ marginBottom: 10, opacity: isSubmitting ? 0.7 : 1 }}
+            />
+            
+            <SimpleTextLink text="Back to Login" onPress={goToLogin}/>
+          </View>
+        </>
+      )}
     </ParallaxScrollView>
   )
 }

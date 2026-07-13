@@ -962,34 +962,28 @@ export function TeamsScreen() {
               })}
 
               {team.members.length < maxTeamSize && (
-                <Pressable 
+                <PillButton
+                  variant="outline-secondary"
+                  title="+ Invite Teammate"
                   onPress={() => {
                     setShowInviteModal(true)
                     setInviteEmailInput('')
                     setInviteResult(null)
-                  }} 
-                  style={({ pressed }) => [
-                    styles.inviteTeammateBtn,
-                    pressed && { opacity: 0.8 }
-                  ]}
-                >
-                  <Text style={styles.inviteTeammateBtnText}>+ Invite Teammate</Text>
-                </Pressable>
+                  }}
+                  additionalStyle={{ marginTop: 16 }}
+                />
               )}
 
               <View style={styles.divider} />
 
               {error && <Text style={styles.errorText}>{error}</Text>}
 
-              <Pressable
-                onPress={submitting ? undefined : handleLeaveTeam}
-                style={({ pressed }) => [
-                  styles.leaveButton,
-                  pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
-                ]}
-              >
-                <Text style={styles.leaveButtonText}>Leave Team</Text>
-              </Pressable>
+              <PillButton
+                variant="outline-danger"
+                title="Leave Team"
+                isLoading={submitting}
+                onPress={handleLeaveTeam}
+              />
             </View>
           ) : (
             <View style={styles.innerCard}>
@@ -1120,19 +1114,13 @@ export function TeamsScreen() {
                 <Text style={styles.modalCancelBtnText}>Close</Text>
               </Pressable>
 
-              <Pressable
-                onPress={inviteSubmitting ? undefined : handleSendInvite}
-                style={({ pressed }) => [
-                  styles.modalSubmitBtn,
-                  pressed && { opacity: 0.8 }
-                ]}
-              >
-                {inviteSubmitting ? (
-                  <ActivityIndicator size="small" color="#22002c" />
-                ) : (
-                  <Text style={styles.modalSubmitBtnText}>Send Invite</Text>
-                )}
-              </Pressable>
+              <PillButton
+                variant="secondary"
+                title="Send Invite"
+                isLoading={inviteSubmitting}
+                onPress={handleSendInvite}
+                additionalStyle={{ flex: 1, height: 48 }}
+              />
             </View>
           </View>
         </View>

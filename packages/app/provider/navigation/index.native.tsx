@@ -28,6 +28,7 @@ export function NavigationProvider({
               'user-detail': 'users/:id',
               'forgot-password': 'forgot-password',
               'reset-password': 'reset-password',
+              'complete-signup': 'complete-signup',
             },
           },
         }),

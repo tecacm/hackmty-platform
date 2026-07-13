@@ -13,6 +13,7 @@ import { LoginScreen } from 'app/features/login/login-screen'
 import { RegisterScreen } from 'app/features/login/register-screen'
 import { ForgotPasswordScreen } from 'app/features/login/forgot-password-screen'
 import { ResetPasswordScreen } from 'app/features/login/reset-password-screen'
+import { CompleteSignupScreen } from 'app/features/login/complete-signup-screen'
 import { UserDetailScreen } from 'app/features/user/detail-screen'
 import { HomeScreen } from 'app/features/home/home-screen'  
 import { ProfileScreen } from 'app/features/profile/profile-screen'
@@ -26,6 +27,7 @@ type StackParamList = {
   register: undefined
   'forgot-password': undefined
   'reset-password': undefined
+  'complete-signup': undefined
   tabs: undefined
   application: { role?: string }
   'user-detail': { id: string }
@@ -58,7 +60,7 @@ function TabNavigator() {
         name="home"
         component={HomeScreen}
         options={{ 
-          tabBarLabel: 'Applications',
+          tabBarLabel: 'Application',
           tabBarIcon: Platform.select({
             ios: {
               type: 'sfSymbol',
@@ -76,7 +78,7 @@ function TabNavigator() {
           name="teams"
           component={TeamsScreen}
           options={{ 
-            tabBarLabel: 'Teams',
+            tabBarLabel: 'My Team',
             tabBarIcon: Platform.select({
               ios: {
                 type: 'sfSymbol',
@@ -162,7 +164,7 @@ export function NativeNavigation() {
               headerTransparent: Platform.OS === 'ios',
               headerShadowVisible: true,
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
-              headerBackTitle: 'Applications',
+              headerBackTitle: 'Application',
             }} 
           />
           <Stack.Screen name="user-detail" component={UserDetailScreen} options={{ title: 'User' }} />
@@ -173,6 +175,7 @@ export function NativeNavigation() {
           <Stack.Screen name="register" component={RegisterScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
           <Stack.Screen name="forgot-password" component={ForgotPasswordScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
           <Stack.Screen name="reset-password" component={ResetPasswordScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
+          <Stack.Screen name="complete-signup" component={CompleteSignupScreen} options={{ headerShown: true, headerTitle: '', headerTransparent: true, headerShadowVisible: false }} />
         </>
       )}
     </Stack.Navigator>

@@ -669,12 +669,12 @@ export function ProfileScreen() {
                 />
 
                 {Platform.OS !== 'web' && (
-                  <Pressable
+                  <PillButton
+                    variant="outline-primary"
+                    title="Sign Out"
                     onPress={handleSignOut}
-                    style={styles.signOutButton}
-                  >
-                    <Text style={styles.signOutButtonText}>Sign Out</Text>
-                  </Pressable>
+                    additionalStyle={{ leftMargin: 10, flex: 1 }}
+                  />
                 )}
               </View>
 
@@ -684,15 +684,12 @@ export function ProfileScreen() {
                 <Text style={styles.dangerZoneDescription}>
                   Permanently delete your profile and all associated hackathon application data.
                 </Text>
-                <Pressable
+                <PillButton
+                  variant="danger"
+                  title="Delete My Account"
+                  isLoading={isDeleting}
                   onPress={confirmDeleteAccount}
-                  style={styles.deleteBtn}
-                  disabled={isDeleting}
-                >
-                  <Text style={styles.deleteBtnText}>
-                    {isDeleting ? 'Deleting Account...' : 'Delete My Account'}
-                  </Text>
-                </Pressable>
+                />
               </View>
             </View>
           )}

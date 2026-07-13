@@ -86,8 +86,10 @@ export function LoginScreen() {
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const hash = window.location.hash
-      if (hash.includes('type=invite') || hash.includes('type=recovery')) {
-        navigateTo('/reset-password' + hash)
+      if (hash.includes('type=invite')) {
+        window.location.replace('/complete-signup' + hash)
+      } else if (hash.includes('type=recovery')) {
+        window.location.replace('/reset-password' + hash)
       }
     }
   }, [])
