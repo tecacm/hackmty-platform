@@ -69,6 +69,7 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
     initialValues,
     disabledFields,
     status,
+    adminFeedback,
     onSubmit,
     onSaveDraft,
     systemLinks,
@@ -188,6 +189,7 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
               initialValues={initialValues}
               disabledFields={disabledFields}
               status={status}
+              adminFeedback={adminFeedback}
               onSubmit={onSubmit}
               onSaveDraft={onSaveDraft}
               systemLinks={systemLinks}

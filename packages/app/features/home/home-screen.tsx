@@ -314,7 +314,7 @@ export function HomeScreen() {
   const draftApps = userApps.filter(app => app.status === 'draft')
   const submittedApps = userApps.filter(app => {
     if (role === 'user' || role === 'admin') {
-      return app.status === 'submitted' || app.status === 'accepted' || app.status === 'rejected'
+      return app.status === 'submitted' || app.status === 'accepted' || app.status === 'rejected' || app.status === 'changes_requested'
     }
     return app.status === 'accepted' || app.status === 'rejected'
   })
@@ -365,6 +365,10 @@ export function HomeScreen() {
         return { backgroundColor: '#ecfeff' }
       case 'accepted':
         return { backgroundColor: '#f0fdf4' }
+      case 'changes_requested':
+        return { backgroundColor: '#fffbeb' }
+      case 'rejected':
+        return { backgroundColor: '#fef2f2' }
       default:
         return { backgroundColor: '#f1f5f9' }
     }
@@ -378,6 +382,10 @@ export function HomeScreen() {
         return { color: '#0e7490' }
       case 'accepted':
         return { color: '#15803d' }
+      case 'changes_requested':
+        return { color: '#b45309' }
+      case 'rejected':
+        return { color: '#b91c1c' }
       default:
         return { color: '#475569' }
     }
@@ -391,6 +399,10 @@ export function HomeScreen() {
         return 'Under Review'
       case 'accepted':
         return 'Accepted'
+      case 'changes_requested':
+        return 'Changes Requested'
+      case 'rejected':
+        return 'Rejected'
       default:
         return status
     }

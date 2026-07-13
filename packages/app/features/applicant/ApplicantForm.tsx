@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, ReactNode } from 'react'
+import { useState, useEffect, useRef, ReactNode, createElement } from 'react'
 import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native'
 import { useForm, Controller } from 'react-hook-form'
 import { TextLink } from 'solito/link'
@@ -21,6 +21,7 @@ type ApplicantFormProps = {
   initialValues?: Partial<ApplicantFormData>
   disabledFields?: string[]
   status?: string | null
+  adminFeedback?: string | null
   onSubmit: (data: ApplicantFormData) => void
   onSaveDraft?: (data: ApplicantFormData) => void
   systemLinks?: Record<string, { text: any; href: string }>
@@ -97,7 +98,7 @@ function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): Sectio
 
 // Helper to create React component for hyperlinked labels
 const createMLHLink = (text: string, href: string) =>
-  React.createElement(
+  createElement(
     TextLink,
     { href, style: { color: applicationFieldsConfig.styles.linkColor, textDecorationLine: applicationFieldsConfig.styles.linkDecoration }, children: text }
   )
@@ -124,7 +125,7 @@ const buildCompositeLabel = (labelDef: any, systemLinks: Record<string, { text: 
     return null
   }).filter(Boolean)
   
-  return React.createElement(
+  return createElement(
     Text,
     { style: { color: titleColor } },
     ...parts
@@ -137,6 +138,7 @@ export function ApplicantForm({
   initialValues = {},
   disabledFields = [],
   status = null,
+  adminFeedback = null,
   onSubmit,
   onSaveDraft,
   systemLinks = {},
@@ -146,6 +148,7 @@ export function ApplicantForm({
   const { width } = useWindowDimensions()
   const [isReady, setIsReady] = useState(false)
   const isWide = width >= 520
+  const isFormLocked = isClosed || status === 'submitted' || status === 'accepted' || status === 'rejected'
 
   const dynamicHeadingSize = Math.round(Math.min(50, Math.max(24, width * 0.07)))
 
@@ -249,13 +252,51 @@ export function ApplicantForm({
         </View>
       )}
 
+      {status === 'changes_requested' && (
+        <View style={{ backgroundColor: '#fffbeb', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
+          <Text style={{ color: '#b45309', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>
+            ⚠️ Action Required: Changes Requested by Organizer
+          </Text>
+          <Text style={{ color: '#78350f', fontSize: 14 }}>
+            {adminFeedback || 'Please review and update your application details.'}
+          </Text>
+        </View>
+      )}
+
+      {status === 'submitted' && !isClosed && (
+        <View style={{ backgroundColor: '#ecfdf5', borderColor: '#10b981', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
+          <Text style={{ color: '#047857', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
+            Your application has been submitted and is currently locked.
+          </Text>
+        </View>
+      )}
+
+      {status === 'accepted' && (
+        <View style={{ backgroundColor: '#f0fdf4', borderColor: '#22c55e', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
+          <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18, textAlign: 'center', marginBottom: 4 }}>
+            🎉 Congratulations!
+          </Text>
+          <Text style={{ color: '#166534', fontSize: 14, textAlign: 'center' }}>
+            Your application has been accepted. We look forward to seeing you at the event!
+          </Text>
+        </View>
+      )}
+
+      {status === 'rejected' && (
+        <View style={{ backgroundColor: '#fef2f2', borderColor: '#ef4444', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
+          <Text style={{ color: '#b91c1c', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
+            Your application was not accepted for this event. Thank you for your interest.
+          </Text>
+        </View>
+      )}
+
       {Platform.OS === 'web' && (
         <Text style={[styles.heading, { fontSize: dynamicHeadingSize }, styles.shadow]}> 
           Applying as {role.charAt(0).toUpperCase() + role.slice(1)}
         </Text>
       )}
 
-      <View style={{ width: '100%', gap: 16, opacity: isClosed ? 0.75 : 1 }} pointerEvents={isClosed ? "none" : "auto"}>
+      <View style={{ width: '100%', gap: 16, opacity: isFormLocked ? 0.75 : 1 }} pointerEvents={isFormLocked ? "none" : "auto"}>
         {sections.map(({ key: sectionKey, id: sectionName, label: sectionLabel, fields: sectionFields }) => (
           <View key={sectionKey} style={styles.section}>
             {sectionName !== 'General' && <Text style={styles.sectionTitle}>{sectionLabel ?? sectionName}</Text>}
@@ -437,7 +478,7 @@ export function ApplicantForm({
         ))}
       </View>
 
-      {!isClosed && (
+      {!isFormLocked && (
         <View style={styles.buttonRow}>
           <PillButton
             title={status === 'submitted' ? 'Submitted' : 'Submit'}

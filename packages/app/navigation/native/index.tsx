@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Platform, View, ActivityIndicator } from 'react-native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import {
@@ -19,6 +19,7 @@ import { HomeScreen } from 'app/features/home/home-screen'
 import { ProfileScreen } from 'app/features/profile/profile-screen'
 import { ApplicationScreen } from 'app/features/home/application-screen'
 import { TeamsScreen } from 'app/features/teams/teams-screen'
+import { AdminDashboardScreen } from 'app/features/admin/dashboard-screen'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { formFieldColors } from 'app/components/form-field-styles'
 
@@ -31,6 +32,7 @@ type StackParamList = {
   tabs: undefined
   application: { role?: string }
   'user-detail': { id: string }
+  admin: undefined
 }
 
 type TabParamList = {
@@ -168,6 +170,18 @@ export function NativeNavigation() {
             }} 
           />
           <Stack.Screen name="user-detail" component={UserDetailScreen} options={{ title: 'User' }} />
+          <Stack.Screen 
+            name="admin" 
+            component={AdminDashboardScreen} 
+            options={{
+              headerTitleAlign: 'center',
+              headerShown: true,
+              headerTitle: 'Admin Portal',
+              headerTransparent: Platform.OS === 'ios',
+              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
+              headerBackTitle: 'Home',
+            }} 
+          />
         </>
       ) : (
         <>

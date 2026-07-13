@@ -16,6 +16,7 @@ export type UseApplicationFormResult = {
   initialValues: Partial<ApplicantFormData>
   disabledFields: string[]
   status: string | null
+  adminFeedback: string | null
   onSubmit: (data: ApplicantFormData) => Promise<void>
   onSaveDraft: (data: ApplicantFormData) => Promise<void>
   systemLinks: Record<string, { text: any; href: string }>
@@ -29,6 +30,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
   const [initialValues, setInitialValues] = useState<Partial<ApplicantFormData>>({})
   const [disabledFields, setDisabledFields] = useState<string[]>([])
   const [status, setStatus] = useState<string | null>(null)
+  const [adminFeedback, setAdminFeedback] = useState<string | null>(null)
   const [systemLinks, setSystemLinks] = useState<Record<string, { text: any; href: string }>>({})
   const [isClosed, setIsClosed] = useState(false)
 
@@ -276,7 +278,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       // 9. Fetch user's existing application answers/status
       const { data: appData, error: appError } = await supabase
         .from('applications')
-        .select('answers, status')
+        .select('answers, status, admin_feedback')
         .eq('application_type_id', role)
         .eq('user_id', user.id)
         .maybeSingle()
@@ -290,9 +292,11 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
           ...profileValues
         })
         setStatus(appData.status || null)
+        setAdminFeedback(appData.admin_feedback || null)
       } else {
         setInitialValues(profileValues)
         setStatus(null)
+        setAdminFeedback(null)
       }
 
       // Fetch role close_at
@@ -415,6 +419,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
             application_type_id: role,
             answers,
             status: 'submitted',
+            admin_feedback: null, // Reset feedback on submission
             updated_at: new Date().toISOString()
           },
           { onConflict: 'user_id,application_type_id' }
@@ -453,6 +458,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       }
 
       setStatus('submitted')
+      setAdminFeedback(null)
       setInitialValues(answers)
       console.log('Application submitted successfully!')
     } catch (err) {
@@ -468,6 +474,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
     initialValues,
     disabledFields,
     status,
+    adminFeedback,
     onSubmit,
     onSaveDraft,
     systemLinks,

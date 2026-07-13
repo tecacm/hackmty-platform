@@ -196,6 +196,27 @@ export function WebNavbar() {
               )}
             </Pressable>
           )}
+          {hasPermission('applications', 'modify') && (
+            <Pressable
+              onPress={() => navigateTo('/admin')}
+              style={({ hovered }) => [
+                styles.navLink,
+                pathname === '/admin' && styles.navLinkActive,
+              ]}
+            >
+              {({ hovered }) => (
+                <Text
+                  style={[
+                    styles.navLinkText,
+                    hovered && styles.navLinkTextHover,
+                    pathname === '/admin' && styles.navLinkTextActive,
+                  ]}
+                >
+                  Admin
+                </Text>
+              )}
+            </Pressable>
+          )}
           </View>
         </View>
 
