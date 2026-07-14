@@ -77,25 +77,6 @@ async function loadPermissions() {
   }
 }
 
-// Sync auth session changes globally
-if (isSupabaseConfigured) {
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_OUT' || !session) {
-      cachedPermissions = []
-      cachedRole = 'user'
-      currentUserId = null
-      notifyListeners()
-    } else {
-      // Trigger reload only on user change or if cache is empty
-      if (session.user.id !== currentUserId || cachedPermissions === null) {
-        cachedPermissions = null
-        notifyListeners()
-        await loadPermissions()
-      }
-    }
-  })
-}
-
 export function useUserPermissions() {
   const [permissions, setPermissions] = useState<string[]>(cachedPermissions || [])
   const [role, setRole] = useState<string>(cachedRole || 'user')
@@ -113,8 +94,31 @@ export function useUserPermissions() {
       loadPermissions()
     }
 
+    let subscription: any = null
+    if (isSupabaseConfigured) {
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT' || !session) {
+          cachedPermissions = []
+          cachedRole = 'user'
+          currentUserId = null
+          notifyListeners()
+        } else {
+          // Trigger reload only on user change or if cache is empty
+          if (session.user.id !== currentUserId || cachedPermissions === null) {
+            cachedPermissions = null
+            notifyListeners()
+            await loadPermissions()
+          }
+        }
+      })
+      subscription = data.subscription
+    }
+
     return () => {
       listeners.delete(listener)
+      if (subscription) {
+        subscription.unsubscribe()
+      }
     }
   }, [])
 
