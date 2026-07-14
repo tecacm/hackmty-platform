@@ -39,10 +39,37 @@ type TabParamList = {
   home: undefined
   profile: undefined
   teams: undefined
+  admin: undefined
 }
 
 const Stack = createNativeStackNavigator<StackParamList>()
 const Tab = createBottomTabNavigator<TabParamList>() // Using the unstable native navigator
+
+const AdminStack = createNativeStackNavigator()
+
+function AdminTabNavigator() {
+  return (
+    <AdminStack.Navigator
+      screenOptions={{
+        contentStyle: { backgroundColor: 'transparent' },
+      }}
+    >
+      <AdminStack.Screen
+        name="admin-dashboard"
+        component={AdminDashboardScreen}
+        options={{
+          headerTitleAlign: 'center',
+          headerShown: true,
+          headerLargeTitleEnabled: true,
+          headerTitle: 'Review Portal',
+          headerTransparent: Platform.OS === 'ios',
+          headerStyle: Platform.OS !== 'ios' ? { backgroundColor: '#1d041f' } : undefined,
+          headerTintColor: '#FFFFFF',
+        }}
+      />
+    </AdminStack.Navigator>
+  )
+}
 
 function TabNavigator() {
   const { hasPermission } = useUserPermissions()
@@ -111,6 +138,25 @@ function TabNavigator() {
           }) as any,
         }}
       />
+      {hasPermission('applications', 'modify') && (
+        <Tab.Screen
+          name="admin"
+          component={AdminTabNavigator}
+          options={{ 
+            tabBarLabel: 'Review',
+            tabBarIcon: Platform.select({
+              ios: {
+                type: 'sfSymbol',
+                name: 'lock.shield.fill',
+              },
+              android: {
+                type: 'materialSymbol',
+                name: 'admin_panel_settings',
+              },
+            }) as any,
+          }}
+        />
+      )}
     </Tab.Navigator>
   )
 }
@@ -176,7 +222,8 @@ export function NativeNavigation() {
             options={{
               headerTitleAlign: 'center',
               headerShown: true,
-              headerTitle: 'Admin Portal',
+              headerLargeTitleEnabled: true,
+              headerTitle: 'Review Portal',
               headerTransparent: Platform.OS === 'ios',
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
               headerBackTitle: 'Home',

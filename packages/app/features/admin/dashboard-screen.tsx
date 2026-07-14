@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import {
   StyleSheet,
   View,
@@ -86,8 +86,6 @@ export function AdminDashboardScreen() {
   const insets = useSafeArea()
   const headerHeight = useHeaderHeightSafe()
   const { width, height: screenHeight } = useWindowDimensions()
-  const topOffset = Math.max(headerHeight, insets.top)
-
   // Load applications
   const fetchApplications = async () => {
     try {
@@ -365,7 +363,7 @@ export function AdminDashboardScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <>
       <WebNavbar />
       <ParallaxScrollView
         background={background}
@@ -373,7 +371,7 @@ export function AdminDashboardScreen() {
         contentContainerStyle={{
           alignItems: 'center',
           gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : topOffset,
+          paddingTop: Platform.OS === 'web' ? 104 : insets.top,
           paddingBottom: insets.bottom + 40,
           paddingLeft: insets.left,
           paddingRight: insets.right,
@@ -381,19 +379,29 @@ export function AdminDashboardScreen() {
         }}
       >
         <View style={styles.contentWrapper}>
-          {/* Header */}
-          <View style={styles.headerTitleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.title}>Application Review Portal</Text>
-              <Text style={styles.subtitle}>Review, filter, and manage attendee applications.</Text>
+          {Platform.OS === 'web' ? (
+            <View style={styles.headerTitleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.title}>Application Review Portal</Text>
+                <Text style={styles.subtitle}>Review, filter, and manage attendee applications.</Text>
+              </View>
+              <PillButton
+                title="↻ Refresh"
+                onPress={fetchApplications}
+                isLoading={loading}
+                additionalStyle={styles.refreshBtn}
+              />
             </View>
-            <PillButton
-              title="↻ Refresh"
-              onPress={fetchApplications}
-              isLoading={loading}
-              additionalStyle={styles.refreshBtn}
-            />
-          </View>
+          ) : (
+            <View style={{ width: '100%', alignItems: 'flex-end', marginBottom: 12 }}>
+              <PillButton
+                title="↻ Refresh"
+                onPress={fetchApplications}
+                isLoading={loading}
+                additionalStyle={{ width: 100, height: 36 }}
+              />
+            </View>
+          )}
 
           {/* Stats Overview */}
           <View style={styles.statsContainer}>
@@ -538,9 +546,7 @@ export function AdminDashboardScreen() {
           )}
         </View>
       </ParallaxScrollView>
-
-
-    </View>
+    </>
   )
 }
 
@@ -1151,12 +1157,20 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    ...Platform.select({
+      web: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      },
+      default: {
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 12,
+      }
+    }),
     width: '100%',
     marginBottom: 20,
-    gap: 16,
   },
   refreshBtn: {
     width: 120,

@@ -395,6 +395,70 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  inviteBtnRight: {
+    backgroundColor: 'rgba(194, 183, 95, 0.12)',
+    borderColor: 'rgba(194, 183, 95, 0.4)',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      }
+    })
+  },
+  inviteBtnRightText: {
+    color: '#c2b75f',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  emptySlotText: {
+    color: '#999999',
+    fontSize: 15,
+    fontStyle: 'italic',
+  },
+  memberInitialsPlaceholder: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(34, 0, 44, 0.03)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(34, 0, 44, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  silhouetteHead: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#a3a3a3',
+    marginTop: -5,
+  },
+  silhouetteShoulders: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#a3a3a3',
+    position: 'absolute',
+    bottom: -11,
+  },
+  invitedEmailText: {
+    color: '#22002c',
+    fontSize: 15,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  pendingBadge: {
+    color: '#666666',
+    fontSize: 12,
+    fontWeight: 'bold',
+    backgroundColor: 'rgba(34, 0, 44, 0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
 })
 
 export function TeamsScreen() {
@@ -417,6 +481,7 @@ export function TeamsScreen() {
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
   const [inviteResult, setInviteResult] = useState<{ status: string; message: string } | null>(null)
   const [invitations, setInvitations] = useState<any[]>([])
+  const [sentInvitations, setSentInvitations] = useState<any[]>([])
 
   useEffect(() => {
     setIsHydrated(true)
@@ -456,6 +521,7 @@ export function TeamsScreen() {
         setUserId('1')
         if (team === null) {
           await fetchInvitations()
+          setSentInvitations([])
         } else {
           setTeam({
             id: 'dev-team-123',
@@ -467,6 +533,9 @@ export function TeamsScreen() {
               { id: '2', first_name: 'Jane', last_name: 'Doe', avatar_url: null }
             ]
           })
+          setSentInvitations([
+            { id: 'sent-1', email: 'pending-member@example.com' }
+          ])
         }
         setLoading(false)
         return
@@ -541,6 +610,12 @@ export function TeamsScreen() {
         creator_id: teamData.creator_id,
         members: resolvedMembers
       })
+
+      const { data: sentData } = await supabase
+        .from('team_invitations')
+        .select('id, email')
+        .eq('team_id', teamData.id)
+      setSentInvitations(sentData || [])
     } catch (err: any) {
       console.error('Failed to load team details:', err)
       setError(err.message || 'Unable to retrieve team details.')
@@ -582,7 +657,12 @@ export function TeamsScreen() {
 
       await fetchTeamData()
     } catch (err: any) {
-      setError(err.message || 'Failed to accept invitation.')
+      const isInvalid = err.message?.includes('Invalid invitation') || err.message?.includes('not found')
+      const friendlyMsg = isInvalid ? 'This invite is no longer valid.' : (err.message || 'Failed to accept invitation.')
+      setError(friendlyMsg)
+      if (isInvalid) {
+        await fetchInvitations()
+      }
     } finally {
       setSubmitting(false)
     }
@@ -607,7 +687,12 @@ export function TeamsScreen() {
 
       await fetchInvitations()
     } catch (err: any) {
-      setError(err.message || 'Failed to decline invitation.')
+      const isInvalid = err.message?.includes('Invalid invitation') || err.message?.includes('not found')
+      const friendlyMsg = isInvalid ? 'This invite is no longer valid.' : (err.message || 'Failed to decline invitation.')
+      setError(friendlyMsg)
+      if (isInvalid) {
+        await fetchInvitations()
+      }
     } finally {
       setSubmitting(false)
     }
@@ -742,6 +827,32 @@ export function TeamsScreen() {
     }
   }
 
+  const handleCancelInvitation = async (invitationId: string) => {
+    try {
+      setError(null)
+      setSubmitting(true)
+
+      if (!isSupabaseConfigured) {
+        setSentInvitations(prev => prev.filter(inv => inv.id !== invitationId))
+        setSubmitting(false)
+        return
+      }
+
+      const { error: deleteErr } = await supabase
+        .from('team_invitations')
+        .delete()
+        .eq('id', invitationId)
+
+      if (deleteErr) throw deleteErr
+
+      await fetchTeamData()
+    } catch (err: any) {
+      setError(err.message || 'Failed to cancel invitation.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleSendInvite = async () => {
     const email = inviteEmailInput.trim()
     if (!email) {
@@ -755,17 +866,17 @@ export function TeamsScreen() {
 
       if (!isSupabaseConfigured) {
         if (email.includes('exist')) {
-          setInviteResult({
-            status: 'added_directly',
-            message: 'Added Jane Doe directly to your team!'
+          setTeam(prev => {
+            if (!prev) return null
+            return {
+              ...prev,
+              members: [...prev.members, { id: 'dev-mock-new', first_name: 'Invited', last_name: 'Member', avatar_url: null }]
+            }
           })
         } else {
-          setInviteResult({
-            status: 'invited',
-            message: `Invitation pending! ${email} will automatically join your team when they sign up.`
-          })
+          setSentInvitations(prev => [...prev, { id: 'sent-new-' + Date.now(), email }])
         }
-        await fetchTeamData()
+        setShowInviteModal(false)
         return
       }
 
@@ -794,10 +905,8 @@ export function TeamsScreen() {
           }
         }
 
-        setInviteResult({
-          status: 'invited',
-          message: `Invitation pending! ${email} will automatically see your team's invitation when they sign up.`
-        })
+        await fetchTeamData()
+        setShowInviteModal(false)
       }
     } catch (err: any) {
       setInviteResult({
@@ -912,67 +1021,145 @@ export function TeamsScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Members ({team.members.length}/{maxTeamSize})</Text>
               </View>
-              {team.members.map((member, index) => {
-                const first = (member.first_name || '').charAt(0).toUpperCase()
-                const last = (member.last_name || '').charAt(0).toUpperCase()
-                const initials = `${first}${last}` || '👤'
-                const isOwner = member.id === team.creator_id
-                const isMe = member.id === userId
-                const isLast = index === team.members.length - 1
+              {(() => {
+                const rows: React.ReactNode[] = []
+                
+                // 1. Render active members
+                team.members.forEach((member) => {
+                  if (rows.length >= maxTeamSize) return
+                  const first = (member.first_name || '').charAt(0).toUpperCase()
+                  const last = (member.last_name || '').charAt(0).toUpperCase()
+                  const initials = `${first}${last}` || '👤'
+                  const isOwner = member.id === team.creator_id
+                  const isMe = member.id === userId
+                  const overallIndex = rows.length
+                  const isLast = overallIndex === maxTeamSize - 1
 
-                return (
-                  <View 
-                    key={member.id} 
-                    style={[
-                      styles.memberRow,
-                      isLast && { borderBottomWidth: 0 }
-                    ]}
-                  >
-                    <View style={styles.memberInitials}>
-                      {member.avatar_display_url ? (
-                        <Image source={{ uri: member.avatar_display_url }} style={styles.memberAvatarImage} />
-                      ) : (
-                        <Text style={styles.memberInitialsText}>{initials}</Text>
-                      )}
-                    </View>
-                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.memberName}>
-                          {member.first_name || ''} {member.last_name || ''}
-                        </Text>
-                        {isOwner && (
-                          <Text style={styles.ownerBadge}>(Owner)</Text>
+                  rows.push(
+                    <View 
+                      key={`member-${member.id}`} 
+                      style={[
+                        styles.memberRow,
+                        isLast && { borderBottomWidth: 0 }
+                      ]}
+                    >
+                      <View style={styles.memberInitials}>
+                        {member.avatar_display_url ? (
+                          <Image source={{ uri: member.avatar_display_url }} style={styles.memberAvatarImage} />
+                        ) : (
+                          <Text style={styles.memberInitialsText}>{initials}</Text>
                         )}
                       </View>
-                      
-                      {!isMe && team.creator_id === userId && (
-                        <Pressable 
-                          onPress={() => handleKickMember(member.id)} 
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={styles.memberName}>
+                            {member.first_name || ''} {member.last_name || ''}
+                          </Text>
+                          {isOwner && (
+                            <Text style={styles.ownerBadge}>(Owner)</Text>
+                          )}
+                        </View>
+                        
+                        {!isMe && team.creator_id === userId && (
+                          <Pressable 
+                            onPress={() => handleKickMember(member.id)} 
+                            style={({ pressed }) => [
+                              styles.kickBtn,
+                              pressed && { opacity: 0.7 }
+                            ]}
+                          >
+                            <Text style={styles.kickBtnText}>Kick</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </View>
+                  )
+                })
+
+                // 2. Render pending sent invitations
+                sentInvitations.forEach((invite) => {
+                  if (rows.length >= maxTeamSize) return
+                  const overallIndex = rows.length
+                  const isLast = overallIndex === maxTeamSize - 1
+
+                  rows.push(
+                    <View 
+                      key={`invite-${invite.id}`} 
+                      style={[
+                        styles.memberRow,
+                        isLast && { borderBottomWidth: 0 }
+                      ]}
+                    >
+                      <View style={styles.memberInitialsPlaceholder}>
+                        <View style={styles.silhouetteHead} />
+                        <View style={styles.silhouetteShoulders} />
+                      </View>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.invitedEmailText} numberOfLines={1}>
+                            {invite.email}
+                          </Text>
+                          <Text style={styles.pendingBadge}>(Invited)</Text>
+                        </View>
+                        
+                        {team.creator_id === userId && (
+                          <Pressable 
+                            onPress={() => handleCancelInvitation(invite.id)} 
+                            style={({ pressed }) => [
+                              styles.kickBtn,
+                              pressed && { opacity: 0.7 }
+                            ]}
+                          >
+                            <Text style={styles.kickBtnText}>Cancel</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </View>
+                  )
+                })
+
+                // 3. Render empty slots
+                while (rows.length < maxTeamSize) {
+                  const overallIndex = rows.length
+                  const isLast = overallIndex === maxTeamSize - 1
+                  const slotKey = `empty-${overallIndex}`
+
+                  rows.push(
+                    <View 
+                      key={slotKey} 
+                      style={[
+                        styles.memberRow,
+                        isLast && { borderBottomWidth: 0 }
+                      ]}
+                    >
+                      <View style={styles.memberInitialsPlaceholder}>
+                        <View style={styles.silhouetteHead} />
+                        <View style={styles.silhouetteShoulders} />
+                      </View>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flex: 1, justifyContent: 'center' }}>
+                          <Text style={styles.emptySlotText}>Empty Slot</Text>
+                        </View>
+                        <Pressable
+                          onPress={() => {
+                            setShowInviteModal(true)
+                            setInviteEmailInput('')
+                            setInviteResult(null)
+                          }}
                           style={({ pressed }) => [
-                            styles.kickBtn,
+                            styles.inviteBtnRight,
                             pressed && { opacity: 0.7 }
                           ]}
                         >
-                          <Text style={styles.kickBtnText}>Kick</Text>
+                          <Text style={styles.inviteBtnRightText}>Invite</Text>
                         </Pressable>
-                      )}
+                      </View>
                     </View>
-                  </View>
-                )
-              })}
+                  )
+                }
 
-              {team.members.length < maxTeamSize && (
-                <PillButton
-                  variant="outline-secondary"
-                  title="+ Invite Teammate"
-                  onPress={() => {
-                    setShowInviteModal(true)
-                    setInviteEmailInput('')
-                    setInviteResult(null)
-                  }}
-                  additionalStyle={{ marginTop: 16 }}
-                />
-              )}
+                return rows
+              })()}
 
               <View style={styles.divider} />
 

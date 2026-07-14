@@ -69,7 +69,15 @@ export function UserDetailScreen() {
   const insets = useSafeArea()
   const headerHeight = useHeaderHeightSafe()
   const { width, height: screenHeight } = useWindowDimensions()
-  const topOffset = Math.max(headerHeight, insets.top)
+  const [stableHeaderHeight, setStableHeaderHeight] = useState(0)
+
+  useEffect(() => {
+    if (headerHeight > stableHeaderHeight) {
+      setStableHeaderHeight(headerHeight)
+    }
+  }, [headerHeight, stableHeaderHeight])
+
+  const topOffset = Math.max(stableHeaderHeight, insets.top)
 
   useEffect(() => {
     setIsReady(true)
@@ -425,7 +433,7 @@ export function UserDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <>
       <WebNavbar />
       <ParallaxScrollView
         background={background}
@@ -441,18 +449,28 @@ export function UserDetailScreen() {
         }}
       >
         <View style={styles.contentWrapper}>
-          {/* Header Back & Refresh Row */}
-          <View style={styles.detailHeaderActionsRow}>
-            <Pressable onPress={() => navigateTo('/admin')} style={styles.backBtn}>
-              <Text style={styles.backBtnText}>← Back to Admin Dashboard</Text>
-            </Pressable>
-            <PillButton
-              title="↻ Refresh Data"
-              onPress={fetchApplicationDetails}
-              isLoading={loading}
-              additionalStyle={styles.detailRefreshBtn}
-            />
-          </View>
+          {Platform.OS === 'web' ? (
+            <View style={styles.detailHeaderActionsRow}>
+              <Pressable onPress={() => navigateTo('/admin')} style={styles.backBtn}>
+                <Text style={styles.backBtnText}>← Back to Admin Dashboard</Text>
+              </Pressable>
+              <PillButton
+                title="↻ Refresh Data"
+                onPress={fetchApplicationDetails}
+                isLoading={loading}
+                additionalStyle={styles.detailRefreshBtn}
+              />
+            </View>
+          ) : (
+            <View style={{ width: '100%', alignItems: 'flex-end', marginBottom: 12 }}>
+              <PillButton
+                title="Refresh"
+                onPress={fetchApplicationDetails}
+                isLoading={loading}
+                additionalStyle={{ width: 100, height: 36 }}
+              />
+            </View>
+          )}
 
           {/* Role Switcher if user has multiple applications */}
           {!loading && userApps.length > 1 && (
@@ -695,7 +713,7 @@ export function UserDetailScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   )
 }
 
