@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, StyleSheet, TextStyle, ViewStyle } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
+import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
 
 type StyledFileInputProps = {
@@ -82,6 +83,7 @@ export function StyledFileInput({
   additionalStyle = {},
 }: StyledFileInputProps) {
   const [localError, setLocalError] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
   const {
     acceptedMimeTypes = [],
     acceptedExtensions = [],
@@ -92,6 +94,8 @@ export function StyledFileInput({
   } = fileSelectorProps
 
   const openPicker = async () => {
+    if (isUploading) return
+
     const result = await DocumentPicker.getDocumentAsync({
       type: acceptedMimeTypes.length > 0 ? acceptedMimeTypes : '*/*',
       multiple: false,
@@ -123,7 +127,46 @@ export function StyledFileInput({
     }
 
     setLocalError('')
-    onValueChange(picked.name)
+
+    // FALLBACK PATH: If Supabase is not configured, fallback to filename
+    if (!isSupabaseConfigured) {
+      onValueChange(picked.name)
+      return
+    }
+
+    try {
+      setIsUploading(true)
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        throw new Error('Please log in before uploading files.')
+      }
+
+      const fileExt = picked.name.split('.').pop()
+      const filePath = `${user.id}/resume.${fileExt}`
+
+      // Create FormData payload for React Native upload
+      const formData = new FormData()
+      formData.append('file', {
+        uri: picked.uri,
+        name: picked.name,
+        type: picked.mimeType || 'application/pdf',
+      } as any)
+
+      const { error: uploadError } = await supabase.storage
+        .from('resumes')
+        .upload(filePath, formData, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      onValueChange(filePath)
+    } catch (err: any) {
+      console.error('File upload error:', err)
+      setLocalError(err.message || 'Failed to upload file.')
+      onValueChange('')
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   return (
@@ -133,16 +176,20 @@ export function StyledFileInput({
       </Text>
       <Pressable
         onPress={openPicker}
+        disabled={isUploading}
         style={({ pressed }) => [
           formFieldStyles.fieldShell,
           styles.trigger,
           additionalStyle,
           error && formFieldStyles.errorInput,
           pressed && styles.triggerPressed,
+          isUploading && { opacity: 0.6 }
         ]}
       >
-        <Text style={[styles.triggerText, !value && styles.placeholderText]}>{getDisplayLabel(value, placeholder)}</Text>
-        <Text style={styles.actionText}>Browse</Text>
+        <Text style={[styles.triggerText, !value && styles.placeholderText]}>
+          {isUploading ? 'Uploading file...' : getDisplayLabel(value, placeholder)}
+        </Text>
+        <Text style={styles.actionText}>{isUploading ? 'Uploading...' : 'Browse'}</Text>
       </Pressable>
       {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
       {!!(localError || error) && <Text style={formFieldStyles.errorText}>{localError || error}</Text>}

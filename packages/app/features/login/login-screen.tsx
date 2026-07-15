@@ -83,6 +83,17 @@ export function LoginScreen() {
     }
   }, [headerHeight, stableHeaderHeight]);
 
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const hash = window.location.hash
+      if (hash.includes('type=invite')) {
+        window.location.replace('/complete-signup' + hash)
+      } else if (hash.includes('type=recovery')) {
+        window.location.replace('/reset-password' + hash)
+      }
+    }
+  }, [])
+
   const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
 
   const goToRegister = () => navigateTo('/register')
@@ -145,14 +156,19 @@ export function LoginScreen() {
     >
         <View style={styles.container}>
           <View style={styles.shadowStyle}>
-            <SolitoImage
-              src={logoImage}
-              height={300}
-              width={200}
-              alt={"The HackMTY Logo"}
-              contentFit="contain"
-              resizeMode="contain"
-            />
+            {(() => {
+              const ImageComponent = SolitoImage as any
+              return (
+                <ImageComponent
+                  src={logoImage}
+                  height={300}
+                  width={200}
+                  alt="The HackMTY Logo"
+                  contentFit="contain"
+                  resizeMode="contain"
+                />
+              )
+            })()}
           </View>
         </View>
         <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingTop: 12, paddingHorizontal: 20 }}>
@@ -176,6 +192,7 @@ export function LoginScreen() {
                 onChangeText={onChange}
                 value={value}
                 error={errors.email?.message}
+                onSubmitEditing={handleSubmit(onSubmit)}
               />
             )}
           />
@@ -192,6 +209,7 @@ export function LoginScreen() {
                 onChangeText={onChange}
                 value={value}
                 error={errors.password?.message}
+                onSubmitEditing={handleSubmit(onSubmit)}
               />
             )}
           />
@@ -202,7 +220,7 @@ export function LoginScreen() {
             additionalStyle={{ marginBottom: 10, opacity: isSubmitting ? 0.7 : 1 }}
           />
           <SimpleTextLink text="Don't have an account? Sign Up" onPress={goToRegister}/>
-          <SimpleTextLink text="Forgot your password?" onPress={() => {}}/>
+          <SimpleTextLink text="Forgot your password?" onPress={() => navigateTo('/forgot-password')}/>
         </View>
     </ParallaxScrollView>
   )

@@ -9,9 +9,8 @@ module.exports = (config) => {
       const buildSettings = configurations[key].buildSettings;
       if (buildSettings) {
         // Force iOS and prevent it from looking at the Mac SDK
-        buildSettings['SDKROOT'] = 'iphoneos';
-        buildSettings['SUPPORTED_PLATFORMS'] = 'iphonesimulator iphoneos';
-        
+        buildSettings['SDKROOT'] = 'iphoneos';  
+                
         // Disable Header Maps to prevent "accidental" discovery of Mac headers
         buildSettings['USE_HEADERMAP'] = 'NO';
         

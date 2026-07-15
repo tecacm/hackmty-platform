@@ -15,11 +15,21 @@ export function NavigationProvider({
           config: {
             initialRouteName: 'login',
             screens: {
-              login: '',
+              login: 'login',
               register: 'register',
-              home: 'home',
+              tabs: {
+                path: '',
+                screens: {
+                  home: 'home',
+                  profile: 'profile',
+                },
+              },
               application: 'application',
-              'user-detail': 'users/:id',
+               'user-detail': 'users/:id',
+              'forgot-password': 'forgot-password',
+              'reset-password': 'reset-password',
+              'complete-signup': 'complete-signup',
+              admin: 'admin',
             },
           },
         }),

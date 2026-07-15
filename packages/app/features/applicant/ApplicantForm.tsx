@@ -1,8 +1,7 @@
-'use client'
-
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, ReactNode, createElement } from 'react'
 import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native'
 import { useForm, Controller } from 'react-hook-form'
+import { TextLink } from 'solito/link'
 import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
 import { StyledAutocomplete } from 'app/components/styled-autocomplete'
@@ -11,15 +10,22 @@ import { StyledFileInput } from 'app/components/styled-file-input'
 import { FormCheckbox } from 'app/components/form-checkbox'
 import FormRadio from 'app/components/form-radio'
 import { PillButton } from 'app/components/pill-button'
-import { getApplicantFieldsForRole } from './applicant-field-config'
+import { getApplicantFieldsForRole, type ApplicantField } from './applicant-field-config'
 import applicationFieldsConfig from 'app/data/application-fields.json'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
 import { formFieldColors } from 'app/components/form-field-styles'
 
 type ApplicantFormProps = {
   role: ApplicantRole
+  fields?: ApplicantField[]
   initialValues?: Partial<ApplicantFormData>
+  disabledFields?: string[]
+  status?: string | null
+  adminFeedback?: string | null
   onSubmit: (data: ApplicantFormData) => void
+  onSaveDraft?: (data: ApplicantFormData) => void
+  systemLinks?: Record<string, { text: any; href: string }>
+  isClosed?: boolean
 }
 
 type SectionRow<T> =
@@ -90,11 +96,59 @@ function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): Sectio
   return rows
 }
 
-export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantFormProps) {
-  const allFields = getApplicantFieldsForRole(role)
+// Helper to create React component for hyperlinked labels
+const createMLHLink = (text: string, href: string) =>
+  createElement(
+    TextLink,
+    { href, style: { color: applicationFieldsConfig.styles.linkColor, textDecorationLine: applicationFieldsConfig.styles.linkDecoration }, children: text }
+  )
+
+// Helper function to build React components from composite label definitions
+const buildCompositeLabel = (labelDef: any, systemLinks: Record<string, { text: any; href: string }> = {}): ReactNode => {
+  if (!labelDef) return ''
+  if (typeof labelDef === 'string') return labelDef
+  if (!labelDef.parts) return ''
+  
+  const titleColor = formFieldColors.titleText
+  
+  const parts = labelDef.parts.map((part: any) => {
+    if (part.type === 'text') return part.content
+    if (part.type === 'space') return ' '
+    if (part.type === 'link' && part.linkRef) {
+      const linkDef = systemLinks[part.linkRef] || (applicationFieldsConfig.links as any)[part.linkRef]
+      if (!linkDef) return part.linkRef
+      const linkText = typeof linkDef.text === 'object' && linkDef.text !== null
+        ? (linkDef.text.en || linkDef.text)
+        : linkDef.text
+      return createMLHLink(linkText, linkDef.href)
+    }
+    return null
+  }).filter(Boolean)
+  
+  return createElement(
+    Text,
+    { style: { color: titleColor } },
+    ...parts
+  )
+}
+
+export function ApplicantForm({
+  role,
+  fields: propFields,
+  initialValues = {},
+  disabledFields = [],
+  status = null,
+  adminFeedback = null,
+  onSubmit,
+  onSaveDraft,
+  systemLinks = {},
+  isClosed = false
+}: ApplicantFormProps) {
+  const allFields = propFields || getApplicantFieldsForRole(role)
   const { width } = useWindowDimensions()
   const [isReady, setIsReady] = useState(false)
   const isWide = width >= 520
+  const isFormLocked = isClosed || status === 'submitted' || status === 'accepted' || status === 'rejected'
 
   const dynamicHeadingSize = Math.round(Math.min(50, Math.max(24, width * 0.07)))
 
@@ -109,7 +163,9 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
   type SectionRef = string | { id: string; label?: string; order?: number }
 
-  const { control, handleSubmit, watch, formState: { errors } } = useForm<Partial<ApplicantFormData>>({
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+
+  const { control, handleSubmit, watch, reset, formState: { errors, isDirty } } = useForm<Partial<ApplicantFormData>>({
     defaultValues: {
       ...defaultValues,
       ...(initialValues as object),
@@ -117,6 +173,46 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
   })
 
   const currentValues = watch()
+  const isInitialized = useRef(false)
+
+  // Reset initialization flag when role changes
+  useEffect(() => {
+    isInitialized.current = false
+  }, [role])
+
+  // Populate form with initial values when they are loaded and ready (only once per mount/role change)
+  useEffect(() => {
+    if (isReady && initialValues && Object.keys(initialValues).length > 0 && !isInitialized.current) {
+      reset({
+        ...defaultValues,
+        ...(initialValues as object),
+      } as Partial<ApplicantFormData>)
+      isInitialized.current = true
+    }
+  }, [initialValues, isReady, reset])
+
+  // Auto-save draft on change when form is dirty
+  useEffect(() => {
+    if (!onSaveDraft || !isReady || !isDirty) return
+
+    setSaveStatus('saving')
+    const handler = setTimeout(async () => {
+      try {
+        await onSaveDraft(currentValues as ApplicantFormData)
+        // Reset defaultValues to currentValues to clear isDirty flag, but keep active user inputs intact
+        reset(currentValues, { keepValues: true })
+        setSaveStatus('saved')
+      } catch (err) {
+        console.error('Failed to auto-save draft:', err)
+        setSaveStatus('idle')
+      }
+    }, 1500)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [currentValues, onSaveDraft, isReady, isDirty, reset])
+
   const roleFieldNames = new Set(allFields.map((field: any) => field.name))
 
   const fields = allFields.filter((field: any) => {
@@ -148,187 +244,267 @@ export function ApplicantForm({ role, initialValues = {}, onSubmit }: ApplicantF
 
   return (
     <View style={styles.container}>
+      {isClosed && (
+        <View style={{ backgroundColor: '#fee2e2', borderColor: '#f87171', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
+          <Text style={{ color: '#991b1b', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
+            Registration for this role has closed. You are viewing your application in read-only mode.
+          </Text>
+        </View>
+      )}
+
+      {status === 'changes_requested' && (
+        <View style={{ backgroundColor: '#fffbeb', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
+          <Text style={{ color: '#b45309', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>
+            ⚠️ Action Required: Changes Requested by Organizer
+          </Text>
+          <Text style={{ color: '#78350f', fontSize: 14 }}>
+            {adminFeedback || 'Please review and update your application details.'}
+          </Text>
+        </View>
+      )}
+
+      {status === 'submitted' && !isClosed && (
+        <View style={{ backgroundColor: '#ecfdf5', borderColor: '#10b981', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
+          <Text style={{ color: '#047857', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
+            Your application has been submitted and is currently locked.
+          </Text>
+        </View>
+      )}
+
+      {status === 'accepted' && (
+        <View style={{ backgroundColor: '#f0fdf4', borderColor: '#22c55e', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
+          <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18, textAlign: 'center', marginBottom: 4 }}>
+            🎉 Congratulations!
+          </Text>
+          <Text style={{ color: '#166534', fontSize: 14, textAlign: 'center' }}>
+            Your application has been accepted. We look forward to seeing you at the event!
+          </Text>
+        </View>
+      )}
+
+      {status === 'rejected' && (
+        <View style={{ backgroundColor: '#fef2f2', borderColor: '#ef4444', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
+          <Text style={{ color: '#b91c1c', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
+            Your application was not accepted for this event. Thank you for your interest.
+          </Text>
+        </View>
+      )}
+
       {Platform.OS === 'web' && (
         <Text style={[styles.heading, { fontSize: dynamicHeadingSize }, styles.shadow]}> 
           Applying as {role.charAt(0).toUpperCase() + role.slice(1)}
         </Text>
       )}
 
-      {sections.map(({ key: sectionKey, id: sectionName, label: sectionLabel, fields: sectionFields }) => (
-        <View key={sectionKey} style={styles.section}>
-          {sectionName !== 'General' && <Text style={styles.sectionTitle}>{sectionLabel ?? sectionName}</Text>}
+      <View style={{ width: '100%', gap: 16, opacity: isFormLocked ? 0.75 : 1 }} pointerEvents={isFormLocked ? "none" : "auto"}>
+        {sections.map(({ key: sectionKey, id: sectionName, label: sectionLabel, fields: sectionFields }) => (
+          <View key={sectionKey} style={styles.section}>
+            {sectionName !== 'General' && <Text style={styles.sectionTitle}>{sectionLabel ?? sectionName}</Text>}
 
-          {getSectionHeaders(sectionKey).map((header) => (
-            <View key={`${sectionKey}-${header.key}`} style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionHeaderText}>{header.text}</Text>
-            </View>
-          ))}
+            {getSectionHeaders(sectionKey).map((header) => (
+              <View key={`${sectionKey}-${header.key}`} style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionHeaderText}>{header.text}</Text>
+              </View>
+            ))}
 
-          {buildSectionRows(sectionFields).map((row, rowIndex) => {
-            if (row.type === 'divider') {
-              const f: any = row.field
-              if (f.fieldType === 'paragraph') {
+            {buildSectionRows(sectionFields).map((row, rowIndex) => {
+              if (row.type === 'divider') {
+                const f: any = row.field
+                if (f.fieldType === 'paragraph') {
+                  return (
+                    <View key={`${sectionKey}-${rowIndex}-paragraph`} style={styles.paragraphRow}>
+                      <Text style={styles.paragraphText}>{f.content}</Text>
+                    </View>
+                  )
+                }
+
                 return (
-                  <View key={`${sectionKey}-${rowIndex}-paragraph`} style={styles.paragraphRow}>
-                    <Text style={styles.paragraphText}>{f.content}</Text>
+                  <View key={`${sectionKey}-${(row as any).field.name ?? rowIndex}-${rowIndex}`} style={styles.dividerRow}>
+                    <FormDivider />
                   </View>
                 )
               }
 
               return (
-                <View key={`${sectionKey}-${(row as any).field.name ?? rowIndex}-${rowIndex}`} style={styles.dividerRow}>
-                  <FormDivider />
-                </View>
-              )
-            }
+                <View key={`${sectionKey}-${rowIndex}`} style={[styles.row, isWide ? styles.rowWide : styles.rowNarrow]}>
+                  {row.fields.map((field) => {
+                    // skip non-input rows (shouldn't be present here, but guard for types)
+                    if ((field as any).fieldType === 'divider' || (field as any).fieldType === 'paragraph') return null
 
-            return (
-              <View key={`${sectionKey}-${rowIndex}`} style={[styles.row, isWide ? styles.rowWide : styles.rowNarrow]}>
-                {row.fields.map((field) => {
-                  // skip non-input rows (shouldn't be present here, but guard for types)
-                  if ((field as any).fieldType === 'divider' || (field as any).fieldType === 'paragraph') return null
+                    const ff: any = field
+                    const resolvedLabel = typeof ff.label === 'object' && ff.label !== null
+                      ? buildCompositeLabel(ff.label, systemLinks)
+                      : ff.label
 
-                  const ff: any = field
+                    const displayLabelString = typeof ff.label === 'string' ? ff.label : (ff.validationLabel ?? 'This field')
 
-                  return (
-                    <View key={ff.name} style={[styles.rowField, isWide ? styles.rowFieldWide : styles.rowFieldNarrow]}>
-                      <Controller
-                        control={control}
-                        name={ff.name as any}
-                        rules={{ required: ff.required ? `${ff.validationLabel ?? ff.label ?? "This" } is required` : false }}
-                        render={({ field: { onChange, value } }) => {
-                          if (ff.fieldType === 'checkbox') {
-                            const checked = !!value
-                            return (
-                              <FormCheckbox
-                                variant="form"
-                                label={ff.label}
-                                subtitle={ff.subtitle}
-                                required={!!ff.required}
-                                value={checked}
-                                onValueChange={(v) => onChange(v)}
-                                additionalStyle={styles.inputShadow}
-                                error={(errors as any)[ff.name]?.message}
-                              />
-                            )
-                          }
+                    return (
+                      <View key={ff.name} style={[styles.rowField, isWide ? styles.rowFieldWide : styles.rowFieldNarrow]}>
+                        <Controller
+                          control={control}
+                          name={ff.name as any}
+                          rules={{ required: ff.required ? `${ff.validationLabel ?? displayLabelString} is required` : false }}
+                          render={({ field: { onChange, value } }) => {
+                            if (ff.fieldType === 'checkbox') {
+                              const checked = !!value
+                              return (
+                                <FormCheckbox
+                                  variant="form"
+                                  label={resolvedLabel}
+                                  subtitle={ff.subtitle}
+                                  required={!!ff.required}
+                                  value={checked}
+                                  onValueChange={(v) => onChange(v)}
+                                  additionalStyle={styles.inputShadow}
+                                  error={(errors as any)[ff.name]?.message}
+                                />
+                              )
+                            }
 
-                          if (ff.fieldType === 'radio') {
-                            const radioValue = Array.isArray(value)
-                              ? value
-                              : typeof value === 'string'
+                            if (ff.fieldType === 'radio') {
+                              const radioValue = Array.isArray(value)
                                 ? value
-                                : undefined
+                                : typeof value === 'string'
+                                  ? value
+                                  : undefined
+
+                              return (
+                                <FormRadio
+                                  title={resolvedLabel}
+                                  options={ff.options || []}
+                                  multiple={!!ff.multiple}
+                                  layout={ff.layout || 'vertical'}
+                                  subtitle={ff.subtitle}
+                                  value={radioValue}
+                                  onChange={(next: any) => onChange(next)}
+                                  required={!!ff.required}
+                                  variant="form"
+                                  additionalStyle={styles.inputShadow}
+                                  error={(errors as any)[ff.name]?.message}
+                                />
+                              )
+                            }
+
+                            const controlledValue = value == null ? '' : String(value)
+
+                            if (ff.fieldType === 'select' && ff.options?.length) {
+                              return (
+                                <StyledSelect
+                                  label={resolvedLabel}
+                                  value={controlledValue}
+                                  placeholder={ff.placeholder}
+                                  options={ff.options}
+                                  subtitle={ff.subtitle}
+                                  required={ff.required}
+                                  onValueChange={(nextValue: any) => onChange(nextValue)}
+                                  additionalStyle={styles.inputShadow}
+                                  error={(errors as any)[ff.name]?.message}
+                                />
+                              )
+                            }
+
+                            if (ff.fieldType === 'autocomplete' && ff.autocompleteData?.length) {
+                              return (
+                                <StyledAutocomplete
+                                  label={resolvedLabel}
+                                  placeholder={ff.placeholder}
+                                  subtitle={ff.subtitle}
+                                  required={ff.required}
+                                  textContentType={ff.textContentType as any}
+                                  additionalStyle={styles.inputShadow}
+                                  onChangeText={onChange}
+                                  value={controlledValue}
+                                  error={(errors as any)[ff.name]?.message}
+                                  options={ff.autocompleteData}
+                                />
+                              )
+                            }
+
+                            if (ff.fieldType === 'segmented' && ff.options?.length) {
+                              return (
+                                <StyledSegmented
+                                  label={resolvedLabel}
+                                  value={controlledValue}
+                                  options={ff.options}
+                                  subtitle={ff.subtitle}
+                                  required={ff.required}
+                                  onValueChange={(nextValue: any) => onChange(nextValue)}
+                                  additionalStyle={styles.inputShadow}
+                                  error={(errors as any)[ff.name]?.message}
+                                />
+                              )
+                            }
+
+                            if (ff.fieldType === 'file') {
+                              return (
+                                <StyledFileInput
+                                  label={resolvedLabel}
+                                  value={controlledValue}
+                                  placeholder={ff.placeholder}
+                                  subtitle={ff.subtitle}
+                                  required={ff.required}
+                                  fileSelectorProps={ff.fileSelectorProps}
+                                  onValueChange={(nextValue: any) => onChange(nextValue)}
+                                  additionalStyle={styles.inputShadow}
+                                  error={(errors as any)[ff.name]?.message}
+                                />
+                              )
+                            }
 
                             return (
-                              <FormRadio
-                                title={ff.label}
-                                options={ff.options || []}
-                                multiple={!!ff.multiple}
-                                layout={ff.layout || 'vertical'}
-                                subtitle={ff.subtitle}
-                                value={radioValue}
-                                onChange={(next: any) => onChange(next)}
-                                required={!!ff.required}
-                                variant="form"
-                                additionalStyle={styles.inputShadow}
-                                error={(errors as any)[ff.name]?.message}
-                              />
-                            )
-                          }
-
-                          const controlledValue = value == null ? '' : String(value)
-
-                          if (ff.fieldType === 'select' && ff.options?.length) {
-                            return (
-                              <StyledSelect
-                                label={ff.label}
-                                value={controlledValue}
-                                placeholder={ff.placeholder}
-                                options={ff.options}
-                                subtitle={ff.subtitle}
-                                required={ff.required}
-                                onValueChange={(nextValue: any) => onChange(nextValue)}
-                                additionalStyle={styles.inputShadow}
-                                error={(errors as any)[ff.name]?.message}
-                              />
-                            )
-                          }
-
-                          if (ff.fieldType === 'autocomplete' && ff.autocompleteData?.length) {
-                            return (
-                              <StyledAutocomplete
-                                label={ff.label}
+                              <StyledInput
+                                label={resolvedLabel}
                                 placeholder={ff.placeholder}
                                 subtitle={ff.subtitle}
                                 required={ff.required}
                                 textContentType={ff.textContentType as any}
+                                height={ff.height}
                                 additionalStyle={styles.inputShadow}
                                 onChangeText={onChange}
                                 value={controlledValue}
                                 error={(errors as any)[ff.name]?.message}
-                                options={ff.autocompleteData}
+                                editable={!disabledFields.includes(ff.name)}
                               />
                             )
-                          }
+                          }}
+                        />
+                      </View>
+                    )
+                  })}
+                </View>
+              )
+            })}
+          </View>
+        ))}
+      </View>
 
-                          if (ff.fieldType === 'segmented' && ff.options?.length) {
-                            return (
-                              <StyledSegmented
-                                label={ff.label}
-                                value={controlledValue}
-                                options={ff.options}
-                                subtitle={ff.subtitle}
-                                required={ff.required}
-                                onValueChange={(nextValue: any) => onChange(nextValue)}
-                                additionalStyle={styles.inputShadow}
-                                error={(errors as any)[ff.name]?.message}
-                              />
-                            )
-                          }
-
-                          if (ff.fieldType === 'file') {
-                            return (
-                              <StyledFileInput
-                                label={ff.label}
-                                value={controlledValue}
-                                placeholder={ff.placeholder}
-                                subtitle={ff.subtitle}
-                                required={ff.required}
-                                fileSelectorProps={ff.fileSelectorProps}
-                                onValueChange={(nextValue: any) => onChange(nextValue)}
-                                additionalStyle={styles.inputShadow}
-                                error={(errors as any)[ff.name]?.message}
-                              />
-                            )
-                          }
-
-                          return (
-                            <StyledInput
-                              label={ff.label}
-                              placeholder={ff.placeholder}
-                              subtitle={ff.subtitle}
-                              required={ff.required}
-                              textContentType={ff.textContentType as any}
-                              height={ff.height}
-                              additionalStyle={styles.inputShadow}
-                              onChangeText={onChange}
-                              value={controlledValue}
-                              error={(errors as any)[ff.name]?.message}
-                            />
-                          )
-                        }}
-                      />
-                    </View>
-                  )
-                })}
-              </View>
-            )
-          })}
+      {!isFormLocked && (
+        <View style={styles.buttonRow}>
+          <PillButton
+            title={status === 'submitted' ? 'Submitted' : 'Submit'}
+            onPress={handleSubmit(async (data) => {
+              try {
+                await onSubmit(data as ApplicantFormData)
+                alert('Application submitted successfully!')
+              } catch (e) {
+                alert('Failed to submit application.')
+              }
+            })}
+            additionalStyle={styles.submitButton}
+          />
         </View>
-      ))}
+      )}
 
-      <PillButton title="Submit" onPress={handleSubmit((data) => onSubmit(data as ApplicantFormData))} /> 
+      {!isClosed && saveStatus === 'saving' && (
+        <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 10, fontStyle: 'italic', textAlign: 'center' }}>
+          Saving draft progress...
+        </Text>
+      )}
+      {!isClosed && saveStatus === 'saved' && (
+        <Text style={{ color: '#10b981', fontSize: 13, marginTop: 10, fontWeight: '600', textAlign: 'center' }}>
+          ✓ Progress saved automatically
+        </Text>
+      )}
     </View>
   )
 }
@@ -436,5 +612,21 @@ const styles = StyleSheet.create({
         textShadow: '0px 12px 32px rgba(34, 0, 44, 0.12)',
       }
     })
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 16,
+    width: '100%',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  draftButton: {
+    backgroundColor: '#6b7280',
+    flex: 1,
+    maxWidth: 200,
+  },
+  submitButton: {
+    flex: 1,
+    maxWidth: 200,
   },
 })

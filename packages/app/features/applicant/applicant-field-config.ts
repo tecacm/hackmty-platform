@@ -21,7 +21,7 @@ const graduationYearOptions = Array.from({ length: 6 }, (_, index) => {
 })
 
 // Map for resolving data references in JSON
-const dataReferences: Record<string, any[]> = {
+export const dataReferences: Record<string, any[]> = {
   universities,
   countries,
   majors,
@@ -174,6 +174,7 @@ export type ApplicationTypeConfig = {
   id: string
   label: string
   fields: Array<string | { name: string; section?: string }>
+  close_at?: string | null
 }
 
 // Build all fields from JSON configuration

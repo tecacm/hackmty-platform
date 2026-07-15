@@ -22,7 +22,8 @@ export function StyledInput({ label, textContentType, additionalStyle = {}, erro
           formFieldStyles.fieldShell, 
           formFieldStyles.inputText, 
           error && formFieldStyles.errorInput,
-          height ? { height, textAlignVertical: 'top' as const, paddingTop: 10 } : undefined
+          height ? { height, textAlignVertical: 'top' as const, paddingTop: 10 } : undefined,
+          props.editable === false && { backgroundColor: '#f3f4f6', color: '#6b7280' }
         ]}
         placeholderTextColor={formFieldColors.muted}
         // Crucial for Native UX:

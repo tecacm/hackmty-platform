@@ -8,10 +8,15 @@ const withWebpack = {
       config.resolve = {}
     }
 
+    config.resolve.modules = [
+      path.resolve(__dirname, 'node_modules'),
+      'node_modules',
+    ]
+
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       'react-native': 'react-native-web',
-      'react-native$': 'react-native-web',
+      'react-native-web': 'react-native-web',
       'react-native/Libraries/EventEmitter/RCTDeviceEventEmitter$':
         'react-native-web/dist/vendor/react-native/NativeEventEmitter/RCTDeviceEventEmitter',
       'react-native/Libraries/vendor/emitter/EventEmitter$':
@@ -39,6 +44,7 @@ const withTurpopack = {
   turbopack: {
     resolveAlias: {
       'react-native': 'react-native-web',
+      'react-native-web': 'react-native-web',
       'react-native/Libraries/EventEmitter/RCTDeviceEventEmitter$':
         'react-native-web/dist/vendor/react-native/NativeEventEmitter/RCTDeviceEventEmitter',
       'react-native/Libraries/vendor/emitter/EventEmitter$':
@@ -69,12 +75,22 @@ const withTurpopack = {
  */
 module.exports = {
   transpilePackages: [
+    'app',
     'react-native',
     'react-native-web',
     'solito',
     'react-native-reanimated',
     'moti',
     'react-native-gesture-handler',
+    'react-native-safe-area-context',
+    '@react-native-segmented-control/segmented-control',
+    'dripsy',
+    'expo-image',
+    'expo-blur',
+    'expo-document-picker',
+    'expo-image-picker',
+    'expo-file-system',
+    'expo-linear-gradient',
   ],
 
   compiler: {

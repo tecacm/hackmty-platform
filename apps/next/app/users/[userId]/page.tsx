@@ -1,18 +1,13 @@
 'use client'
-import { Text, View } from 'react-native'
-import { useParams, useRouter } from 'solito/navigation'
 
-const useUserParams = useParams<{ userId: string }>
+import { Suspense } from 'react'
+import { UserDetailScreen } from 'app/features/user/detail-screen'
 
-export default function Home() {
-  const { userId } = useUserParams()
-  const router = useRouter()
-
+export default function Page() {
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text onPress={() => router.back()}>
-        Hi {userId}, click me to go back
-      </Text>
-    </View>
+    <Suspense fallback={null}>
+      <UserDetailScreen />
+    </Suspense>
   )
 }
+
