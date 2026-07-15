@@ -459,6 +459,53 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
   },
+  warningBanner: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#f59e0b',
+    borderWidth: 1.5,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 20,
+    width: '100%',
+  },
+  warningBannerHeader: {
+    color: '#b45309',
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  warningBannerSub: {
+    color: '#d97706',
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  warningBannerItem: {
+    marginTop: 6,
+  },
+  warningBannerName: {
+    color: '#78350f',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  warningBannerFeedback: {
+    color: '#78350f',
+    fontSize: 13,
+    fontStyle: 'italic',
+    marginLeft: 10,
+    marginTop: 2,
+  },
+  actionRequiredBadge: {
+    color: '#b45309',
+    fontSize: 11,
+    fontWeight: 'bold',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: '#f59e0b',
+  },
 })
 
 export function TeamsScreen() {
@@ -482,6 +529,7 @@ export function TeamsScreen() {
   const [inviteResult, setInviteResult] = useState<{ status: string; message: string } | null>(null)
   const [invitations, setInvitations] = useState<any[]>([])
   const [sentInvitations, setSentInvitations] = useState<any[]>([])
+  const [membersApplications, setMembersApplications] = useState<any[]>([])
 
   useEffect(() => {
     setIsHydrated(true)
@@ -498,35 +546,29 @@ export function TeamsScreen() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || !user.email) return
 
-      const { data, error: inviteErr } = await supabase
+      const { data: inviteData, error: inviteErr } = await supabase
         .from('team_invitations')
-        .select('id, email, team_id, teams(name)')
+        .select('id, team_id, email, teams ( name )')
         .eq('email', user.email.toLowerCase())
 
       if (inviteErr) throw inviteErr
-      setInvitations(data || [])
-    } catch (err) {
-      console.error('Failed to fetch invitations:', err)
+      setInvitations(inviteData || [])
+    } catch (err: any) {
+      console.error('Failed to load pending user invitations:', err)
     }
   }
 
   const fetchTeamData = async () => {
     try {
-      setLoading(true)
       setError(null)
+      setLoading(true)
 
       if (!isSupabaseConfigured) {
-        // Local Dev Mock
-        setMaxTeamSize(4)
-        setUserId('1')
         if (team === null) {
-          await fetchInvitations()
-          setSentInvitations([])
-        } else {
           setTeam({
-            id: 'dev-team-123',
-            name: 'Tech ACM Team',
-            code: 'ACM777',
+            id: 'dev-team-abc',
+            name: 'Alpha Team',
+            code: 'ALP123',
             creator_id: '1',
             members: [
               { id: '1', first_name: 'Ernesto', last_name: 'Developer', avatar_url: null },
@@ -535,6 +577,9 @@ export function TeamsScreen() {
           })
           setSentInvitations([
             { id: 'sent-1', email: 'pending-member@example.com' }
+          ])
+          setMembersApplications([
+            { user_id: '2', status: 'changes_requested', admin_feedback: 'Please update your graduation year.' }
           ])
         }
         setLoading(false)
@@ -610,6 +655,14 @@ export function TeamsScreen() {
         creator_id: teamData.creator_id,
         members: resolvedMembers
       })
+
+      // Fetch application status for all team members
+      const memberIds = resolvedMembers.map(m => m.id)
+      const { data: appsData } = await supabase
+        .from('applications')
+        .select('user_id, status, admin_feedback')
+        .in('user_id', memberIds)
+      setMembersApplications(appsData || [])
 
       const { data: sentData } = await supabase
         .from('team_invitations')
@@ -1003,6 +1056,37 @@ export function TeamsScreen() {
             </View>
           ) : team ? (
             <View style={styles.innerCard}>
+              {/* Accountability Warning Banner */}
+              {(() => {
+                const membersWithChanges = team.members.filter(m => {
+                  const apps = membersApplications.filter(a => a.user_id === m.id)
+                  return apps.some(a => a.status === 'changes_requested')
+                })
+
+                if (membersWithChanges.length === 0) return null
+
+                return (
+                  <View style={styles.warningBanner}>
+                    <Text style={styles.warningBannerHeader}>ACTION REQUIRED: Application Changes Requested</Text>
+                    <Text style={styles.warningBannerSub}>
+                      An admin requested changes on team application(s). Please resolve for accountability:
+                    </Text>
+                    {membersWithChanges.map(member => {
+                      const apps = membersApplications.filter(a => a.user_id === member.id)
+                      const appWithFeedback = apps.find(a => a.status === 'changes_requested' && a.admin_feedback)
+                      const feedback = appWithFeedback?.admin_feedback || 'No specific feedback provided.'
+                      const name = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Teammate'
+                      return (
+                        <View key={member.id} style={styles.warningBannerItem}>
+                          <Text style={styles.warningBannerName}>• {name}:</Text>
+                          <Text style={styles.warningBannerFeedback}>"{feedback}"</Text>
+                        </View>
+                      )
+                    })}
+                  </View>
+                )
+              })()}
+
               <Text style={styles.titleText}>{team.name}</Text>
               <Text style={styles.subtitleText}>Manage your hackathon team. Invite others using your team code!</Text>
 
@@ -1035,6 +1119,9 @@ export function TeamsScreen() {
                   const overallIndex = rows.length
                   const isLast = overallIndex === maxTeamSize - 1
 
+                  const memberApps = membersApplications.filter(a => a.user_id === member.id)
+                  const hasChangesRequested = memberApps.some(a => a.status === 'changes_requested')
+
                   rows.push(
                     <View 
                       key={`member-${member.id}`} 
@@ -1050,13 +1137,16 @@ export function TeamsScreen() {
                           <Text style={styles.memberInitialsText}>{initials}</Text>
                         )}
                       </View>
-                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <Text style={styles.memberName}>
                             {member.first_name || ''} {member.last_name || ''}
                           </Text>
                           {isOwner && (
                             <Text style={styles.ownerBadge}>(Owner)</Text>
+                          )}
+                          {hasChangesRequested && (
+                            <Text style={styles.actionRequiredBadge}>Action Required</Text>
                           )}
                         </View>
                         
