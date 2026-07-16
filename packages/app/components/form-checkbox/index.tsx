@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
 import { formFieldColors } from '../form-field-styles'
 
-export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error, variant = 'default', required = false, subtitle }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string; variant?: 'default' | 'form'; required?: boolean; subtitle?: string }) {
+export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error, variant = 'default', required = false, subtitle }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string; variant?: 'default' | 'form' | 'glass'; required?: boolean; subtitle?: string }) {
   const isControlled = typeof value !== 'undefined'
   const [internalValue, setInternalValue] = useState<boolean>(!!value)
 
@@ -51,14 +51,15 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
         {/* Custom Square Box */}
         <View style={[
           styles.checkboxBase,
-          checked && (variant === 'form' ? styles.checkboxCheckedForm : styles.checkboxCheckedDefault),
+          variant === 'glass' && styles.checkboxBaseGlass,
+          checked && (variant === 'form' ? styles.checkboxCheckedForm : variant === 'glass' ? styles.checkboxCheckedGlass : styles.checkboxCheckedDefault),
           error && styles.checkboxError
         ]}>
-          {checked && <View style={variant === 'form' ? styles.checkmarkForm : styles.checkmarkDefault} />}
+          {checked && <View style={variant === 'form' ? styles.checkmarkForm : variant === 'glass' ? styles.checkmarkGlass : styles.checkmarkDefault} />}
         </View>
 
         {typeof label === 'string' ? (
-          <Text style={variant === 'form' ? styles.labelForm : styles.labelDefault}>
+          <Text style={variant === 'form' ? styles.labelForm : variant === 'glass' ? styles.labelGlass : styles.labelDefault}>
             {label}
             {required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}
           </Text>
@@ -67,7 +68,7 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
             {label}
             {required && (
               <Text style={[
-                variant === 'form' ? styles.labelForm : styles.labelDefault,
+                variant === 'form' ? styles.labelForm : variant === 'glass' ? styles.labelGlass : styles.labelDefault,
                 { color: formFieldColors.error }
               ]}>
                 {' *'}
@@ -126,6 +127,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#461184',
     borderColor: '#461184',
   },
+  checkboxBaseGlass: {
+    borderColor: 'rgba(255,255,255,.55)',
+    backgroundColor: 'rgba(255,255,255,.12)',
+  },
+  checkboxCheckedGlass: {
+    backgroundColor: '#f0d9b0',
+    borderColor: '#f0d9b0',
+  },
   checkboxError: {
     borderColor: formFieldColors.error,
   },
@@ -145,6 +154,14 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
     transform: [{ rotate: '-45deg' }, { translateY: -1 }],
   },
+  checkmarkGlass: {
+    width: 10,
+    height: 6,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: '#1a0f28',
+    transform: [{ rotate: '-45deg' }, { translateY: -1 }],
+  },
   labelForm: {
     color: formFieldColors.titleText,
     fontSize: 14,
@@ -156,6 +173,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: -0.2,
     flexShrink: 1,
+  },
+  labelGlass: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    letterSpacing: -0.2,
+    flexShrink: 1,
+    fontFamily: 'Montserrat',
   },
   subtitleText: {
     color: formFieldColors.muted,
