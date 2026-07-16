@@ -235,11 +235,18 @@ export function ResetPasswordScreen() {
         }
 
         if (!activeUser) {
-          setErrorMessage('No active recovery session found.')
+          setErrorMessage('This reset link is no longer valid. Please request a new password reset email.')
         }
       } catch (err: any) {
         console.error('Failed to resolve recovery session:', err)
-        setErrorMessage(err.message || 'Recovery link is expired or invalid.')
+        // "code verifier not found" happens when an older reset link is opened
+        // after a newer one was requested, invalidating the stored PKCE state.
+        const isStaleLink = typeof err?.message === 'string' && /code verifier/i.test(err.message)
+        setErrorMessage(
+          isStaleLink
+            ? 'This reset link is no longer valid, possibly because a newer one was requested. Please request a new password reset email.'
+            : 'This reset link is no longer valid. Please request a new password reset email.'
+        )
       } finally {
         setIsInitializing(false)
       }
