@@ -7,9 +7,110 @@ import { useEffect, useState, useRef } from 'react';
 type CarouselProps = {
   slideImages: any[];
   scrollInterval?: number;
+  mode?: 'slide' | 'crossfade';
 };
 
+function CrossfadeCarrousel({ slideImages, secondsPerImage = 6 }: { slideImages: any[]; secondsPerImage?: number }) {
+  const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
+  const total = slideImages.length;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const incomingOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const update = () => {
+        setWidth(window.innerWidth);
+        setHeight(window.innerHeight);
+      };
+      update();
+      window.addEventListener('resize', update);
+      window.addEventListener('orientationchange', update);
+      return () => {
+        window.removeEventListener('resize', update);
+        window.removeEventListener('orientationchange', update);
+      };
+    } else {
+      const update = () => {
+        const { width: w, height: h } = Dimensions.get('screen');
+        setWidth(w);
+        setHeight(h);
+      };
+      update();
+      const sub = Dimensions.addEventListener('change', update);
+      return () => sub?.remove();
+    }
+  }, []);
+
+  // Crossfades by always keeping the outgoing slide fully opaque underneath and
+  // fading only the incoming slide in on top, so combined visual coverage never
+  // drops below 100% (two independently-fading opacity layers otherwise let the
+  // page background bleed through mid-transition, which reads as a gray flash).
+  useEffect(() => {
+    if (total < 2) return;
+
+    let cancelled = false;
+    const totalMs = secondsPerImage * 1000;
+    const fadeMs = totalMs * 0.4;
+    const holdMs = totalMs - fadeMs;
+
+    incomingOpacity.setValue(0);
+    const animation = Animated.sequence([
+      Animated.delay(holdMs),
+      Animated.timing(incomingOpacity, { toValue: 1, duration: fadeMs, useNativeDriver: true }),
+    ]);
+    animation.start(({ finished }) => {
+      if (finished && !cancelled) {
+        setCurrentIndex((i) => (i + 1) % total);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      animation.stop();
+    };
+  }, [currentIndex, total, secondsPerImage]);
+
+  if (total === 0) return null;
+
+  const resolveSrc = (item: any) => item?.src || item?.default || item;
+  const nextIndex = (currentIndex + 1) % total;
+  const layerStyle = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: width || '100%',
+    height: height || '100%',
+  } as any;
+
+  return (
+    <View style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+      {/* Hidden preload layer keeps every slide warm in the browser cache before its turn */}
+      <View style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} pointerEvents="none">
+        {slideImages.map((item, index) => (
+          <SolitoImage key={index} src={resolveSrc(item)} width={width} height={height} contentFit="cover" alt="" />
+        ))}
+      </View>
+
+      <View style={layerStyle}>
+        <SolitoImage src={resolveSrc(slideImages[currentIndex])} width={width} height={height} contentFit="cover" alt={`Slide image ${currentIndex}`} />
+      </View>
+      {total > 1 && (
+        <Animated.View style={[layerStyle, { opacity: incomingOpacity }]}>
+          <SolitoImage src={resolveSrc(slideImages[nextIndex])} width={width} height={height} contentFit="cover" alt={`Slide image ${nextIndex}`} />
+        </Animated.View>
+      )}
+    </View>
+  );
+}
+
 export function Carrousel(props: CarouselProps) {
+  if (props.mode === 'crossfade') {
+    return <CrossfadeCarrousel slideImages={props.slideImages} />;
+  }
+
   // SSR-safe: start with 0, real values set in useEffect
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);

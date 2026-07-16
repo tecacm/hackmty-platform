@@ -64,4 +64,44 @@ export const formFieldStyles = StyleSheet.create({
     borderWidth: 2,
     borderColor: formFieldColors.error,
   },
+  glassContainer: {
+    width: '100%',
+    gap: 6,
+  },
+  glassLabel: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#ffffff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.69,
+    fontFamily: 'Montserrat',
+  },
+  glassFieldShell: {
+    backgroundColor: 'rgba(255,255,255,.36)',
+    borderRadius: 14,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.55)',
+    ...Platform.select({
+      web: {
+        backgroundImage: 'linear-gradient(160deg, rgba(255,255,255,.48), rgba(255,255,255,.24))',
+        backdropFilter: 'blur(16px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(160%)',
+        boxShadow:
+          'inset 0 1px 0 rgba(255,255,255,.7), 0 1px 3px rgba(0,0,0,.08), 0 0 0 1px rgba(240,217,176,.15)',
+      } as any,
+    }),
+  },
+  glassInputText: {
+    fontSize: 15,
+    color: '#1a0f28',
+    fontFamily: 'Montserrat',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none' as any,
+      },
+    }),
+  },
 })

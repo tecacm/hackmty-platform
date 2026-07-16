@@ -1,9 +1,10 @@
 import { Pressable, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native'
+import { useState } from 'react'
 
 interface PillButtonProps {
   title: string
   onPress?: () => void
-  variant?: 'primary' | 'danger' | 'secondary' | 'outline-primary' | 'outline-danger' | 'outline-secondary'
+  variant?: 'primary' | 'danger' | 'secondary' | 'outline-primary' | 'outline-danger' | 'outline-secondary' | 'flat' | 'gradient'
   isLoading?: boolean
   disabled?: boolean
   additionalStyle?: any
@@ -17,6 +18,33 @@ export function PillButton({
   disabled = false,
   additionalStyle = {},
 }: PillButtonProps) {
+  const [hovered, setHovered] = useState(false)
+  const isDisabled = disabled || isLoading
+
+  if (variant === 'gradient') {
+    return (
+      <Pressable
+        onPress={isDisabled ? undefined : onPress}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        style={({ pressed }) => [
+          styles.gradientButton,
+          additionalStyle,
+          {
+            transform: [{ scale: pressed ? 0.97 : 1 }, { translateY: hovered ? -3 : 0 }],
+            opacity: isDisabled ? 0.6 : 1,
+          },
+        ]}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.gradientText}>{title}</Text>
+        )}
+      </Pressable>
+    )
+  }
+
   let baseColor = '#4b1687'
   let pressedColor = '#6b1ac8'
   let textColor = 'white'
@@ -46,8 +74,6 @@ export function PillButton({
     textColor = '#c2b75f'
     isOutline = true
   }
-
-  const isDisabled = disabled || isLoading
 
   return (
     <Pressable
@@ -100,5 +126,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  gradientButton: {
+    width: '100%',
+    marginTop: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(240,217,176,.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#4a2a7a',
+    ...Platform.select({
+      web: {
+        backgroundImage: 'linear-gradient(165deg, oklch(0.56 0.17 300), oklch(0.4 0.16 300) 60%, oklch(0.36 0.15 300))',
+        boxShadow:
+          '0 10px 24px -6px oklch(0.4 0.16 300 / .65), inset 0 1.5px 0 rgba(255,255,255,.35), inset 0 -6px 10px -4px rgba(0,0,0,.25)',
+        cursor: 'pointer',
+        transition: 'transform .15s ease',
+      } as any,
+      native: {
+        shadowColor: '#4a2a7a',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.65,
+        shadowRadius: 24,
+        elevation: 8,
+      },
+    }),
+  },
+  gradientText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.75,
+    textTransform: 'uppercase',
+    fontFamily: 'Montserrat',
   },
 })

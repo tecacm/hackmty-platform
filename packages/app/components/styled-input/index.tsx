@@ -9,18 +9,20 @@ type StyledInputProps = Omit<TextInputProps, 'style'> & {
   textContentType?: TextInputProps['textContentType']
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
   height?: number
+  variant?: 'default' | 'glass'
 }
 
-export function StyledInput({ label, textContentType, additionalStyle = {}, error, subtitle, required = false, height, ...props }: StyledInputProps) {
+export function StyledInput({ label, textContentType, additionalStyle = {}, error, subtitle, required = false, height, variant = 'default', ...props }: StyledInputProps) {
   let isPassword = textContentType === 'password'
+  const isGlass = variant === 'glass'
   return (
-    <View style={formFieldStyles.container}>
-      <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
+    <View style={isGlass ? formFieldStyles.glassContainer : formFieldStyles.container}>
+      <Text style={[isGlass ? formFieldStyles.glassLabel : formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
       <View style={[additionalStyle]} >
       <TextInput
         style={[
-          formFieldStyles.fieldShell, 
-          formFieldStyles.inputText, 
+          isGlass ? formFieldStyles.glassFieldShell : formFieldStyles.fieldShell,
+          isGlass ? formFieldStyles.glassInputText : formFieldStyles.inputText,
           error && formFieldStyles.errorInput,
           height ? { height, textAlignVertical: 'top' as const, paddingTop: 10 } : undefined,
           props.editable === false && { backgroundColor: '#f3f4f6', color: '#6b7280' }
