@@ -27,53 +27,118 @@ type ForgotPasswordValues = {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    overflow: 'visible', 
+  glassCard: {
+    position: 'relative',
+    width: 640,
+    maxWidth: '100%',
+    borderRadius: 38,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    paddingVertical: 34,
+    paddingHorizontal: 44,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shadowStyle: {
+    overflow: 'hidden',
+    gap: 13,
     ...Platform.select({
-      native: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        elevation: 2,      
-      },
       web: {
-        filter: 'drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.4))',
-      }
-    })
+        backgroundImage:
+          'linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.14) 100%)',
+        backdropFilter: 'blur(34px) saturate(190%) brightness(1.08) contrast(1.03)',
+        WebkitBackdropFilter: 'blur(34px) saturate(190%) brightness(1.08) contrast(1.03)',
+        boxShadow:
+          '0 30px 70px -18px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.15), inset 0 1.5px 1px rgba(255,255,255,.75), inset 0 -14px 26px -18px rgba(255,255,255,.2), inset 0 0 0 1px rgba(255,255,255,.1), 0 0 50px -8px rgba(240,217,176,.35)',
+      } as any,
+      native: {
+        backgroundColor: 'rgba(60, 40, 80, 0.55)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.4,
+        shadowRadius: 30,
+        elevation: 10,
+      },
+    }),
+  },
+  glassCardGlow: {
+    position: 'absolute',
+    bottom: '-15%',
+    right: '-10%',
+    width: '70%',
+    height: '45%',
+    ...Platform.select({
+      web: {
+        backgroundImage: 'radial-gradient(ellipse at 70% 100%, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 65%)',
+      } as any,
+    }),
+  },
+  glassCardRing: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 38,
+    padding: 1.5,
+    ...Platform.select({
+      web: {
+        backgroundImage:
+          'linear-gradient(180deg, rgba(255,255,255,.7) 0%, rgba(255,255,255,.12) 20%, rgba(255,255,255,0) 45%, rgba(255,255,255,0) 65%, rgba(255,255,255,.22) 100%)',
+        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+        WebkitMaskComposite: 'xor',
+        maskComposite: 'exclude',
+      } as any,
+    }),
+  },
+  wordmarkBlock: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  wordmarkRow: {
+    flexDirection: 'row',
+  },
+  wordmarkHack: {
+    color: '#ffffff',
+    fontSize: 25,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    fontFamily: 'Montserrat',
+  },
+  wordmarkMty: {
+    color: '#c9a668',
+    fontSize: 25,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    fontFamily: 'Montserrat',
+  },
+  divider: {
+    width: 44,
+    height: 2,
+  },
+  subtitle: {
+    color: '#e9e3f0',
+    fontSize: 13.5,
+    fontWeight: '500',
+    textAlign: 'center',
+    fontFamily: 'Montserrat',
+  },
+  fieldGroup: {
+    width: '100%',
+    gap: 6,
+  },
+  fieldGroupFirst: {
+    marginTop: 4,
   },
   authError: {
-    color: '#ffd3d3',
+    color: '#ffb4b4',
     textAlign: 'center',
     fontWeight: '600',
+    fontFamily: 'Montserrat',
   },
   successMessage: {
     color: '#c5ffd3',
     textAlign: 'center',
     fontWeight: '600',
-    fontSize: 16,
+    fontFamily: 'Montserrat',
   },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  subtitle: {
-    color: '#e1e1e1',
-    fontSize: 16,
-    fontWeight: '400',
-    textAlign: 'center',
-    marginBottom: 20,
-  }
 })
 
 export function ForgotPasswordScreen() {
@@ -144,11 +209,11 @@ export function ForgotPasswordScreen() {
 
   const background = (
     <>
-      <Carrousel slideImages={images} />
+      <Carrousel slideImages={images} mode="crossfade" />
       <LinearGradient
-        colors={['rgba(29, 4, 31, 0.5)', 'rgba(55, 27, 58, 0.7)']}
+        colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
     </>
@@ -157,10 +222,10 @@ export function ForgotPasswordScreen() {
   return (
     <ParallaxScrollView
       background={background}
-      style={{ backgroundColor: '#1d041f' }}
+      style={{ backgroundColor: Platform.select({ web: 'oklch(0.16 0.01 280)', default: '#211f26' }) }}
       contentContainerStyle={{
         alignItems: 'center',
-        gap: 16,
+        justifyContent: 'center',
         paddingTop: topOffset,
         paddingBottom: insets.bottom,
         paddingLeft: insets.left,
@@ -168,66 +233,81 @@ export function ForgotPasswordScreen() {
         overflow: 'visible',
       }}
     >
-      <View style={styles.container}>
-        <View style={styles.shadowStyle}>
-          {(() => {
-            const ImageComponent = SolitoImage as any
-            return (
-              <ImageComponent
-                src={logoImage}
-                height={200}
-                width={130}
-                alt="The HackMTY Logo"
-                contentFit="contain"
-                resizeMode="contain"
-              />
-            )
-          })()}
-        </View>
-      </View>
-
-      <View style={{ width: '80%', maxWidth: 600, paddingHorizontal: 20 }}>
-        <Text style={styles.title}>Recover Password</Text>
-        <Text style={styles.subtitle}>Enter your email address to receive a link to reset your password.</Text>
-      </View>
-
-      <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingHorizontal: 20 }}>
-        <Controller
-          control={control}
-          name="email"
-          rules={{
-            required: 'Email is required',
-            pattern: {
-              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-              message: 'Invalid email',
-            },
-          }}
-          render={({ field: { onChange, value } }) => (
-            <StyledInput
-              label="Email Address"
-              placeholder="Enter your email"
-              textContentType="emailAddress"
-              keyboardType="email-address"
-              additionalStyle={styles.shadowStyle}
-              onChangeText={onChange}
-              value={value}
-              error={errors.email?.message}
-              onSubmitEditing={handleSubmit(onSubmit)}
+        <View style={styles.glassCard}>
+          <View style={styles.glassCardGlow} pointerEvents="none" />
+          <View style={styles.glassCardRing} pointerEvents="none" />
+          <View style={{ width: 98, height: 140, flexShrink: 0 }}>
+            {(() => {
+              const ImageComponent = SolitoImage as any
+              return (
+                <ImageComponent
+                  src={logoImage}
+                  height={140}
+                  width={98}
+                  alt="The HackMTY Logo"
+                  contentFit="contain"
+                  resizeMode="contain"
+                />
+              )
+            })()}
+          </View>
+          <View style={styles.wordmarkBlock}>
+            <View style={styles.wordmarkRow}>
+              <Text style={styles.wordmarkHack}>Hack</Text>
+              <Text style={styles.wordmarkMty}>MTY</Text>
+            </View>
+            <LinearGradient
+              colors={['transparent', '#f0d9b0', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.divider}
             />
-          )}
-        />
-        
-        {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
-        {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
+          </View>
+          <Text style={styles.subtitle}>Enter your email address to receive a link to reset your password.</Text>
+          <Controller
+            control={control}
+            name="email"
+            rules={{
+              required: 'Email is required',
+              pattern: {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: 'Invalid email',
+              },
+            }}
+            render={({ field: { onChange, value } }) => (
+              <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
+                <StyledInput
+                  variant="glass"
+                  label="Email Address"
+                  placeholder="Enter your email"
+                  textContentType="emailAddress"
+                  keyboardType="email-address"
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.email?.message}
+                  onSubmitEditing={handleSubmit(onSubmit)}
+                />
+              </View>
+            )}
+          />
 
-        <PillButton
-          title={isSubmitting ? 'Sending link...' : 'Send Recovery Link'}
-          onPress={handleSubmit(onSubmit)}
-          additionalStyle={{ marginBottom: 10, opacity: isSubmitting ? 0.7 : 1 }}
-        />
-        
-        <SimpleTextLink text="Back to Login" onPress={goToLogin}/>
-      </View>
+          {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
+          {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
+
+          <PillButton
+            variant="gradient"
+            title={isSubmitting ? 'Sending link...' : 'Send Recovery Link'}
+            onPress={handleSubmit(onSubmit)}
+            additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
+          />
+
+          <SimpleTextLink
+            text="Back to "
+            accentText="Login"
+            onPress={goToLogin}
+            textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+          />
+        </View>
     </ParallaxScrollView>
   )
 }
