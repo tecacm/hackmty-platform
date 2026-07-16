@@ -175,7 +175,7 @@ export function RegisterScreen() {
         return
       }
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
@@ -190,6 +190,14 @@ export function RegisterScreen() {
 
       if (error) {
         setAuthError(error.message || 'Invalid sign up data.')
+        return
+      }
+
+      // Supabase returns a fake-success response with no identities when the
+      // email is already registered, instead of an error (to avoid leaking
+      // which emails exist).
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setAuthError('An account with this email already exists. Please log in instead.')
         return
       }
 
