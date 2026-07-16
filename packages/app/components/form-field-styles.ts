@@ -104,4 +104,29 @@ export const formFieldStyles = StyleSheet.create({
       },
     }),
   },
+  inputRow: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  togglePassword: {
+    position: 'absolute',
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  togglePasswordText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: formFieldColors.subtext,
+  },
+  togglePasswordTextGlass: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3d2a55',
+    fontFamily: 'Montserrat',
+  },
 })
