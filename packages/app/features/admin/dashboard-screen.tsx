@@ -219,10 +219,12 @@ export function AdminDashboardScreen() {
       const fullName = `${firstName} ${lastName}`.toLowerCase()
       const email = app.answers?.email || ''
       const university = app.answers?.university || ''
+      const city = app.answers?.city || ''
       const matchesSearch = 
         fullName.includes(searchQuery.toLowerCase()) ||
         email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        university.toLowerCase().includes(searchQuery.toLowerCase())
+        university.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        city.toLowerCase().includes(searchQuery.toLowerCase())
 
       // 2. Application Type
       const matchesType = selectedType === 'all' || app.application_type_id === selectedType
@@ -541,7 +543,7 @@ export function AdminDashboardScreen() {
             <View style={styles.searchRow}>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search by name, email, or university..."
+                placeholder="Search by name, email, university, or city..."
                 placeholderTextColor="rgba(34, 0, 44, 0.4)"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
