@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
 
 export function HomeScreen() {
   const { navigateTo, replaceTo } = useSmartNavigate();
-  const { hasPermission, role } = useUserPermissions();
+  const { hasPermission, role, loading: permissionsLoading } = useUserPermissions();
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -142,6 +142,9 @@ export function HomeScreen() {
   const [userApps, setUserApps] = useState<Array<{ application_type_id: string; status: string }>>([])
   const [isRolesLoading, setIsRolesLoading] = useState(true)
   const [tick, setTick] = useState(0)
+
+  const isLoading = isRolesLoading || permissionsLoading
+
 
   const handleApply = (role: string) => {
     const isExisting = userApps.some(app => app.application_type_id === role)
@@ -251,6 +254,15 @@ export function HomeScreen() {
 
     loadRoles()
   }, [])
+
+  useEffect(() => {
+    if (!permissionsLoading && !isRolesLoading) {
+      const showApplicationTab = hasPermission('applications', 'view')
+      if (!showApplicationTab) {
+        replaceTo('/profile')
+      }
+    }
+  }, [permissionsLoading, isRolesLoading, hasPermission, replaceTo])
 
   useEffect(() => {
     setIsHydrated(true)
@@ -427,145 +439,150 @@ export function HomeScreen() {
         <View style={[styles.container, { width: '90%', maxWidth: 1000 }]}>
           <View style={styles.contentContainer}>
             
-            {/* Drafts Section */}
-            {draftApps.length > 0 && hasPermission('applications', 'create') && (
-              <View style={{ width: '100%' }}>
-                <Text style={[styles.heading, styles.shadow]}>Drafts</Text>
-                <Text style={formFieldStyles.label}>
-                  You have started these applications. Click continue to finish them before the deadline.
-                </Text>
-                <View style={styles.roleList}>
-                  {draftApps.map((app) => {
-                    const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id)
-                    const closeAt = getRoleCloseAt(app.application_type_id)
-                    const { text: countdownText, isClosed } = getCountdownText(closeAt)
-
-                    return (
-                      <View key={app.application_type_id} style={styles.roleCard}>
-                        <View style={styles.roleCardHeader}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
-                            <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
-                            <View style={[styles.statusBadge, getStatusBadgeStyle(app.status)]}>
-                              <Text style={[styles.statusBadgeText, getStatusBadgeTextStyle(app.status)]}>
-                                {getStatusLabel(app.status)}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
-                          {countdownText !== '' && (
-                            <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
-                              {countdownText}
-                            </Text>
-                          )}
-                        </View>
-                        <PillButton
-                          title={isClosed ? "Closed" : "Continue Application"}
-                          onPress={isClosed ? undefined : () => handleApply(app.application_type_id)}
-                          additionalStyle={[styles.roleButton, isClosed && { opacity: 0.5 }]}
-                        />
-                      </View>
-                    )
-                  })}
-                </View>
+            {isLoading ? (
+              <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
+                <ActivityIndicator size="large" color="#a069ab" style={{ marginVertical: 30 }} />
+                <Text style={{ color: '#a069ab', fontSize: 16 }}>Loading applications dashboard...</Text>
               </View>
-            )}
+            ) : (
+              <>
+                {/* Drafts Section */}
+                {draftApps.length > 0 && hasPermission('applications', 'create') && (
+                  <View style={{ width: '100%' }}>
+                    <Text style={[styles.heading, styles.shadow]}>Drafts</Text>
+                    <Text style={formFieldStyles.label}>
+                      You have started these applications. Click continue to finish them before the deadline.
+                    </Text>
+                    <View style={styles.roleList}>
+                      {draftApps.map((app) => {
+                        const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id)
+                        const closeAt = getRoleCloseAt(app.application_type_id)
+                        const { text: countdownText, isClosed } = getCountdownText(closeAt)
 
-            {/* Divider if drafts and (submitted or available) exist */}
-            {draftApps.length > 0 && hasPermission('applications', 'create') && (submittedApps.length > 0 || (availableRoles.length > 0 && hasPermission('applications', 'create'))) && (
-              <View style={styles.sectionDivider} />
-            )}
-
-            {/* My Applications Section */}
-            {submittedApps.length > 0 && (
-              <View style={{ width: '100%' }}>
-                <Text style={[styles.heading, styles.shadow]}>My Applications</Text>
-                <Text style={formFieldStyles.label}>
-                  You have successfully submitted these applications. You can view or update your details here.
-                </Text>
-                <View style={styles.roleList}>
-                  {submittedApps.map((app) => {
-                    const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id)
-                    const closeAt = getRoleCloseAt(app.application_type_id)
-                    const { text: countdownText, isClosed } = getCountdownText(closeAt)
-
-                    return (
-                      <View key={app.application_type_id} style={styles.roleCard}>
-                        <View style={styles.roleCardHeader}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
-                            <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
-                            <View style={[styles.statusBadge, getStatusBadgeStyle(app.status)]}>
-                              <Text style={[styles.statusBadgeText, getStatusBadgeTextStyle(app.status)]}>
-                                {getStatusLabel(app.status)}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
-                          {countdownText !== '' && (
-                            <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
-                              {countdownText}
-                            </Text>
-                          )}
-                        </View>
-                        <PillButton
-                          title={(isClosed || app.status === 'accepted' || app.status === 'rejected') ? "View Application" : "View / Edit Application"}
-                          onPress={() => handleApply(app.application_type_id)}
-                          additionalStyle={styles.roleButton}
-                        />
-                      </View>
-                    )
-                  })}
-                </View>
-              </View>
-            )}
-
-            {/* Divider if submitted and available exist */}
-            {submittedApps.length > 0 && availableRoles.length > 0 && hasPermission('applications', 'create') && (
-              <View style={styles.sectionDivider} />
-            )}
-
-            {/* Available Application Types */}
-            {availableRoles.length > 0 && hasPermission('applications', 'create') && (
-              <View style={{ width: '100%' }}>
-                <Text style={[styles.heading, styles.shadow]}>Applications</Text>
-                <Text style={formFieldStyles.label}>Choose the role that matches your profile and continue to the application for that role.</Text>
-
-                <View style={styles.roleList}>
-                  {isRolesLoading ? (
-                    <ActivityIndicator size="large" color="#5a0061" style={{ marginVertical: 30 }} />
-                  ) : (
-                    availableRoles.map((applicationType) => {
-                      const applicantRoleLabel = getApplicantRoleLabel(applicationType.id)
-                      const { text: countdownText, isClosed } = getCountdownText(applicationType.closeAt)
-
-                      return (
-                        <View key={applicationType.id} style={styles.roleCard}>
-                          <View style={styles.roleCardHeader}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
-                              <Text style={styles.roleCardLabel}>{applicationType.label}</Text>
-                              <View style={[styles.statusBadge, { backgroundColor: '#f1f5f9' }]}>
-                                <Text style={[styles.statusBadgeText, { color: '#475569' }]}>
-                                  {applicationType.fieldCount} questions
-                                </Text>
+                        return (
+                          <View key={app.application_type_id} style={styles.roleCard}>
+                            <View style={styles.roleCardHeader}>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+                                <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
+                                <View style={[styles.statusBadge, getStatusBadgeStyle(app.status)]}>
+                                  <Text style={[styles.statusBadgeText, getStatusBadgeTextStyle(app.status)]}>
+                                    {getStatusLabel(app.status)}
+                                  </Text>
+                                </View>
                               </View>
+                              <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                              {countdownText !== '' && (
+                                <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
+                                  {countdownText}
+                                </Text>
+                              )}
                             </View>
-                            <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
-                            {countdownText !== '' && (
-                              <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
-                                {countdownText}
-                              </Text>
-                            )}
+                            <PillButton
+                              title={isClosed ? "Closed" : "Continue Application"}
+                              onPress={isClosed ? undefined : () => handleApply(app.application_type_id)}
+                              additionalStyle={[styles.roleButton, isClosed && { opacity: 0.5 }]}
+                            />
                           </View>
-                          <PillButton
-                            title={isClosed ? "Closed" : `Apply as ${applicationType.label}`}
-                            onPress={isClosed ? undefined : () => handleApply(applicationType.id)}
-                            additionalStyle={[styles.roleButton, isClosed && { opacity: 0.5 }]}
-                          />
-                        </View>
-                      )
-                    })
-                  )}
-                </View>
-              </View>
+                        )
+                      })}
+                    </View>
+                  </View>
+                )}
+
+                {/* Divider if drafts and (submitted or available) exist */}
+                {draftApps.length > 0 && hasPermission('applications', 'create') && (submittedApps.length > 0 || (availableRoles.length > 0 && hasPermission('applications', 'create'))) && (
+                  <View style={styles.sectionDivider} />
+                )}
+
+                {/* My Applications Section */}
+                {submittedApps.length > 0 && (
+                  <View style={{ width: '100%' }}>
+                    <Text style={[styles.heading, styles.shadow]}>My Applications</Text>
+                    <Text style={formFieldStyles.label}>
+                      You have successfully submitted these applications. You can view or update your details here.
+                    </Text>
+                    <View style={styles.roleList}>
+                      {submittedApps.map((app) => {
+                        const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id)
+                        const closeAt = getRoleCloseAt(app.application_type_id)
+                        const { text: countdownText, isClosed } = getCountdownText(closeAt)
+
+                        return (
+                          <View key={app.application_type_id} style={styles.roleCard}>
+                            <View style={styles.roleCardHeader}>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+                                <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
+                                <View style={[styles.statusBadge, getStatusBadgeStyle(app.status)]}>
+                                  <Text style={[styles.statusBadgeText, getStatusBadgeTextStyle(app.status)]}>
+                                    {getStatusLabel(app.status)}
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                              {countdownText !== '' && (
+                                <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
+                                  {countdownText}
+                                </Text>
+                              )}
+                            </View>
+                            <PillButton
+                              title={(isClosed || app.status === 'accepted' || app.status === 'rejected') ? "View Application" : "View / Edit Application"}
+                              onPress={() => handleApply(app.application_type_id)}
+                              additionalStyle={styles.roleButton}
+                            />
+                          </View>
+                        )
+                      })}
+                    </View>
+                  </View>
+                )}
+
+                {/* Divider if submitted and available exist */}
+                {submittedApps.length > 0 && availableRoles.length > 0 && hasPermission('applications', 'create') && (
+                  <View style={styles.sectionDivider} />
+                )}
+
+                {/* Available Application Types */}
+                {availableRoles.length > 0 && hasPermission('applications', 'create') && (
+                  <View style={{ width: '100%' }}>
+                    <Text style={[styles.heading, styles.shadow]}>Applications</Text>
+                    <Text style={formFieldStyles.label}>Choose the role that matches your profile and continue to the application for that role.</Text>
+
+                    <View style={styles.roleList}>
+                      {availableRoles.map((applicationType) => {
+                        const applicantRoleLabel = getApplicantRoleLabel(applicationType.id)
+                        const { text: countdownText, isClosed } = getCountdownText(applicationType.closeAt)
+
+                        return (
+                          <View key={applicationType.id} style={styles.roleCard}>
+                            <View style={styles.roleCardHeader}>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+                                <Text style={styles.roleCardLabel}>{applicationType.label}</Text>
+                                <View style={[styles.statusBadge, { backgroundColor: '#f1f5f9' }]}>
+                                  <Text style={[styles.statusBadgeText, { color: '#475569' }]}>
+                                    {applicationType.fieldCount} questions
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                              {countdownText !== '' && (
+                                <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
+                                  {countdownText}
+                                </Text>
+                              )}
+                            </View>
+                            <PillButton
+                              title={isClosed ? "Closed" : `Apply as ${applicationType.label}`}
+                              onPress={isClosed ? undefined : () => handleApply(applicationType.id)}
+                              additionalStyle={[styles.roleButton, isClosed && { opacity: 0.5 }]}
+                            />
+                          </View>
+                        )
+                      })}
+                    </View>
+                  </View>
+                )}
+              </>
             )}
           </View>
         </View>          

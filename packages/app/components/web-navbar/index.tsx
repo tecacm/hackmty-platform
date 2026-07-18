@@ -16,6 +16,8 @@ export function WebNavbar() {
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { hasPermission } = useUserPermissions()
   const pathname = usePathname()
+
+  const showApplicationTab = hasPermission('applications', 'view')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [initials, setInitials] = useState('👤')
   const [isOpen, setIsOpen] = useState(false)
@@ -48,43 +50,52 @@ export function WebNavbar() {
           .eq('id', user.id)
           .maybeSingle()
 
-        if (profile) {
-          let currentInitials = '👤'
-          if (profile.first_name || profile.last_name) {
-            const first = (profile.first_name || '').charAt(0).toUpperCase()
-            const last = (profile.last_name || '').charAt(0).toUpperCase()
-            currentInitials = `${first}${last}` || '👤'
-            setInitials(currentInitials)
-          }
+        if (!profile) return
 
-          let currentAvatarUrl: string | null = null
-          if (profile.avatar_url) {
-            const { data } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(profile.avatar_url)
-            if (data?.publicUrl) {
-              currentAvatarUrl = data.publicUrl
-              setAvatarUrl(currentAvatarUrl)
-            }
-          }
+        const first = (profile.first_name || '').charAt(0).toUpperCase()
+        const last = (profile.last_name || '').charAt(0).toUpperCase()
+        const resolvedInitials = `${first}${last}` || '👤'
+        setInitials(resolvedInitials)
 
-          // Persist to cache
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(cacheKey, JSON.stringify({
-              initials: currentInitials,
-              avatarUrl: currentAvatarUrl,
-            }))
-          }
+        let resolvedAvatar: string | null = null
+        if (profile.avatar_url) {
+          resolvedAvatar = supabase.storage.from('avatars').getPublicUrl(profile.avatar_url).data.publicUrl
+          setAvatarUrl(resolvedAvatar)
+        }
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            initials: resolvedInitials,
+            avatarUrl: resolvedAvatar
+          }))
         }
       } catch (err) {
-        console.warn('Failed to load user profile in WebNavbar:', err)
+        console.error('Failed to load user profile in WebNavbar:', err)
       }
     }
 
     loadUserProfile()
+  }, [])
 
-    // Handle clicks outside to close dropdown on Web
-    const handleClickOutside = (event: MouseEvent) => {
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      if (typeof window !== 'undefined') {
+        // Clear all cached items
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          localStorage.removeItem(`user_profile_${user.id}`)
+        }
+      }
+      replaceTo('/login')
+    } catch (err) {
+      console.error('Failed to sign out:', err)
+    }
+  }
+
+  // Click outside listener for dropdown
+  useEffect(() => {
+    function handleClickOutside(event: any) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false)
       }
@@ -94,14 +105,6 @@ export function WebNavbar() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
-
-  const handleSignOut = async () => {
-    setIsOpen(false)
-    if (isSupabaseConfigured) {
-      await supabase.auth.signOut()
-    }
-    replaceTo('/login')
-  }
 
   return (
     <View style={styles.navbarContainer}>
@@ -137,25 +140,27 @@ export function WebNavbar() {
         {/* Center: Main Links */}
         <View pointerEvents="box-none" style={styles.linksOverlay}>
           <View style={styles.linksContainer}>
-          <Pressable
-            onPress={() => navigateTo('/home')}
-            style={({ hovered }) => [
-              styles.navLink,
-              pathname === '/home' && styles.navLinkActive,
-            ]}
-          >
-            {({ hovered }) => (
-              <Text
-                style={[
-                  styles.navLinkText,
-                  hovered && styles.navLinkTextHover,
-                  pathname === '/home' && styles.navLinkTextActive,
-                ]}
-              >
-                Application
-              </Text>
-            )}
-          </Pressable>
+          {showApplicationTab && (
+            <Pressable
+              onPress={() => navigateTo('/home')}
+              style={({ hovered }) => [
+                styles.navLink,
+                pathname === '/home' && styles.navLinkActive,
+              ]}
+            >
+              {({ hovered }) => (
+                <Text
+                  style={[
+                    styles.navLinkText,
+                    hovered && styles.navLinkTextHover,
+                    pathname === '/home' && styles.navLinkTextActive,
+                  ]}
+                >
+                  Application
+                </Text>
+              )}
+            </Pressable>
+          )}
           <Pressable
             onPress={() => navigateTo('/profile')}
             style={({ hovered }) => [
@@ -196,7 +201,7 @@ export function WebNavbar() {
               )}
             </Pressable>
           )}
-          {hasPermission('applications', 'modify') && (
+          {hasPermission('applications', 'view_others') && (
             <Pressable
               onPress={() => navigateTo('/admin')}
               style={({ hovered }) => [

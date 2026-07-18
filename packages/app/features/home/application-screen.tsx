@@ -14,6 +14,7 @@ import { ApplicantForm } from 'app/features/applicant/ApplicantForm'
 import { ApplicantRole } from 'app/features/applicant/applicant-types'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { useApplicationForm } from 'app/features/applicant/use-application-form'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
 
 
@@ -62,6 +63,8 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
   const applicantRole: ApplicantRole = roleFromParams ?? ''
   const applicantRoleLabel = getApplicantRoleLabel(applicantRole)
 
+  const { hasPermission, loading: permissionsLoading } = useUserPermissions()
+
   const {
     isLoading: isConfigLoading,
     error: configError,
@@ -70,11 +73,15 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
     disabledFields,
     status,
     adminFeedback,
+    feedbackHistory,
     onSubmit,
     onSaveDraft,
+    onConfirmAttendance,
     systemLinks,
     isClosed
   } = useApplicationForm(applicantRole, 'en')
+
+  const isLoading = isConfigLoading || permissionsLoading
 
   useEffect(() => {
     async function checkAuth() {
@@ -87,6 +94,16 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
     }
     checkAuth()
   }, [router])
+
+  useEffect(() => {
+    if (!permissionsLoading && !isConfigLoading) {
+      const hasApp = status !== null
+      const canCreate = hasPermission('applications', 'create')
+      if (!hasApp && !canCreate) {
+        router.replace('/profile')
+      }
+    }
+  }, [permissionsLoading, isConfigLoading, status, hasPermission, router])
 
   useEffect(() => {
     setIsHydrated(true)
@@ -172,7 +189,7 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
         }}
       >
         <View style={[styles.container, { width: '90%', maxWidth: 1000 }]}>
-          {isConfigLoading ? (
+          {isLoading ? (
             <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
               <ActivityIndicator size="large" color="#ffffff" />
               <Text style={{ color: '#ffffff', fontSize: 16 }}>Loading application...</Text>
@@ -190,8 +207,10 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
               disabledFields={disabledFields}
               status={status}
               adminFeedback={adminFeedback}
+              feedbackHistory={feedbackHistory}
               onSubmit={onSubmit}
               onSaveDraft={onSaveDraft}
+              onConfirmAttendance={onConfirmAttendance}
               systemLinks={systemLinks}
               isClosed={isClosed}
             />

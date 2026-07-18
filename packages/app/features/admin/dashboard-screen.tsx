@@ -45,7 +45,7 @@ interface Application {
 export function AdminDashboardScreen() {
   const { navigateTo } = useSmartNavigate()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
-  const hasModifyPermission = !permissionsLoading && hasPermission('applications', 'modify')
+  const hasViewOthersPermission = !permissionsLoading && hasPermission('applications', 'view_others')
   const [apps, setApps] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +59,24 @@ export function AdminDashboardScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<string>('all')
   const [selectedCountries, setSelectedCountries] = useState<string[]>([])
+  const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [excludeInput, setExcludeInput] = useState<string>('')
+  const [excludeTags, setExcludeTags] = useState<string[]>([])
+  
+  const addExcludeTag = (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    const cleanTag = trimmed.endsWith(',') ? trimmed.slice(0, -1).trim() : trimmed
+    if (cleanTag && !excludeTags.includes(cleanTag)) {
+      setExcludeTags(prev => [...prev, cleanTag])
+    }
+    setExcludeInput('')
+  }
+
+  const removeExcludeTag = (tagToRemove: string) => {
+    setExcludeTags(prev => prev.filter(t => t !== tagToRemove))
+  }
+
   const [groupByTeams, setGroupByTeams] = useState(false)
   // Request Changes Modal (Transferred to subscreen detail view)
   // Inline expansion states removed
@@ -89,8 +107,8 @@ export function AdminDashboardScreen() {
   // Load applications
   const fetchApplications = async () => {
     try {
-      setLoading(true)
       setError(null)
+      setLoading(true)
 
       if (!isSupabaseConfigured) {
         // Fallback mock data for developer sandbox (filter out drafts)
@@ -133,8 +151,20 @@ export function AdminDashboardScreen() {
       const formatted = (appsData || []).map((app: any) => {
         const teamId = app.profiles?.team_id
         const teamName = teamId ? teamsMap.get(teamId) : null
+
+        const getActiveFeedback = (feedbackVal: any): string | null => {
+          if (!feedbackVal) return null
+          if (typeof feedbackVal === 'string') return feedbackVal
+          if (Array.isArray(feedbackVal)) {
+            const active = feedbackVal.find(f => !f.resolved_at)
+            return active ? active.feedback : null
+          }
+          return null
+        }
+
         return {
           ...app,
+          admin_feedback: getActiveFeedback(app.admin_feedback),
           profiles: app.profiles ? {
             ...app.profiles,
             email: app.answers?.email || 'No email provided',
@@ -152,10 +182,10 @@ export function AdminDashboardScreen() {
   }
 
   useEffect(() => {
-    if (hasModifyPermission) {
+    if (hasViewOthersPermission) {
       fetchApplications()
     }
-  }, [hasModifyPermission])
+  }, [hasViewOthersPermission])
 
   // Get available countries dynamically
   const uniqueCountries = useMemo(() => {
@@ -200,9 +230,45 @@ export function AdminDashboardScreen() {
       // 3. Countries Multi-select
       const matchesCountry = selectedCountries.length === 0 || selectedCountries.includes(app.answers?.country)
 
-      return matchesSearch && matchesType && matchesCountry
+      // 4. Status Filter
+      const matchesStatus = selectedStatus === 'all' || app.status === selectedStatus
+
+      // 5. Exclude Tags (pill-based multi-filter)
+      let matchesExclude = true
+      if (excludeTags.length > 0) {
+        for (const tag of excludeTags) {
+          const queryStr = tag.toLowerCase().trim()
+          let matchesThisTag = false
+          
+          if (queryStr.includes(':')) {
+            const parts = queryStr.split(':')
+            const prefix = (parts[0] || '').trim()
+            const val = parts.slice(1).join(':').trim()
+            
+            if (prefix === 'university' || prefix === 'uni' || prefix === 'school') {
+              matchesThisTag = university.toLowerCase().includes(val)
+            } else if (prefix === 'city') {
+              const city = app.answers?.city || ''
+              matchesThisTag = city.toLowerCase().includes(val)
+            } else {
+              const city = app.answers?.city || ''
+              matchesThisTag = university.toLowerCase().includes(queryStr) || city.toLowerCase().includes(queryStr)
+            }
+          } else {
+            const city = app.answers?.city || ''
+            matchesThisTag = university.toLowerCase().includes(queryStr) || city.toLowerCase().includes(queryStr)
+          }
+          
+          if (matchesThisTag) {
+            matchesExclude = false
+            break
+          }
+        }
+      }
+
+      return matchesSearch && matchesType && matchesCountry && matchesStatus && matchesExclude
     })
-  }, [apps, searchQuery, selectedType, selectedCountries])
+  }, [apps, searchQuery, selectedType, selectedCountries, selectedStatus, excludeTags])
 
   // Statistics summaries
   const stats = useMemo(() => {
@@ -261,7 +327,7 @@ export function AdminDashboardScreen() {
     )
   }
 
-  if (!hasPermission('applications', 'modify')) {
+  if (!hasPermission('applications', 'view_others')) {
     return (
       <View style={[styles.centerContainer, { backgroundColor: '#1d041f' }]}>
         <View style={styles.accessDeniedCard}>
@@ -362,6 +428,49 @@ export function AdminDashboardScreen() {
     )
   }
 
+  if (permissionsLoading) {
+    return (
+      <View style={{ backgroundColor: '#1d041f', flex: 1, height: screenHeight || '100%', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#c2b75f" />
+      </View>
+    )
+  }
+
+  if (!hasViewOthersPermission) {
+    return (
+      <>
+        <WebNavbar />
+        <View style={{ backgroundColor: '#1d041f', flex: 1, minHeight: 600, justifyContent: 'center', alignItems: 'center', alignSelf: 'stretch', padding: 20 }}>
+          <View style={{
+            backgroundColor: '#27082a',
+            padding: 32,
+            borderRadius: 16,
+            alignItems: 'center',
+            maxWidth: 480,
+            width: '100%',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.05)',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 10,
+            elevation: 8,
+          }}>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#ff6b6b', marginBottom: 12 }}>Access Denied</Text>
+            <Text style={{ fontSize: 15, color: '#9ca3af', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              You do not have administrative privileges to access this dashboard.
+            </Text>
+            <PillButton
+              title="Return Home"
+              onPress={() => navigateTo('/home')}
+              additionalStyle={{ width: 200, height: 50 }}
+            />
+          </View>
+        </View>
+      </>
+    )
+  }
+
   return (
     <>
       <WebNavbar />
@@ -438,6 +547,21 @@ export function AdminDashboardScreen() {
                 onChangeText={setSearchQuery}
               />
 
+              <TextInput
+                style={[styles.searchInput, { flex: 1.5, minWidth: 200 }]}
+                placeholder="Exclude (e.g. city:Mexico City or university:Tec)..."
+                placeholderTextColor="rgba(34, 0, 44, 0.4)"
+                value={excludeInput}
+                onChangeText={(text) => {
+                  if (text.endsWith(',')) {
+                    addExcludeTag(text)
+                  } else {
+                    setExcludeInput(text)
+                  }
+                }}
+                onSubmitEditing={() => addExcludeTag(excludeInput)}
+              />
+
               <View style={styles.dropdownContainer}>
                 <Pressable
                   onPress={() => setSelectedType(selectedType === 'all' ? 'hacker' : selectedType === 'hacker' ? 'judge' : selectedType === 'judge' ? 'sponsor' : 'all')}
@@ -445,6 +569,21 @@ export function AdminDashboardScreen() {
                 >
                   <Text style={styles.dropdownBtnText}>
                     Type: {selectedType.toUpperCase()}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.dropdownContainer}>
+                <Pressable
+                  onPress={() => {
+                    const statuses = ['all', 'submitted', 'changes_requested', 'accepted', 'rejected', 'confirmed', 'draft']
+                    const nextIdx = (statuses.indexOf(selectedStatus) + 1) % statuses.length
+                    setSelectedStatus(statuses[nextIdx] || 'all')
+                  }}
+                  style={styles.dropdownBtn}
+                >
+                  <Text style={styles.dropdownBtnText}>
+                    Status: {selectedStatus.toUpperCase().replace('_', ' ')}
                   </Text>
                 </Pressable>
               </View>
@@ -458,6 +597,31 @@ export function AdminDashboardScreen() {
                 </Text>
               </Pressable>
             </View>
+
+            {excludeTags.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, width: '100%' }}>
+                {excludeTags.map(tag => (
+                  <View
+                    key={tag}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: 'rgba(194, 183, 95, 0.15)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(194, 183, 95, 0.4)',
+                      borderRadius: 8,
+                      paddingVertical: 4,
+                      paddingHorizontal: 8,
+                    }}
+                  >
+                    <Text style={{ color: '#c2b75f', fontSize: 12, fontWeight: 'bold' }}>{tag}</Text>
+                    <Pressable onPress={() => removeExcludeTag(tag)}>
+                      <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: 'bold', marginLeft: 8 }}>✕</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {/* Country Multi-Select Filter */}
             {uniqueCountries.length > 0 && (

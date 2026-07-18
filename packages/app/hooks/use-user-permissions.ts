@@ -5,7 +5,8 @@ import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 let cachedPermissions: string[] | null = null
 let cachedRole: string | null = null
 let currentUserId: string | null = null
-let isFetching = false
+let fetchingUserId: string | null = null
+let activeRequestId = 0
 
 const listeners = new Set<(state: { permissions: string[]; role: string; loading: boolean }) => void>()
 
@@ -19,8 +20,10 @@ function notifyListeners() {
 }
 
 async function loadPermissions() {
+  const requestId = ++activeRequestId
+
   if (!isSupabaseConfigured) {
-    cachedPermissions = ['teams:create', 'teams:view', 'applications:create', 'applications:view', 'applications:modify', 'sponsor_portal:view']
+    cachedPermissions = ['teams:create', 'teams:view', 'applications:view_others', 'applications:review', 'sponsor_portal:view']
     cachedRole = 'admin'
     notifyListeners()
     return
@@ -29,10 +32,14 @@ async function loadPermissions() {
   try {
     const { data: { session } } = await supabase.auth.getSession()
     const user = session?.user
+
+    if (requestId !== activeRequestId) return
+
     if (!user) {
       cachedPermissions = []
       cachedRole = 'user'
       currentUserId = null
+      fetchingUserId = null
       notifyListeners()
       return
     }
@@ -42,38 +49,55 @@ async function loadPermissions() {
       return
     }
 
-    if (isFetching) return
-    isFetching = true
-    currentUserId = user.id
+    // Skip if we are already fetching for this exact user to avoid duplicate queries
+    if (user.id === fetchingUserId) {
+      return
+    }
 
-    // 1. Fetch user role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
+    fetchingUserId = user.id
 
-    const userRole = profile?.role || 'user'
-    cachedRole = userRole
+    // 1. Fetch user roles array from public.user_roles table
+    const currentYear = new Date().getFullYear().toString()
+    const { data: rolesData } = await supabase
+      .from('user_roles')
+      .select('role, event_year')
+      .eq('user_id', user.id)
 
-    // 2. Fetch role mapping configuration
+    if (requestId !== activeRequestId) return
+
+    const filteredRoles = (rolesData || [])
+      .filter(r => r.event_year === currentYear || r.event_year === null || r.event_year === 'NULL' || r.event_year === 'null')
+      .map(r => r.role)
+
+    const userRoles = filteredRoles.length > 0 ? filteredRoles : ['user']
+    cachedRole = userRoles.join(', ')
+
+    // 2. Fetch role mapping configuration for all roles
     const { data: mapping } = await supabase
       .from('role_permissions')
       .select('permission_id')
-      .eq('role', userRole)
+      .in('role', userRoles)
+
+    if (requestId !== activeRequestId) return
 
     if (mapping) {
-      cachedPermissions = mapping.map(m => m.permission_id)
+      // Deduplicate permission ids
+      cachedPermissions = Array.from(new Set(mapping.map(m => m.permission_id)))
     } else {
       cachedPermissions = []
     }
+
+    currentUserId = user.id
   } catch (err) {
+    if (requestId !== activeRequestId) return
     console.error('Failed to load user permissions:', err)
     cachedPermissions = []
     cachedRole = 'user'
   } finally {
-    isFetching = false
-    notifyListeners()
+    if (requestId === activeRequestId) {
+      fetchingUserId = null
+      notifyListeners()
+    }
   }
 }
 
@@ -101,6 +125,7 @@ export function useUserPermissions() {
           cachedPermissions = []
           cachedRole = 'user'
           currentUserId = null
+          fetchingUserId = null
           notifyListeners()
         } else {
           // Trigger reload only on user change or if cache is empty
@@ -122,10 +147,11 @@ export function useUserPermissions() {
     }
   }, [])
 
-  const hasPermission = (feature: string, action: 'view' | 'modify' | 'create'): boolean => {
+  const hasPermission = (feature: string, action: 'view' | 'modify' | 'create' | 'view_others' | 'review'): boolean => {
     return permissions.includes(`${feature}:${action}`)
   }
 
   return { permissions, role, hasPermission, loading }
 }
+
 

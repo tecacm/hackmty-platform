@@ -1072,16 +1072,33 @@ export function TeamsScreen() {
                       An admin requested changes on team application(s). Please resolve for accountability:
                     </Text>
                     {membersWithChanges.map(member => {
-                      const apps = membersApplications.filter(a => a.user_id === member.id)
-                      const appWithFeedback = apps.find(a => a.status === 'changes_requested' && a.admin_feedback)
-                      const feedback = appWithFeedback?.admin_feedback || 'No specific feedback provided.'
-                      const name = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Teammate'
-                      return (
-                        <View key={member.id} style={styles.warningBannerItem}>
-                          <Text style={styles.warningBannerName}>• {name}:</Text>
-                          <Text style={styles.warningBannerFeedback}>"{feedback}"</Text>
-                        </View>
-                      )
+                       const apps = membersApplications.filter(a => a.user_id === member.id)
+                       const appWithFeedback = apps.find(a => a.status === 'changes_requested' && a.admin_feedback)
+                       
+                       let feedback = 'No specific feedback provided.'
+                       if (appWithFeedback && appWithFeedback.admin_feedback) {
+                         const fbVal = appWithFeedback.admin_feedback
+                         if (Array.isArray(fbVal)) {
+                           const activeEntry = fbVal.find(f => f && !f.resolved_at)
+                           if (activeEntry && activeEntry.feedback) {
+                             feedback = activeEntry.feedback
+                           } else if (fbVal.length > 0 && fbVal[fbVal.length - 1]?.feedback) {
+                             feedback = fbVal[fbVal.length - 1].feedback
+                           }
+                         } else if (typeof fbVal === 'string') {
+                           feedback = fbVal
+                         } else if (fbVal && typeof fbVal === 'object' && (fbVal as any).feedback) {
+                           feedback = (fbVal as any).feedback
+                         }
+                       }
+
+                       const name = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Teammate'
+                       return (
+                         <View key={member.id} style={styles.warningBannerItem}>
+                           <Text style={styles.warningBannerName}>• {name}:</Text>
+                           <Text style={styles.warningBannerFeedback}>"{feedback}"</Text>
+                         </View>
+                       )
                     })}
                   </View>
                 )

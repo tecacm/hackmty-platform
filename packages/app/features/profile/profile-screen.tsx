@@ -506,7 +506,8 @@ export function ProfileScreen() {
                     <Image source={{ uri: avatarDisplayUrl }} style={styles.avatarImage} />
                   ) : (
                     <View style={styles.avatarFallback}>
-                      <Text style={styles.avatarFallbackText}>👤</Text>
+                      <View style={styles.silhouetteHead} />
+                      <View style={styles.silhouetteShoulders} />
                     </View>
                   )}
                   {isUploading && (
@@ -752,11 +753,26 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   avatarFallback: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  avatarFallbackText: {
-    fontSize: 48,
+  silhouetteHead: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#a3a3a3',
+    marginTop: -14,
+  },
+  silhouetteShoulders: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#a3a3a3',
+    position: 'absolute',
+    bottom: -29,
   },
   uploadOverlay: {
     ...StyleSheet.absoluteFillObject,

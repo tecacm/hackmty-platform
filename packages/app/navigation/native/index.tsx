@@ -73,6 +73,7 @@ function AdminTabNavigator() {
 
 function TabNavigator() {
   const { hasPermission } = useUserPermissions()
+  const showApplicationTab = hasPermission('applications', 'view')
 
   return (
     <Tab.Navigator
@@ -85,23 +86,25 @@ function TabNavigator() {
         tabBarInactiveTintColor: '#a3a3a3',
       }}
     >
-      <Tab.Screen
-        name="home"
-        component={HomeScreen}
-        options={{ 
-          tabBarLabel: 'Application',
-          tabBarIcon: Platform.select({
-            ios: {
-              type: 'sfSymbol',
-              name: 'doc.text',
-            },
-            android: {
-              type: 'materialSymbol',
-              name: 'assignment',
-            },
-          }) as any,
-        }}
-      />
+      {showApplicationTab && (
+        <Tab.Screen
+          name="home"
+          component={HomeScreen}
+          options={{ 
+            tabBarLabel: 'Application',
+            tabBarIcon: Platform.select({
+              ios: {
+                type: 'sfSymbol',
+                name: 'doc.text',
+              },
+              android: {
+                type: 'materialSymbol',
+                name: 'assignment',
+              },
+            }) as any,
+          }}
+        />
+      )}
       {hasPermission('teams', 'create') && (
         <Tab.Screen
           name="teams"
@@ -138,7 +141,7 @@ function TabNavigator() {
           }) as any,
         }}
       />
-      {hasPermission('applications', 'modify') && (
+      {hasPermission('applications', 'view_others') && (
         <Tab.Screen
           name="admin"
           component={AdminTabNavigator}

@@ -14,6 +14,7 @@ import { getApplicantFieldsForRole, type ApplicantField } from './applicant-fiel
 import applicationFieldsConfig from 'app/data/application-fields.json'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
 import { formFieldColors } from 'app/components/form-field-styles'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
 
 type ApplicantFormProps = {
   role: ApplicantRole
@@ -22,8 +23,10 @@ type ApplicantFormProps = {
   disabledFields?: string[]
   status?: string | null
   adminFeedback?: string | null
+  feedbackHistory?: any[]
   onSubmit: (data: ApplicantFormData) => void
   onSaveDraft?: (data: ApplicantFormData) => void
+  onConfirmAttendance?: () => Promise<void>
   systemLinks?: Record<string, { text: any; href: string }>
   isClosed?: boolean
 }
@@ -139,16 +142,35 @@ export function ApplicantForm({
   disabledFields = [],
   status = null,
   adminFeedback = null,
+  feedbackHistory = [],
   onSubmit,
   onSaveDraft,
+  onConfirmAttendance,
   systemLinks = {},
   isClosed = false
 }: ApplicantFormProps) {
+  const { hasPermission } = useUserPermissions()
   const allFields = propFields || getApplicantFieldsForRole(role)
   const { width } = useWindowDimensions()
   const [isReady, setIsReady] = useState(false)
   const isWide = width >= 520
-  const isFormLocked = isClosed || status === 'submitted' || status === 'accepted' || status === 'rejected'
+  const isFormLocked =
+    isClosed ||
+    (status !== 'draft' && status !== 'changes_requested')
+
+  const [isConfirming, setIsConfirming] = useState(false)
+
+  const handleConfirmAttendance = async () => {
+    if (!onConfirmAttendance) return
+    try {
+      setIsConfirming(true)
+      await onConfirmAttendance()
+    } catch (err: any) {
+      alert(err.message || 'Failed to confirm attendance.')
+    } finally {
+      setIsConfirming(false)
+    }
+  }
 
   const dynamicHeadingSize = Math.round(Math.min(50, Math.max(24, width * 0.07)))
 
@@ -255,7 +277,7 @@ export function ApplicantForm({
       {status === 'changes_requested' && (
         <View style={{ backgroundColor: '#fffbeb', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
           <Text style={{ color: '#b45309', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>
-            ⚠️ Action Required: Changes Requested by Organizer
+            Action Required: Changes Requested by Organizer
           </Text>
           <Text style={{ color: '#78350f', fontSize: 14 }}>
             {adminFeedback || 'Please review and update your application details.'}
@@ -272,13 +294,59 @@ export function ApplicantForm({
       )}
 
       {status === 'accepted' && (
+        <View style={{ backgroundColor: '#f0fdf4', borderColor: '#22c55e', borderWidth: 1, borderRadius: 12, padding: 20, width: '100%', marginBottom: 20, gap: 12 }}>
+          <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18, textAlign: 'center' }}>
+            Congratulations!
+          </Text>
+          <Text style={{ color: '#166534', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+            Your application has been accepted. Please confirm your attendance below to secure your spot at the event!
+          </Text>
+          <View style={{ alignItems: 'center', marginTop: 8 }}>
+            <PillButton
+              title="Confirm Attendance"
+              variant="secondary"
+              isLoading={isConfirming}
+              onPress={handleConfirmAttendance}
+              additionalStyle={{ width: 220, height: 48 }}
+            />
+          </View>
+        </View>
+      )}
+
+      {status === 'confirmed' && (
         <View style={{ backgroundColor: '#f0fdf4', borderColor: '#22c55e', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
           <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18, textAlign: 'center', marginBottom: 4 }}>
-            🎉 Congratulations!
+            Attendance Confirmed
           </Text>
           <Text style={{ color: '#166534', fontSize: 14, textAlign: 'center' }}>
-            Your application has been accepted. We look forward to seeing you at the event!
+            Your attendance has been confirmed. See you at the hackathon!
           </Text>
+        </View>
+      )}
+
+      {/* Historical Changes Requests Log for Applicant */}
+      {feedbackHistory.length > 0 && (
+        <View style={{ backgroundColor: '#ffffff', borderColor: 'rgba(90, 0, 97, 0.12)', borderWidth: 1.5, borderRadius: 16, padding: 20, width: '100%', marginBottom: 20, gap: 12 }}>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#22002c' }}>
+            Changes Request History
+          </Text>
+          {feedbackHistory.map((item: any, idx: number) => {
+            const reqDate = item.requested_at ? new Date(item.requested_at).toLocaleString() : 'Unknown date'
+            const resDate = item.resolved_at ? new Date(item.resolved_at).toLocaleString() : 'Pending resolution'
+            return (
+              <View key={idx} style={[{ paddingVertical: 8, gap: 4 }, idx > 0 && { borderTopWidth: 1, borderColor: 'rgba(34, 0, 44, 0.08)' }]}>
+                <Text style={{ fontSize: 14, color: '#555555', fontStyle: 'italic' }}>
+                  "{item.feedback}"
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <Text style={{ fontSize: 11, color: '#888888' }}>Requested: {reqDate}</Text>
+                  <Text style={[{ fontSize: 11, color: '#888888' }, !item.resolved_at && { color: '#d32f2f', fontWeight: '700' }]}>
+                    Resolved: {resDate}
+                  </Text>
+                </View>
+              </View>
+            )
+          })}
         </View>
       )}
 
@@ -481,7 +549,7 @@ export function ApplicantForm({
       {!isFormLocked && (
         <View style={styles.buttonRow}>
           <PillButton
-            title={status === 'submitted' ? 'Submitted' : 'Submit'}
+            title="Submit"
             onPress={handleSubmit(async (data) => {
               try {
                 await onSubmit(data as ApplicantFormData)

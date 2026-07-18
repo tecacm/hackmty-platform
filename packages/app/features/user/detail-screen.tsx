@@ -27,7 +27,7 @@ import numbersbg from 'app/assets/images/numbers-bg.webp'
 interface Application {
   id: string
   status: string
-  admin_feedback: string | null
+  admin_feedback: any
   application_type_id: string
   answers: any
   user_id: string
@@ -47,7 +47,8 @@ export function UserDetailScreen() {
   const appId = searchParams?.get('appId')
   const { navigateTo } = useSmartNavigate()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
-  const hasModifyPermission = !permissionsLoading && hasPermission('applications', 'modify')
+  const hasViewOthersPermission = !permissionsLoading && hasPermission('applications', 'view_others')
+  const hasReviewPermission = !permissionsLoading && hasPermission('applications', 'review')
 
   const [userApps, setUserApps] = useState<Application[]>([])
   const [activeAppIndex, setActiveAppIndex] = useState(0)
@@ -170,10 +171,10 @@ export function UserDetailScreen() {
   }
 
   useEffect(() => {
-    if (hasModifyPermission && isReady) {
+    if (hasViewOthersPermission && isReady) {
       fetchApplicationDetails()
     }
-  }, [userId, hasModifyPermission, isReady])
+  }, [userId, hasViewOthersPermission, isReady])
 
   // Load team name when active app changes
   useEffect(() => {
@@ -207,12 +208,34 @@ export function UserDetailScreen() {
 
     try {
       setUpdatingApp(true)
+
+      let updatedFeedback: any[] = []
+      if (Array.isArray(app.admin_feedback)) {
+        updatedFeedback = [...app.admin_feedback]
+      } else if (typeof app.admin_feedback === 'string' && app.admin_feedback) {
+        updatedFeedback = [{
+          feedback: app.admin_feedback,
+          requested_at: new Date().toISOString(),
+          resolved_at: new Date().toISOString()
+        }]
+      }
+
+      if (status === 'changes_requested' && feedback) {
+        updatedFeedback.push({
+          feedback,
+          requested_at: new Date().toISOString(),
+          resolved_at: null
+        })
+      } else if (status !== 'changes_requested') {
+        updatedFeedback = updatedFeedback.map(f => !f.resolved_at ? { ...f, resolved_at: new Date().toISOString() } : f)
+      }
+
       if (isSupabaseConfigured) {
         const { error: updateErr } = await supabase
           .from('applications')
           .update({
             status,
-            admin_feedback: feedback,
+            admin_feedback: updatedFeedback,
             updated_at: new Date().toISOString()
           })
           .eq('id', app.id)
@@ -223,7 +246,7 @@ export function UserDetailScreen() {
       // Update local state array
       setUserApps(prev => prev.map(a => {
         if (a.id === app.id) {
-          return { ...a, status, admin_feedback: feedback }
+          return { ...a, status, admin_feedback: updatedFeedback }
         }
         return a
       }))
@@ -367,7 +390,7 @@ export function UserDetailScreen() {
     )
   }
 
-  if (!hasPermission('applications', 'modify')) {
+  if (!hasViewOthersPermission) {
     return (
       <View style={[styles.centerContainer, { backgroundColor: '#1d041f' }]}>
         <View style={styles.accessDeniedCard}>
@@ -542,50 +565,82 @@ export function UserDetailScreen() {
                   </View>
                 </View>
 
-                {/* Organizer Notes Banner */}
-                {app.admin_feedback && (
-                  <View style={styles.feedbackBanner}>
-                    <Text style={styles.feedbackBannerTitle}>Previous Request Reason / Admin Feedback:</Text>
-                    <Text style={styles.feedbackBannerText}>{app.admin_feedback}</Text>
-                  </View>
-                )}
+                {/* Active Feedback Banner */}
+                {(() => {
+                  const activeFeedback = Array.isArray(app.admin_feedback)
+                    ? app.admin_feedback.find((f: any) => !f.resolved_at)?.feedback
+                    : app.admin_feedback
+                  return activeFeedback ? (
+                    <View style={styles.feedbackBanner}>
+                      <Text style={styles.feedbackBannerTitle}>Active Change Request Feedback:</Text>
+                      <Text style={styles.feedbackBannerText}>"{activeFeedback}"</Text>
+                    </View>
+                  ) : null
+                })()}
+
+                {/* Historical Requested Changes Log */}
+                {(() => {
+                  const feedbackHistory = Array.isArray(app.admin_feedback) ? app.admin_feedback : []
+                  return feedbackHistory.length > 0 ? (
+                    <View style={styles.historyCard}>
+                      <Text style={styles.historyCardTitle}>Changes Request History</Text>
+                      {feedbackHistory.map((item: any, idx: number) => {
+                        const reqDate = item.requested_at ? new Date(item.requested_at).toLocaleString() : 'Unknown date'
+                        const resDate = item.resolved_at ? new Date(item.resolved_at).toLocaleString() : 'Pending resolution'
+                        return (
+                          <View key={idx} style={[styles.historyRow, idx > 0 && styles.historyRowBorder]}>
+                            <Text style={styles.historyText}>"{item.feedback}"</Text>
+                            <View style={styles.historyMetaRow}>
+                              <Text style={styles.historyMetaText}>Requested: {reqDate}</Text>
+                              <Text style={[styles.historyMetaText, !item.resolved_at && styles.historyPendingText]}>
+                                Resolved: {resDate}
+                              </Text>
+                            </View>
+                          </View>
+                        )
+                      })}
+                    </View>
+                  ) : null
+                })()}
 
                 {/* Action Trigger Buttons */}
-                <View style={styles.actionsCard}>
-                  <Text style={styles.actionsCardTitle}>Organizer Actions</Text>
-                  <View style={styles.actionsRow}>
-                    {app.status !== 'accepted' && (
-                      <PillButton
-                        variant="secondary"
-                        title="Approve"
-                        isLoading={updatingApp}
-                        onPress={() => handleUpdateStatus('accepted')}
-                        additionalStyle={styles.actionBtn}
-                      />
-                    )}
-                    {app.status !== 'rejected' && (
-                      <PillButton
-                        variant="outline-danger"
-                        title="Reject"
-                        isLoading={updatingApp}
-                        onPress={() => handleUpdateStatus('rejected')}
-                        additionalStyle={styles.actionBtn}
-                      />
-                    )}
-                    {app.status !== 'changes_requested' && (
-                      <PillButton
-                        variant="outline-secondary"
-                        title="Request Changes"
-                        isLoading={updatingApp}
-                        onPress={() => {
-                          setRequestReason('')
-                          setShowRequestChangesModal(true)
-                        }}
-                        additionalStyle={styles.actionBtn}
-                      />
-                    )}
+                {hasReviewPermission && (
+                  <View style={styles.actionsCard}>
+                    <Text style={styles.actionsCardTitle}>Organizer Actions</Text>
+                    <View style={styles.actionsRow}>
+                      {app.status !== 'accepted' && (
+                        <PillButton
+                          variant="secondary"
+                          title="Approve"
+                          isLoading={updatingApp}
+                          onPress={() => handleUpdateStatus('accepted')}
+                          additionalStyle={styles.actionBtn}
+                        />
+                      )}
+                      {app.status !== 'rejected' && (
+                        <PillButton
+                          variant="outline-danger"
+                          title="Reject"
+                          isLoading={updatingApp}
+                          onPress={() => handleUpdateStatus('rejected')}
+                          additionalStyle={styles.actionBtn}
+                        />
+                      )}
+                      {app.status !== 'changes_requested' && (
+                        <PillButton
+                          variant="outline-secondary"
+                          title="Request Changes"
+                          isLoading={updatingApp}
+                          onPress={() => {
+                            setRequestReason('')
+                            setShowRequestChangesModal(true)
+                          }}
+                          additionalStyle={styles.actionBtn}
+                        />
+                      )}
+                    </View>
                   </View>
-                </View>
+                )}
 
                 {/* Application Information Form Fields */}
                 <View style={styles.fieldsCard}>
@@ -1255,5 +1310,54 @@ const styles = StyleSheet.create({
   detailRefreshBtn: {
     width: 140,
     height: 38,
+  },
+  historyCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(90, 0, 97, 0.12)',
+    padding: 24,
+    width: '100%',
+    gap: 16,
+    marginTop: 16,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.04)',
+      },
+    }),
+  },
+  historyCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#22002c',
+  },
+  historyRow: {
+    paddingVertical: 12,
+    gap: 8,
+  },
+  historyRowBorder: {
+    borderTopWidth: 1,
+    borderColor: 'rgba(34, 0, 44, 0.08)',
+  },
+  historyText: {
+    fontSize: 14,
+    color: '#555555',
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  historyMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  historyMetaText: {
+    fontSize: 11,
+    color: '#888888',
+    fontWeight: '500',
+  },
+  historyPendingText: {
+    color: '#d32f2f',
+    fontWeight: '700',
   },
 })
