@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     })
   },
   authError: {
-    color: '#ffd3d3',
+    color: '#ff6554',
     textAlign: 'center',
     fontWeight: '600',
   },

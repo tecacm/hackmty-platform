@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
   },
   authError: {
-    color: '#c0392b',
+    color: '#ff6554',
     textAlign: 'center',
     fontWeight: '600',
     fontFamily: 'Montserrat',

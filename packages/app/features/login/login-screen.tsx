@@ -29,7 +29,7 @@ type LoginFormValues = {
 
 const styles = StyleSheet.create({
   authError: {
-    color: '#c0392b',
+    color: '#ff6554',
     textAlign: 'center',
     fontWeight: '600',
     fontFamily: 'Montserrat',
