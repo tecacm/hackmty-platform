@@ -11,7 +11,6 @@ import {
   ScrollView,
   Modal
 } from 'react-native'
-import { WebNavbar } from 'app/components/web-navbar'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import { PillButton } from 'app/components/pill-button'
@@ -441,7 +440,6 @@ export function AdminDashboardScreen() {
   if (!hasViewOthersPermission) {
     return (
       <>
-        <WebNavbar />
         <View style={{ backgroundColor: '#1d041f', flex: 1, minHeight: 600, justifyContent: 'center', alignItems: 'center', alignSelf: 'stretch', padding: 20 }}>
           <View style={{
             backgroundColor: '#27082a',
@@ -475,7 +473,6 @@ export function AdminDashboardScreen() {
 
   return (
     <>
-      <WebNavbar />
       <ParallaxScrollView
         background={background}
         style={{ backgroundColor: '#1d041f' }}

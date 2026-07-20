@@ -1,6 +1,7 @@
 import { StylesProvider } from './styles-provider'
 import { Provider } from 'app/provider'
 import { ServiceWorkerRegister } from './service-worker-register'
+import { WebNavbar } from 'app/components/web-navbar'
 import './globals.css'
 import logoImage from 'app/assets/images/hackmty-logo-favicon.webp'
 
@@ -31,6 +32,7 @@ export default function RootLayout({
         <StylesProvider>
           <Provider>
             <ServiceWorkerRegister />
+            <WebNavbar />
             {children}
           </Provider>
         </StylesProvider>

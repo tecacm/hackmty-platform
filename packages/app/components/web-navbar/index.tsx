@@ -11,35 +11,66 @@ import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
 import { SolitoImage } from 'solito/image'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 
+// Module-level in-memory cache to prevent flashing on component mount / route changes
+let globalProfileCache: { avatarUrl: string | null; initials: string } | null = null
+
+const HIDE_NAVBAR_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/complete-signup']
+
 export function WebNavbar() {
   if (Platform.OS !== 'web') return null
 
+  const pathname = usePathname()
+  if (HIDE_NAVBAR_PATHS.some(path => pathname?.startsWith(path))) return null
+
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { hasPermission } = useUserPermissions()
-  const pathname = usePathname()
 
   const showApplicationTab = hasPermission('applications', 'view')
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [initials, setInitials] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => globalProfileCache?.avatarUrl ?? null)
+  const [initials, setInitials] = useState<string>(() => globalProfileCache?.initials ?? '')
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<any>(null)
 
   useEffect(() => {
+    // Synchronously check localStorage if global cache is empty
+    if (!globalProfileCache && typeof window !== 'undefined') {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && key.startsWith('user_profile_')) {
+            const cached = localStorage.getItem(key)
+            if (cached) {
+              const parsed = JSON.parse(cached)
+              if (parsed.avatarUrl || parsed.initials) {
+                const init = parsed.initials && parsed.initials !== '👤' ? parsed.initials : ''
+                globalProfileCache = { avatarUrl: parsed.avatarUrl || null, initials: init }
+                setAvatarUrl(parsed.avatarUrl || null)
+                setInitials(init)
+                break
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
     async function loadUserProfile() {
       if (!isSupabaseConfigured) return
 
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user
         if (!user) return
 
-        // Load from local cache first to avoid load latency
         const cacheKey = `user_profile_${user.id}`
         if (typeof window !== 'undefined') {
           const cached = localStorage.getItem(cacheKey)
           if (cached) {
             try {
               const parsed = JSON.parse(cached)
-              if (parsed.initials && parsed.initials !== '👤') setInitials(parsed.initials)
+              const init = parsed.initials && parsed.initials !== '👤' ? parsed.initials : ''
+              globalProfileCache = { avatarUrl: parsed.avatarUrl || null, initials: init }
+              setInitials(init)
               if (parsed.avatarUrl) setAvatarUrl(parsed.avatarUrl)
             } catch (e) {}
           }
@@ -56,13 +87,15 @@ export function WebNavbar() {
         const first = (profile.first_name || '').charAt(0).toUpperCase()
         const last = (profile.last_name || '').charAt(0).toUpperCase()
         const resolvedInitials = `${first}${last}`.trim()
-        setInitials(resolvedInitials)
-
+        
         let resolvedAvatar: string | null = null
         if (profile.avatar_url) {
           resolvedAvatar = supabase.storage.from('avatars').getPublicUrl(profile.avatar_url).data.publicUrl
-          setAvatarUrl(resolvedAvatar)
         }
+
+        globalProfileCache = { avatarUrl: resolvedAvatar, initials: resolvedInitials }
+        setInitials(resolvedInitials)
+        setAvatarUrl(resolvedAvatar)
 
         if (typeof window !== 'undefined') {
           localStorage.setItem(cacheKey, JSON.stringify({
@@ -76,17 +109,31 @@ export function WebNavbar() {
     }
 
     loadUserProfile()
+
+    // Listen for auth changes to clear or refresh navbar avatar immediately
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        globalProfileCache = null
+        setAvatarUrl(null)
+        setInitials('')
+      } else {
+        loadUserProfile()
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   const handleSignOut = async () => {
     try {
+      globalProfileCache = null
+      setAvatarUrl(null)
+      setInitials('')
       await supabase.auth.signOut()
       if (typeof window !== 'undefined') {
-        // Clear all cached items
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          localStorage.removeItem(`user_profile_${user.id}`)
-        }
+        localStorage.clear()
       }
       replaceTo('/login')
     } catch (err) {

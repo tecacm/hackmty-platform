@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { useState, useEffect } from 'react'
 import { StyleSheet, View, Text, Platform, ActivityIndicator, Pressable, useWindowDimensions, Image, Clipboard, Modal } from 'react-native'
-import { WebNavbar } from 'app/components/web-navbar'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import { PillButton } from 'app/components/pill-button'
@@ -1034,8 +1033,6 @@ export function TeamsScreen() {
 
   return (
     <View style={styles.container}>
-      <WebNavbar />
-
       <ParallaxScrollView
         background={background}
         style={{ backgroundColor: '#5a0061cc' }}

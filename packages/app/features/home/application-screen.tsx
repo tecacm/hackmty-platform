@@ -1,7 +1,6 @@
 'use client'
 
 import { Dimensions, Text, View, useWindowDimensions, ActivityIndicator } from 'react-native'
-import { WebNavbar } from 'app/components/web-navbar'
 import { SolitoImage } from 'solito/image'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
@@ -174,7 +173,6 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
 
   return (
     <>
-      <WebNavbar />
       <ParallaxScrollView
         background={background}
         style={{ backgroundColor: '#5a0061cc' }}

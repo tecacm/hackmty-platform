@@ -16,7 +16,6 @@ import {
 import { SolitoImage } from 'solito/image'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
-import { WebNavbar } from 'app/components/web-navbar'
 import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
 import { StyledAutocomplete } from 'app/components/styled-autocomplete'
@@ -477,7 +476,6 @@ export function ProfileScreen() {
 
   return (
     <>
-      <WebNavbar />
       <ParallaxScrollView
         background={background}
         style={{ backgroundColor: '#5a0061cc' }}

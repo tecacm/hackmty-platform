@@ -18,7 +18,6 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { notifyApplicantOnStatusChanged, notifyTeamOnChangesRequested } from 'app/services/notification-service'
 import { useParams, useSearchParams } from 'solito/navigation'
 import { PillButton } from 'app/components/pill-button'
-import { WebNavbar } from 'app/components/web-navbar'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 import { SolitoImage } from 'solito/image'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
@@ -468,7 +467,6 @@ export function UserDetailScreen() {
 
   return (
     <>
-      <WebNavbar />
       <ParallaxScrollView
         background={background}
         style={{ backgroundColor: '#1d041f' }}
