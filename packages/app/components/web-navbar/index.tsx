@@ -14,7 +14,7 @@ import { PersonSilhouette } from 'app/components/person-silhouette'
 // Module-level in-memory cache to prevent flashing on component mount / route changes
 let globalProfileCache: { avatarUrl: string | null; initials: string } | null = null
 
-const HIDE_NAVBAR_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/complete-signup']
+const HIDE_NAVBAR_PATHS = [ '', '/login', '/register', '/forgot-password', '/reset-password', '/complete-signup']
 
 export function WebNavbar() {
   if (Platform.OS !== 'web') return null
