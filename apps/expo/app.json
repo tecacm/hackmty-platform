@@ -22,10 +22,16 @@
       "expo-image",
       "./sdk-lockdown",
       "expo-splash-screen",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-notifications"
     ],
     "android": {
       "package": "com.hackmty"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f559a2c7-b69f-48cd-8a75-382a313ef1c9"
+      }
     }
   }
 }

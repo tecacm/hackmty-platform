@@ -6,5 +6,6 @@
       "app/*": ["./packages/app/*"]
     },
     "jsx": "react-jsx"
-  }
+  },
+  "exclude": ["supabase", "node_modules"]
 }
