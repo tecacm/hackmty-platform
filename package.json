@@ -14,7 +14,8 @@
   },
   "scripts": {
     "native": "cd apps/expo && yarn start",
-    "web": "cd apps/next && yarn next"
+    "web": "cd apps/next && yarn next",
+    "web:https": "cd apps/next && yarn next dev --experimental-https"
   },
   "packageManager": "yarn@4.7.0",
   "eslintConfig": {
