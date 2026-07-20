@@ -15,7 +15,7 @@ import {
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
-import { notifyTeamOnChangesRequested } from 'app/services/notification-service'
+import { notifyApplicantOnStatusChanged, notifyTeamOnChangesRequested } from 'app/services/notification-service'
 import { useParams, useSearchParams } from 'solito/navigation'
 import { PillButton } from 'app/components/pill-button'
 import { WebNavbar } from 'app/components/web-navbar'
@@ -247,6 +247,10 @@ export function UserDetailScreen() {
             applicationId: app.id,
             reason: feedback
           }).catch(e => console.warn('Failed to trigger team notification:', e))
+        } else if (status === 'accepted' || status === 'rejected') {
+          notifyApplicantOnStatusChanged({
+            applicationId: app.id,
+          }).catch(e => console.warn('Failed to trigger application status notification:', e))
         }
       }
 

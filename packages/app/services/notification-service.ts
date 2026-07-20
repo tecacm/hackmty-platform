@@ -15,6 +15,10 @@ export interface ApplicationChangesParams {
   reason: string
 }
 
+export interface ApplicationStatusParams {
+  applicationId: string
+}
+
 /**
  * Dispatch an announcement (activities, meals, schedule updates, workshops, alerts)
  * Supports targeting specific teams, user roles, or direct user IDs.
@@ -82,5 +86,34 @@ export async function notifyTeamOnChangesRequested({
     return data
   } catch (err: any) {
     console.warn('Failed to notify team on changes requested:', err?.message || err)
+  }
+}
+
+/**
+ * Notify an applicant after an organizer accepts or rejects their application.
+ * The Edge Function reads the persisted status, so it cannot be spoofed by the client.
+ */
+export async function notifyApplicantOnStatusChanged({
+  applicationId,
+}: ApplicationStatusParams) {
+  if (!isSupabaseConfigured) return
+
+  try {
+    const { data, error } = await supabase.functions.invoke('dispatch-notification', {
+      body: {
+        category: 'application_status',
+        applicationId,
+      },
+    })
+
+    if (error) {
+      console.warn('Application status notification dispatch warning:', error.message)
+      return null
+    }
+
+    return data
+  } catch (err: any) {
+    console.warn('Failed to notify applicant about application status:', err?.message || err)
+    return null
   }
 }
