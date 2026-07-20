@@ -6,6 +6,7 @@ import { SolitoImage } from 'solito/image'
 import { WebNavbar } from 'app/components/web-navbar'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
+import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 
 /**
  * Persistent shell for all authenticated screens.
@@ -34,42 +35,39 @@ export function AuthenticatedShell({ children }: { children: React.ReactNode }) 
   const bgWidth = screenWidth > 0 ? screenWidth : intrinsicWidth
   const bgHeight = screenHeight > 0 ? screenHeight : intrinsicHeight
 
+  const background = (
+    <SolitoImage
+        {...({
+          src: numbersbg,
+          width: bgWidth,
+          height: bgHeight,
+          contentFit: 'cover',
+          resizeMode: 'cover',
+          transition: 0,
+          alt: 'Abstract numbers background',
+        } as any)}
+      />
+  ) 
+  
   return (
     <View style={styles.root}>
-      {/* Fixed background — never remounts */}
-      <View style={styles.background as any}>
-        <SolitoImage
-          {...({
-            src: numbersbg,
-            width: bgWidth,
-            height: bgHeight,
-            contentFit: 'cover',
-            resizeMode: 'cover',
-            transition: 0,
-            alt: 'Abstract numbers background',
-          } as any)}
-        />
-      </View>
-
-      {/* Persistent navbar — never remounts */}
       <WebNavbar />
-
-      {/* Scrollable page content */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingTop: Platform.OS === 'web' ? 104 : insets.top + 64,
-            paddingBottom: insets.bottom + 40,
-            paddingLeft: insets.left,
-            paddingRight: insets.right,
-          },
-        ]}
-        keyboardShouldPersistTaps="handled"
+      <ParallaxScrollView
+        background={background}
+        style={{ backgroundColor: '#5a0061cc' }}
+        contentContainerStyle={{
+          alignItems: 'center',
+          gap: 24,
+          paddingTop: Platform.OS === 'web' ? 104 : insets.top,
+          paddingBottom: insets.bottom + 40,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+          overflow: 'visible',
+        }}
       >
         {children}
-      </ScrollView>
+      </ParallaxScrollView>
+
     </View>
   )
 }
@@ -78,14 +76,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#5a0061cc',
-  },
-  background: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: -1,
   },
   scroll: {
     flex: 1,
