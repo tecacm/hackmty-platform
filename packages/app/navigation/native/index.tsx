@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Platform, View, ActivityIndicator } from 'react-native'
+import type { ComponentType, ReactNode } from 'react'
+import { Platform, View, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import {
   createBottomTabNavigator,
   createBottomTabScreen,
 } from '@react-navigation/bottom-tabs';
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
-
-
+import { SolitoImage } from 'solito/image'
+import numbersbg from 'app/assets/images/numbers-bg.webp'
+import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 
 import { LoginScreen } from 'app/features/login/login-screen'
 import { RegisterScreen } from 'app/features/login/register-screen'
@@ -22,6 +24,9 @@ import { TeamsScreen } from 'app/features/teams/teams-screen'
 import { AdminDashboardScreen } from 'app/features/admin/dashboard-screen'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { formFieldColors } from 'app/components/form-field-styles'
+
+import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
+import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 
 type StackParamList = {
   login: undefined
@@ -47,6 +52,61 @@ const Tab = createBottomTabNavigator<TabParamList>() // Using the unstable nativ
 
 const AdminStack = createNativeStackNavigator()
 
+function NumbersBackground({ children }: { children: ReactNode }) {
+  const insets = useSafeArea()
+  const headerHeight = useHeaderHeightSafe()
+  const { width } = useWindowDimensions()
+
+  return (
+    <ParallaxScrollView
+      background={(
+        <SolitoImage
+          src={numbersbg}
+          width={width > 0 ? width : 1920}
+          height={1080}
+          contentFit="cover"
+          resizeMode="cover"
+          transition={0}
+          alt="Abstract numbers background"
+        />
+      )}
+      style={{ backgroundColor: '#5a0061cc' }}
+      contentContainerStyle={{
+        alignItems: 'center',
+        gap: 16,
+        paddingTop: Platform.OS === 'web' ? 104 : Math.max(headerHeight, insets.top) + 16,
+        paddingBottom: insets.bottom + 40,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+        overflow: 'visible',
+        width: '100%',
+      }}
+    >
+      {children}
+    </ParallaxScrollView>
+  )
+}
+
+function withNumbersBackground<P extends object>(ScreenComponent: ComponentType<P>) {
+  function ScreenWithNumbersBackground(props: P) {
+    return (
+      <NumbersBackground>
+        <ScreenComponent {...props} />
+      </NumbersBackground>
+    )
+  }
+
+  ScreenWithNumbersBackground.displayName = `withNumbersBackground(${ScreenComponent.displayName || ScreenComponent.name || 'Screen'})`
+
+  return ScreenWithNumbersBackground
+}
+
+const HomeScreenWithBackground = withNumbersBackground(HomeScreen)
+const ProfileScreenWithBackground = withNumbersBackground(ProfileScreen)
+const TeamsScreenWithBackground = withNumbersBackground(TeamsScreen)
+const ApplicationScreenWithBackground = withNumbersBackground(ApplicationScreen)
+const UserDetailScreenWithBackground = withNumbersBackground(UserDetailScreen)
+const AdminDashboardScreenWithBackground = withNumbersBackground(AdminDashboardScreen)
 function AdminTabNavigator() {
   return (
     <AdminStack.Navigator
@@ -56,7 +116,7 @@ function AdminTabNavigator() {
     >
       <AdminStack.Screen
         name="admin-dashboard"
-        component={AdminDashboardScreen}
+        component={AdminDashboardScreenWithBackground}
         options={{
           headerTitleAlign: 'center',
           headerShown: true,
@@ -89,7 +149,7 @@ function TabNavigator() {
       {showApplicationTab && (
         <Tab.Screen
           name="home"
-          component={HomeScreen}
+          component={HomeScreenWithBackground}
           options={{ 
             tabBarLabel: 'Application',
             tabBarIcon: Platform.select({
@@ -108,7 +168,7 @@ function TabNavigator() {
       {hasPermission('teams', 'create') && (
         <Tab.Screen
           name="teams"
-          component={TeamsScreen}
+          component={TeamsScreenWithBackground}
           options={{ 
             tabBarLabel: 'My Team',
             tabBarIcon: Platform.select({
@@ -126,7 +186,7 @@ function TabNavigator() {
       )}
       <Tab.Screen
         name="profile"
-        component={ProfileScreen}
+        component={ProfileScreenWithBackground}
         options={{ 
           tabBarLabel: 'Profile',
           tabBarIcon: Platform.select({
@@ -207,7 +267,7 @@ export function NativeNavigation() {
           <Stack.Screen name="tabs" component={TabNavigator} options={{ headerShown: false }} />
           <Stack.Screen 
             name="application" 
-            component={ApplicationScreen} 
+            component={ApplicationScreenWithBackground} 
             options={{
               headerTitleAlign: 'center',
               headerShown: true,
@@ -216,12 +276,12 @@ export function NativeNavigation() {
               headerShadowVisible: true,
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
               headerBackTitle: 'Application',
-            }} 
+            }}
           />
-          <Stack.Screen name="user-detail" component={UserDetailScreen} options={{ title: 'User' }} />
+          <Stack.Screen name="user-detail" component={UserDetailScreenWithBackground} options={{ title: 'User' }} />
           <Stack.Screen 
             name="admin" 
-            component={AdminDashboardScreen} 
+            component={AdminDashboardScreenWithBackground}
             options={{
               headerTitleAlign: 'center',
               headerShown: true,
@@ -230,7 +290,7 @@ export function NativeNavigation() {
               headerTransparent: Platform.OS === 'ios',
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
               headerBackTitle: 'Home',
-            }} 
+            }}
           />
         </>
       ) : (

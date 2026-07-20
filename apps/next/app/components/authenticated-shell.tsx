@@ -5,6 +5,7 @@ import { View, ScrollView, Dimensions, Platform, StyleSheet } from 'react-native
 import { SolitoImage } from 'solito/image'
 import { WebNavbar } from 'app/components/web-navbar'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
+import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 
@@ -15,6 +16,7 @@ import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
  */
 export function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   const insets = useSafeArea()
+  const headerHeight = useHeaderHeightSafe()
   const [screenWidth, setScreenWidth] = useState(0)
   const [screenHeight, setScreenHeight] = useState(0)
 
@@ -57,12 +59,13 @@ export function AuthenticatedShell({ children }: { children: React.ReactNode }) 
         style={{ backgroundColor: '#5a0061cc' }}
         contentContainerStyle={{
           alignItems: 'center',
-          gap: 24,
-          paddingTop: Platform.OS === 'web' ? 104 : insets.top,
+          gap: 16,
+          paddingTop: Platform.OS === 'web' ? 104 : Math.max(headerHeight, insets.top) + 16,
           paddingBottom: insets.bottom + 40,
           paddingLeft: insets.left,
           paddingRight: insets.right,
           overflow: 'visible',
+          width: '100%',
         }}
       >
         {children}

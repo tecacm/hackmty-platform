@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { View, ScrollView, Dimensions, ViewStyle } from 'react-native';
 
 type ParallaxScrollViewProps = {
-  background: React.ReactNode;
-  children: React.ReactNode;
+  background: ReactNode;
+  children: ReactNode;
   contentContainerStyle?: ViewStyle;
   style?: ViewStyle;
 };
