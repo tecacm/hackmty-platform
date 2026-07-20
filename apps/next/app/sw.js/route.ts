@@ -25,8 +25,8 @@ self.addEventListener('push', function (event) {
   const title = data.title || data.notification?.title || 'HackMTY Alert'
   const options = {
     body: data.body || data.notification?.body || '',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/favicon.png',
+    badge: '/favicon.png',
     data: data.data || {},
     vibrate: [100, 50, 100],
   }
