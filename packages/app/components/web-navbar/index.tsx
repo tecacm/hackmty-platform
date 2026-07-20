@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
 import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
 import { SolitoImage } from 'solito/image'
+import { PersonSilhouette } from 'app/components/person-silhouette'
 
 export function WebNavbar() {
   if (Platform.OS !== 'web') return null
@@ -19,7 +20,7 @@ export function WebNavbar() {
 
   const showApplicationTab = hasPermission('applications', 'view')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [initials, setInitials] = useState('👤')
+  const [initials, setInitials] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<any>(null)
 
@@ -38,7 +39,7 @@ export function WebNavbar() {
           if (cached) {
             try {
               const parsed = JSON.parse(cached)
-              if (parsed.initials) setInitials(parsed.initials)
+              if (parsed.initials && parsed.initials !== '👤') setInitials(parsed.initials)
               if (parsed.avatarUrl) setAvatarUrl(parsed.avatarUrl)
             } catch (e) {}
           }
@@ -54,7 +55,7 @@ export function WebNavbar() {
 
         const first = (profile.first_name || '').charAt(0).toUpperCase()
         const last = (profile.last_name || '').charAt(0).toUpperCase()
-        const resolvedInitials = `${first}${last}` || '👤'
+        const resolvedInitials = `${first}${last}`.trim()
         setInitials(resolvedInitials)
 
         let resolvedAvatar: string | null = null
@@ -232,7 +233,11 @@ export function WebNavbar() {
               <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
             ) : (
               <View style={styles.avatarFallback}>
-                <Text style={styles.avatarFallbackText}>{initials}</Text>
+                {initials && initials !== '👤' ? (
+                  <Text style={styles.avatarFallbackText}>{initials}</Text>
+                ) : (
+                  <PersonSilhouette size={32} color="#ffffff" />
+                )}
               </View>
             )}
           </Pressable>

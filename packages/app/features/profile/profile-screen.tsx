@@ -27,6 +27,7 @@ import { formFieldColors } from 'app/components/form-field-styles'
 import { dataReferences } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
+import { PersonSilhouette } from 'app/components/person-silhouette'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
 
 // Static fallback option arrays for selects
@@ -251,10 +252,11 @@ export function ProfileScreen() {
         if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
           const cacheKey = `user_profile_${userId}`
           const cached = localStorage.getItem(cacheKey)
-          let initials = '👤'
+          let initials = ''
           if (cached) {
             try {
-              initials = JSON.parse(cached).initials || '👤'
+              const parsedInitials = JSON.parse(cached).initials
+              if (parsedInitials && parsedInitials !== '👤') initials = parsedInitials
             } catch (e) {}
           }
           localStorage.setItem(cacheKey, JSON.stringify({
@@ -506,8 +508,7 @@ export function ProfileScreen() {
                     <Image source={{ uri: avatarDisplayUrl }} style={styles.avatarImage} />
                   ) : (
                     <View style={styles.avatarFallback}>
-                      <View style={styles.silhouetteHead} />
-                      <View style={styles.silhouetteShoulders} />
+                      <PersonSilhouette size={100} />
                     </View>
                   )}
                   {isUploading && (

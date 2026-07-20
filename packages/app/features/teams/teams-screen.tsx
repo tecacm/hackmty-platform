@@ -9,6 +9,7 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { SolitoImage } from 'solito/image'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 import { StyledInput } from 'app/components/styled-input'
+import { PersonSilhouette } from 'app/components/person-silhouette'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
 
 interface Member {
@@ -1130,7 +1131,7 @@ export function TeamsScreen() {
                   if (rows.length >= maxTeamSize) return
                   const first = (member.first_name || '').charAt(0).toUpperCase()
                   const last = (member.last_name || '').charAt(0).toUpperCase()
-                  const initials = `${first}${last}` || '👤'
+                  const initials = `${first}${last}`.trim()
                   const isOwner = member.id === team.creator_id
                   const isMe = member.id === userId
                   const overallIndex = rows.length
@@ -1150,8 +1151,10 @@ export function TeamsScreen() {
                       <View style={styles.memberInitials}>
                         {member.avatar_display_url ? (
                           <Image source={{ uri: member.avatar_display_url }} style={styles.memberAvatarImage} />
-                        ) : (
+                        ) : initials ? (
                           <Text style={styles.memberInitialsText}>{initials}</Text>
+                        ) : (
+                          <PersonSilhouette size={38} color="#c2b75f" />
                         )}
                       </View>
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -1198,8 +1201,7 @@ export function TeamsScreen() {
                       ]}
                     >
                       <View style={styles.memberInitialsPlaceholder}>
-                        <View style={styles.silhouetteHead} />
-                        <View style={styles.silhouetteShoulders} />
+                        <PersonSilhouette size={38} />
                       </View>
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -1240,8 +1242,7 @@ export function TeamsScreen() {
                       ]}
                     >
                       <View style={styles.memberInitialsPlaceholder}>
-                        <View style={styles.silhouetteHead} />
-                        <View style={styles.silhouetteShoulders} />
+                        <PersonSilhouette size={38} />
                       </View>
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                         <View style={{ flex: 1, justifyContent: 'center' }}>
