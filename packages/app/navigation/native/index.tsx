@@ -61,13 +61,15 @@ function NumbersBackground({ children }: { children: ReactNode }) {
     <ParallaxScrollView
       background={(
         <SolitoImage
-          src={numbersbg}
-          width={width > 0 ? width : 1920}
-          height={1080}
-          contentFit="cover"
-          resizeMode="cover"
-          transition={0}
-          alt="Abstract numbers background"
+          {...({
+            src: numbersbg,
+            width: width > 0 ? width : 1920,
+            height: 1080,
+            contentFit: 'cover',
+            resizeMode: 'cover',
+            transition: 0,
+            alt: 'Abstract numbers background',
+          } as any)}
         />
       )}
       style={{ backgroundColor: '#5a0061cc' }}

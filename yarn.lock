@@ -132,6 +132,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/generator@npm:^7.27.1, @babel/generator@npm:^7.29.7":
+  version: 7.29.7
+  resolution: "@babel/generator@npm:7.29.7"
+  dependencies:
+    "@babel/parser": "npm:^7.29.7"
+    "@babel/types": "npm:^7.29.7"
+    "@jridgewell/gen-mapping": "npm:^0.3.12"
+    "@jridgewell/trace-mapping": "npm:^0.3.28"
+    jsesc: "npm:^3.0.2"
+  checksum: 10/60fb0432ebeab791b2d68e5fc49da6f8e8b68bcc4751211ccf08ac0101e9dcaddefd0cbbbd488afb1c1517515c7c3e76f63d9b05d06deaeb008afd499488db9c
+  languageName: node
+  linkType: hard
+
 "@babel/generator@npm:^7.28.0":
   version: 7.28.0
   resolution: "@babel/generator@npm:7.28.0"
@@ -168,19 +181,6 @@ __metadata:
     "@jridgewell/trace-mapping": "npm:^0.3.28"
     jsesc: "npm:^3.0.2"
   checksum: 10/61fe4ddd6e817aa312a14963ccdbb5c9a8c57e8b97b98d19a8a99ccab2215fda1a5f52bc8dd8d2e3c064497ddeb3ab8ceb55c76fa0f58f8169c34679d2256fe0
-  languageName: node
-  linkType: hard
-
-"@babel/generator@npm:^7.29.7":
-  version: 7.29.7
-  resolution: "@babel/generator@npm:7.29.7"
-  dependencies:
-    "@babel/parser": "npm:^7.29.7"
-    "@babel/types": "npm:^7.29.7"
-    "@jridgewell/gen-mapping": "npm:^0.3.12"
-    "@jridgewell/trace-mapping": "npm:^0.3.28"
-    jsesc: "npm:^3.0.2"
-  checksum: 10/60fb0432ebeab791b2d68e5fc49da6f8e8b68bcc4751211ccf08ac0101e9dcaddefd0cbbbd488afb1c1517515c7c3e76f63d9b05d06deaeb008afd499488db9c
   languageName: node
   linkType: hard
 
@@ -3306,7 +3306,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-navigation/bottom-tabs@npm:8.0.0-alpha.41, @react-navigation/bottom-tabs@npm:^8.0.0-alpha.41":
+"@react-navigation/bottom-tabs@npm:8.0.0-alpha.41":
   version: 8.0.0-alpha.41
   resolution: "@react-navigation/bottom-tabs@npm:8.0.0-alpha.41"
   dependencies:
@@ -3318,6 +3318,21 @@ __metadata:
     react-native-safe-area-context: ">= 5.5.0"
     react-native-screens: ">= 4.25.0"
   checksum: 10/a4392c35288c46cb3469ab2689cc28d62c6551c34b079a3fcce0bdfcc6488c7ec658222c678daba84ad817dbbdbffb20b947268f84dae85a6e541a0b529b3eb5
+  languageName: node
+  linkType: hard
+
+"@react-navigation/bottom-tabs@npm:^8.0.0-alpha.43":
+  version: 8.0.0-alpha.43
+  resolution: "@react-navigation/bottom-tabs@npm:8.0.0-alpha.43"
+  dependencies:
+    "@react-navigation/elements": "npm:^3.0.0-alpha.41"
+  peerDependencies:
+    "@react-navigation/native": ^8.0.0-alpha.37
+    react: ">= 19.2.0"
+    react-native: "*"
+    react-native-safe-area-context: ">= 5.5.0"
+    react-native-screens: ">= 4.25.0"
+  checksum: 10/0b8c7a5c7ca5d95b0c3c3123e89e60447457afd2a18e55185957080a4b01b108f823d1bbf363afac49784a7882b73ec12f474e57ecadaa47908b5ac327728c95
   languageName: node
   linkType: hard
 
@@ -3353,6 +3368,24 @@ __metadata:
     react-native-safe-area-context: ">= 5.5.0"
     react-native-screens: ">= 4.25.0"
   checksum: 10/fec5cd84ade76ef63b23381dcabf86011fd7ddbb3cade1ca2917de90b6a60a2ce72cc08d88b36d8a269f2d0cb792ada942217bc5469f941464f4e0b174a61b0e
+  languageName: node
+  linkType: hard
+
+"@react-navigation/elements@npm:^3.0.0-alpha.41":
+  version: 3.0.0-alpha.41
+  resolution: "@react-navigation/elements@npm:3.0.0-alpha.41"
+  dependencies:
+    sf-symbols-typescript: "npm:^2.2.0"
+    use-latest-callback: "npm:^0.3.4"
+    use-sync-external-store: "npm:^1.6.0"
+  peerDependencies:
+    "@callstack/liquid-glass": ">= 0.6.0"
+    "@react-navigation/native": ^8.0.0-alpha.37
+    react: ">= 19.2.0"
+    react-native: "*"
+    react-native-safe-area-context: ">= 5.5.0"
+    react-native-screens: ">= 4.25.0"
+  checksum: 10/fbb74f8a3e43f6aa6bf4f0e02fb6a228649698d772eac9f747dcc7440def1c08c05d249253ec29a9b0d5f7baec5c10cde7b3f6940fb96d4f04499afb1abcb597
   languageName: node
   linkType: hard
 
@@ -5788,10 +5821,10 @@ __metadata:
     react-compiler-runtime: "npm:19.0.0-beta-3229e95-20250315"
     react-native: "npm:0.86.0"
     react-native-gesture-handler: "npm:~2.32.0"
-    react-native-reanimated: "npm:4.5.0"
-    react-native-safe-area-context: "npm:~5.7.0"
-    react-native-screens: "npm:4.25.2"
-    react-native-worklets: "npm:0.10.0"
+    react-native-reanimated: "npm:4.5.2"
+    react-native-safe-area-context: "npm:~5.8.0"
+    react-native-screens: "npm:4.26.2"
+    react-native-worklets: "npm:0.11.1"
     typescript: "npm:~6.0.3"
   languageName: unknown
   linkType: soft
@@ -6740,7 +6773,7 @@ __metadata:
     "@react-native-menu/menu": "npm:^2.0.0"
     "@react-native-segmented-control/segmented-control": "npm:^2.5.7"
     "@react-native-vector-icons/material-icons": "npm:^13.1.2"
-    "@react-navigation/bottom-tabs": "npm:^8.0.0-alpha.41"
+    "@react-navigation/bottom-tabs": "npm:^8.0.0-alpha.43"
     "@types/react": "npm:^18.2.21"
     "@types/react-native": "npm:^0.73.0"
     eslint: "npm:^8.21.0"
@@ -6748,10 +6781,10 @@ __metadata:
     expo-glass-effect: "npm:^57.0.0"
     expo-linear-gradient: "npm:57.0.0"
     expo-symbols: "npm:^57.0.0"
-    react-hook-form: "npm:^7.81.0"
-    react-native-gesture-handler: "npm:^3.0.2"
-    react-native-reanimated: "npm:4.5.1"
-    react-native-worklets: "npm:0.10.2"
+    react-hook-form: "npm:^7.82.0"
+    react-native-gesture-handler: "npm:^3.1.0"
+    react-native-reanimated: "npm:4.5.2"
+    react-native-worklets: "npm:0.11.1"
     turbo: "npm:^2.4.4"
     typescript: "npm:^5.2.2"
   languageName: unknown
@@ -9607,12 +9640,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-hook-form@npm:^7.81.0":
-  version: 7.81.0
-  resolution: "react-hook-form@npm:7.81.0"
+"react-hook-form@npm:^7.82.0":
+  version: 7.82.0
+  resolution: "react-hook-form@npm:7.82.0"
   peerDependencies:
     react: ^16.8.0 || ^17 || ^18 || ^19
-  checksum: 10/e230964e4f77ca4342ac4d2b7b5abab0628481fc2892f056388eb38056a5996a89cfce81579334d988b07850eee7dfc081a21d6c81afaac0bc09cd5283865bf0
+  checksum: 10/61bbe59b19b9cf0382908493f73952856e8521827408c6f0aeec66a03adefe483bc82b8524192b2296d0b73098345d8347b7a7561036da03431e12ea83d48af0
   languageName: node
   linkType: hard
 
@@ -9652,16 +9685,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-gesture-handler@npm:^3.0.2":
-  version: 3.0.2
-  resolution: "react-native-gesture-handler@npm:3.0.2"
+"react-native-gesture-handler@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "react-native-gesture-handler@npm:3.1.0"
   dependencies:
     "@types/react-test-renderer": "npm:^19.1.0"
     invariant: "npm:^2.2.4"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10/65a8886452f96a9eccbd4e048d2bce1a960c6f6917a5804299ab1d09801b2d1d7c05b8293de8afebb7af820d451776bd0ed04abf54ba7e9c6f643dcf4879ec62
+  checksum: 10/ca63c06a61c9a3be9415caeb52eae234f8b42de97081fe335b06b1a99cdfdbb021bcc4b51c58a07de6891fc559100d0e2e2efac65cba1db8b0181c12328d7d82
   languageName: node
   linkType: hard
 
@@ -9715,31 +9748,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-reanimated@npm:4.5.0":
-  version: 4.5.0
-  resolution: "react-native-reanimated@npm:4.5.0"
+"react-native-reanimated@npm:4.5.2":
+  version: 4.5.2
+  resolution: "react-native-reanimated@npm:4.5.2"
   dependencies:
     react-native-is-edge-to-edge: "npm:^1.3.1"
     semver: "npm:^7.7.3"
   peerDependencies:
     react: "*"
     react-native: 0.83 - 0.86
-    react-native-worklets: 0.10.x
-  checksum: 10/eb1c77c19aa514e7573d93528ece858b748a5984a66ce819eda06459080734aa7c5c79bcf045040bb8afecc19e708874fb6404b9269bfd1076cdd088750a2cff
-  languageName: node
-  linkType: hard
-
-"react-native-reanimated@npm:4.5.1":
-  version: 4.5.1
-  resolution: "react-native-reanimated@npm:4.5.1"
-  dependencies:
-    react-native-is-edge-to-edge: "npm:^1.3.1"
-    semver: "npm:^7.7.3"
-  peerDependencies:
-    react: "*"
-    react-native: 0.83 - 0.86
-    react-native-worklets: 0.10.x
-  checksum: 10/da53fe28fd0eb492eecd5f5f988153b0e214c6010636762cb9e2e508795e6aff0b94ac9288a0a16559e3b60bdf5e005218baaee69b23a13d0afa7b85c09c51bf
+    react-native-worklets: 0.10.x - 0.11.x
+  checksum: 10/d49ed796b2195dfa0ded67f17087f59464e43b1cfe0191c3a8e6ae7675ff6998b242ed9f18d1e60c15ce0076b3ff350f735b1d1abb5c3beb30db92d1645fa148
   languageName: node
   linkType: hard
 
@@ -9753,26 +9772,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-safe-area-context@npm:~5.7.0":
-  version: 5.7.0
-  resolution: "react-native-safe-area-context@npm:5.7.0"
+"react-native-safe-area-context@npm:~5.8.0":
+  version: 5.8.0
+  resolution: "react-native-safe-area-context@npm:5.8.0"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10/9f5d3469c18c90c527c4068560ce4dcc7689e9fc8ddc68b8a5e76c94a6eafdba975ced89a48e08fecfd1303331e8c2498722bc249fcd87b1c5ea64ef3abd1d00
+  checksum: 10/d4f526a98110f88ba9f5dfe6d6bda2c26b86404b2d29a6571931a1f02a531f565a2fd58d20b4ac70c1fa37c00ad6a72332fb0a463e27262c4ff1d1dfb694af7c
   languageName: node
   linkType: hard
 
-"react-native-screens@npm:4.25.2":
-  version: 4.25.2
-  resolution: "react-native-screens@npm:4.25.2"
+"react-native-screens@npm:4.26.2":
+  version: 4.26.2
+  resolution: "react-native-screens@npm:4.26.2"
   dependencies:
     react-freeze: "npm:^1.0.0"
     warn-once: "npm:^0.1.0"
   peerDependencies:
     react: "*"
-    react-native: ">=0.82.0"
-  checksum: 10/b0fca70d7aafbd8ff993c0e0329ee78fe453391eaff9556e87fb619d0d58b93b497e47ff5477a1028ecad35d4165f47c833ccb22049e59c5d55a1c55a13029b0
+    react-native: "*"
+  checksum: 10/9d171ca538ba511ea30a7e7f47088d408f9bb565b7bfeedbb5443ffe430ac0c48f805fb2b89b7b16e61c9b81480a01049864ecd2651f77e3d0d0b1f5d6ce54f1
   languageName: node
   linkType: hard
 
@@ -9806,10 +9825,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-worklets@npm:0.10.0":
-  version: 0.10.0
-  resolution: "react-native-worklets@npm:0.10.0"
+"react-native-worklets@npm:0.11.1":
+  version: 0.11.1
+  resolution: "react-native-worklets@npm:0.11.1"
   dependencies:
+    "@babel/generator": "npm:^7.27.1"
     "@babel/plugin-transform-arrow-functions": "npm:^7.27.1"
     "@babel/plugin-transform-class-properties": "npm:^7.28.6"
     "@babel/plugin-transform-classes": "npm:^7.28.6"
@@ -9819,6 +9839,7 @@ __metadata:
     "@babel/plugin-transform-template-literals": "npm:^7.27.1"
     "@babel/plugin-transform-unicode-regex": "npm:^7.27.1"
     "@babel/preset-typescript": "npm:^7.28.5"
+    "@babel/traverse": "npm:^7.27.1"
     "@babel/types": "npm:^7.27.1"
     convert-source-map: "npm:^2.0.0"
     semver: "npm:^7.7.4"
@@ -9827,32 +9848,7 @@ __metadata:
     "@react-native/metro-config": "*"
     react: "*"
     react-native: 0.83 - 0.86
-  checksum: 10/b273e618bc73344adb9048619363c7366ebb02784c7fa350b535e49cda8cc63f200424d7e4ed82506d1e9628ffa0354d29de5d4b3357f0574ea7ab4e7cf17f23
-  languageName: node
-  linkType: hard
-
-"react-native-worklets@npm:0.10.2":
-  version: 0.10.2
-  resolution: "react-native-worklets@npm:0.10.2"
-  dependencies:
-    "@babel/plugin-transform-arrow-functions": "npm:^7.27.1"
-    "@babel/plugin-transform-class-properties": "npm:^7.28.6"
-    "@babel/plugin-transform-classes": "npm:^7.28.6"
-    "@babel/plugin-transform-nullish-coalescing-operator": "npm:^7.28.6"
-    "@babel/plugin-transform-optional-chaining": "npm:^7.28.6"
-    "@babel/plugin-transform-shorthand-properties": "npm:^7.27.1"
-    "@babel/plugin-transform-template-literals": "npm:^7.27.1"
-    "@babel/plugin-transform-unicode-regex": "npm:^7.27.1"
-    "@babel/preset-typescript": "npm:^7.28.5"
-    "@babel/types": "npm:^7.27.1"
-    convert-source-map: "npm:^2.0.0"
-    semver: "npm:^7.7.4"
-  peerDependencies:
-    "@babel/core": "*"
-    "@react-native/metro-config": "*"
-    react: "*"
-    react-native: 0.83 - 0.86
-  checksum: 10/b7b09bd450e80f9de86b593f4f0d9054c520352250d8f94d0042978885a588b70f86fc8806eb2ea6fa8210b8cb7f8279eaf63fbcdf8a91df8a0fb76642202a40
+  checksum: 10/4bba1efbc8961ffd305d309a28ee94015b7975027922fd9dd6108c058b421087507969ccf7972c50db21143225b3c366a045e9d41713c0387ee0c40f4bbfa158
   languageName: node
   linkType: hard
 
