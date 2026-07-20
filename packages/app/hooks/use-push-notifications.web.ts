@@ -92,7 +92,9 @@ export function usePushNotifications() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        registerPushToken()
+        setTimeout(() => {
+          void registerPushToken()
+        }, 0)
       }
     })
 

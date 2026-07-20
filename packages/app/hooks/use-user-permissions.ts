@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 
-// Module-level cache state
 let cachedPermissions: string[] | null = null
 let cachedRole: string | null = null
 let currentUserId: string | null = null
-let fetchingUserId: string | null = null
-let activeRequestId = 0
+let permissionsLoadPromise: Promise<void> | null = null
+let permissionsLoadGeneration: number | null = null
+let cacheGeneration = 0
 
 const listeners = new Set<(state: { permissions: string[]; role: string; loading: boolean }) => void>()
 
@@ -14,91 +14,98 @@ function notifyListeners() {
   const state = {
     permissions: cachedPermissions || [],
     role: cachedRole || 'user',
-    loading: cachedPermissions === null
+    loading: cachedPermissions === null,
   }
   listeners.forEach(listener => listener(state))
 }
 
+function resetPermissions() {
+  cacheGeneration += 1
+  cachedPermissions = null
+  cachedRole = null
+  currentUserId = null
+}
+
 async function loadPermissions() {
-  const requestId = ++activeRequestId
+  // Every mounted screen shares one request. This is important because the navbar
+  // and the current page both use this hook.
+  if (permissionsLoadPromise && permissionsLoadGeneration === cacheGeneration) return permissionsLoadPromise
 
-  if (!isSupabaseConfigured) {
-    cachedPermissions = ['teams:create', 'teams:view', 'applications:view_others', 'applications:review', 'sponsor_portal:view']
-    cachedRole = 'admin'
-    notifyListeners()
-    return
-  }
+  const generation = cacheGeneration
+  const promise = (async () => {
+    if (!isSupabaseConfigured) {
+      cachedPermissions = ['teams:create', 'teams:view', 'applications:view_others', 'applications:review', 'sponsor_portal:view']
+      cachedRole = 'admin'
+      return
+    }
 
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const user = session?.user
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (generation !== cacheGeneration) return
 
-    if (requestId !== activeRequestId) return
+      const user = session?.user
+      if (!user) {
+        cachedPermissions = []
+        cachedRole = 'user'
+        currentUserId = null
+        return
+      }
 
-    if (!user) {
+      if (user.id === currentUserId && cachedPermissions !== null) return
+
+      const currentYear = new Date().getFullYear().toString()
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role, event_year')
+        .eq('user_id', user.id)
+
+      if (generation !== cacheGeneration) return
+      if (rolesError) throw rolesError
+
+      const userRoles = (rolesData || [])
+        .filter(r => r.event_year === currentYear || r.event_year === null || r.event_year === 'NULL' || r.event_year === 'null')
+        .map(r => r.role)
+      const activeRoles = userRoles.length > 0 ? userRoles : ['user']
+
+      const { data: mapping, error: mappingError } = await supabase
+        .from('role_permissions')
+        .select('permission_id')
+        .in('role', activeRoles)
+
+      if (generation !== cacheGeneration) return
+      if (mappingError) throw mappingError
+
+      cachedPermissions = Array.from(new Set((mapping || []).map(m => m.permission_id)))
+      cachedRole = activeRoles.join(', ')
+      currentUserId = user.id
+    } catch (err) {
+      if (generation !== cacheGeneration) return
+      console.error('Failed to load user permissions:', err)
       cachedPermissions = []
       cachedRole = 'user'
       currentUserId = null
-      fetchingUserId = null
-      notifyListeners()
-      return
     }
+  })()
 
-    // Skip network request if user is unchanged and cache is loaded
-    if (user.id === currentUserId && cachedPermissions !== null) {
-      return
-    }
-
-    // Skip if we are already fetching for this exact user to avoid duplicate queries
-    if (user.id === fetchingUserId) {
-      return
-    }
-
-    fetchingUserId = user.id
-
-    // 1. Fetch user roles array from public.user_roles table
-    const currentYear = new Date().getFullYear().toString()
-    const { data: rolesData } = await supabase
-      .from('user_roles')
-      .select('role, event_year')
-      .eq('user_id', user.id)
-
-    if (requestId !== activeRequestId) return
-
-    const filteredRoles = (rolesData || [])
-      .filter(r => r.event_year === currentYear || r.event_year === null || r.event_year === 'NULL' || r.event_year === 'null')
-      .map(r => r.role)
-
-    const userRoles = filteredRoles.length > 0 ? filteredRoles : ['user']
-    cachedRole = userRoles.join(', ')
-
-    // 2. Fetch role mapping configuration for all roles
-    const { data: mapping } = await supabase
-      .from('role_permissions')
-      .select('permission_id')
-      .in('role', userRoles)
-
-    if (requestId !== activeRequestId) return
-
-    if (mapping) {
-      // Deduplicate permission ids
-      cachedPermissions = Array.from(new Set(mapping.map(m => m.permission_id)))
-    } else {
-      cachedPermissions = []
-    }
-
-    currentUserId = user.id
-  } catch (err) {
-    if (requestId !== activeRequestId) return
-    console.error('Failed to load user permissions:', err)
-    cachedPermissions = []
-    cachedRole = 'user'
+  permissionsLoadPromise = promise
+  permissionsLoadGeneration = generation
+  try {
+    await promise
   } finally {
-    if (requestId === activeRequestId) {
-      fetchingUserId = null
-      notifyListeners()
+    if (permissionsLoadPromise === promise) {
+      permissionsLoadPromise = null
+      permissionsLoadGeneration = null
     }
+    if (generation === cacheGeneration) notifyListeners()
   }
+}
+
+function schedulePermissionLoad() {
+  // Supabase auth holds an internal lock while invoking onAuthStateChange.
+  // Starting auth/database work in the next macrotask avoids deadlocking it.
+  setTimeout(() => {
+    void loadPermissions()
+  }, 0)
 }
 
 export function useUserPermissions() {
@@ -114,36 +121,31 @@ export function useUserPermissions() {
     }
     listeners.add(listener)
 
-    if (cachedPermissions === null) {
-      loadPermissions()
+    if (cachedPermissions === null) void loadPermissions()
+
+    if (!isSupabaseConfigured) {
+      return () => listeners.delete(listener)
     }
 
-    let subscription: any = null
-    if (isSupabaseConfigured) {
-      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_OUT' || !session) {
-          cachedPermissions = []
-          cachedRole = 'user'
-          currentUserId = null
-          fetchingUserId = null
-          notifyListeners()
-        } else {
-          // Trigger reload only on user change or if cache is empty
-          if (session.user.id !== currentUserId || cachedPermissions === null) {
-            cachedPermissions = null
-            notifyListeners()
-            await loadPermissions()
-          }
-        }
-      })
-      subscription = data.subscription
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        resetPermissions()
+        cachedPermissions = []
+        cachedRole = 'user'
+        notifyListeners()
+        return
+      }
+
+      if (session.user.id !== currentUserId || cachedPermissions === null) {
+        resetPermissions()
+        notifyListeners()
+        schedulePermissionLoad()
+      }
+    })
 
     return () => {
       listeners.delete(listener)
-      if (subscription) {
-        subscription.unsubscribe()
-      }
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -153,5 +155,3 @@ export function useUserPermissions() {
 
   return { permissions, role, hasPermission, loading }
 }
-
-
