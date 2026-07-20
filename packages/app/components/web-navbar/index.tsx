@@ -14,16 +14,12 @@ import { PersonSilhouette } from 'app/components/person-silhouette'
 // Module-level in-memory cache to prevent flashing on component mount / route changes
 let globalProfileCache: { avatarUrl: string | null; initials: string } | null = null
 
-const HIDE_NAVBAR_PATHS = [ '', '/login', '/register', '/forgot-password', '/reset-password', '/complete-signup']
-
 export function WebNavbar() {
   if (Platform.OS !== 'web') return null
 
-  const pathname = usePathname()
-  if (HIDE_NAVBAR_PATHS.some(path => pathname?.startsWith(path))) return null
-
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { hasPermission } = useUserPermissions()
+  const pathname = usePathname()
 
   const showApplicationTab = hasPermission('applications', 'view')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => globalProfileCache?.avatarUrl ?? null)

@@ -18,11 +18,6 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { notifyApplicantOnStatusChanged, notifyTeamOnChangesRequested } from 'app/services/notification-service'
 import { useParams, useSearchParams } from 'solito/navigation'
 import { PillButton } from 'app/components/pill-button'
-import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
-import { SolitoImage } from 'solito/image'
-import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
-import numbersbg from 'app/assets/images/numbers-bg.webp'
 
 interface Application {
   id: string
@@ -67,18 +62,7 @@ export function UserDetailScreen() {
   const [loadingResume, setLoadingResume] = useState(false)
 
   // Layout sizing
-  const insets = useSafeArea()
-  const headerHeight = useHeaderHeightSafe()
-  const { width, height: screenHeight } = useWindowDimensions()
-  const [stableHeaderHeight, setStableHeaderHeight] = useState(0)
-
-  useEffect(() => {
-    if (headerHeight > stableHeaderHeight) {
-      setStableHeaderHeight(headerHeight)
-    }
-  }, [headerHeight, stableHeaderHeight])
-
-  const topOffset = Math.max(stableHeaderHeight, insets.top)
+  const { width } = useWindowDimensions()
 
   useEffect(() => {
     setIsReady(true)
@@ -388,13 +372,13 @@ export function UserDetailScreen() {
 
   if (!isReady) {
     return (
-      <View style={[styles.container, { backgroundColor: '#1d041f' }]} />
+      <View style={[styles.container]} />
     )
   }
 
   if (permissionsLoading) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: '#1d041f' }]}>
+      <View style={[styles.centerContainer]}>
         <ActivityIndicator size="large" color="#c2b75f" />
       </View>
     )
@@ -402,7 +386,7 @@ export function UserDetailScreen() {
 
   if (!hasViewOthersPermission) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: '#1d041f' }]}>
+      <View style={[styles.centerContainer]}>
         <View style={styles.accessDeniedCard}>
           <Text style={styles.accessDeniedTitle}>Access Denied</Text>
           <Text style={styles.accessDeniedSubtitle}>
@@ -417,19 +401,6 @@ export function UserDetailScreen() {
       </View>
     )
   }
-
-  const backgroundProps: any = {
-    src: numbersbg,
-    width,
-    height: Math.max(screenHeight, 1000),
-    contentFit: 'cover',
-    resizeMode: 'cover',
-    alt: 'Numbers Background',
-  }
-
-  const background = (
-    <SolitoImage {...backgroundProps} />
-  )
 
   const renderStatusBadge = (status: string) => {
     let bgColor = '#f1f5f9'
@@ -467,19 +438,6 @@ export function UserDetailScreen() {
 
   return (
     <>
-      <ParallaxScrollView
-        background={background}
-        style={{ backgroundColor: '#1d041f' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : topOffset,
-          paddingBottom: insets.bottom + 40,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
         <View style={styles.contentWrapper}>
           {Platform.OS === 'web' ? (
             <View style={styles.detailHeaderActionsRow}>
@@ -733,7 +691,6 @@ export function UserDetailScreen() {
             </View>
           )}
         </View>
-      </ParallaxScrollView>
 
       {/* Request Changes Reason Modal Dialog */}
       <Modal
@@ -869,7 +826,6 @@ const mockDetailApplications: Application[] = [
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1d041f',
   },
   centerContainer: {
     flex: 1,

@@ -2,10 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import {
-  Dimensions,
   Text,
   View,
-  useWindowDimensions,
   ActivityIndicator,
   StyleSheet,
   Platform,
@@ -13,9 +11,7 @@ import {
   Pressable,
   Alert,
 } from 'react-native'
-import { SolitoImage } from 'solito/image'
-import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
+
 import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
 import { StyledAutocomplete } from 'app/components/styled-autocomplete'
@@ -27,7 +23,7 @@ import { dataReferences } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { PersonSilhouette } from 'app/components/person-silhouette'
-import numbersbg from 'app/assets/images/numbers-bg.webp'
+
 
 // Static fallback option arrays for selects
 const defaultGenderOptions = [
@@ -68,10 +64,7 @@ const defaultDietOptions = [
 export function ProfileScreen() {
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { role: userRole } = useUserPermissions()
-  const insets = useSafeArea()
-  const { width } = useWindowDimensions()
-  const [height, setHeight] = useState(0)
-  const [isHydrated, setIsHydrated] = useState(false)
+
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -104,25 +97,6 @@ export function ProfileScreen() {
   const [levelOfStudyOpts, setLevelOfStudyOpts] = useState(defaultLevelOfStudyOptions)
   const [tshirtOpts, setTshirtOpts] = useState(defaultTshirtOptions)
   const [dietOpts, setDietOpts] = useState(defaultDietOptions)
-
-  useEffect(() => {
-    setIsHydrated(true)
-  }, [])
-
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const update = () => setHeight(window.innerHeight)
-      update()
-      window.addEventListener('resize', update)
-      return () => window.removeEventListener('resize', update)
-    } else {
-      const update = () => setHeight(Dimensions.get('screen').height)
-      update()
-      const sub = Dimensions.addEventListener('change', update)
-      return () => sub?.remove()
-    }
-  }, [])
-
   // Load User & Profile values
   useEffect(() => {
     async function loadProfile() {
@@ -462,34 +436,8 @@ export function ProfileScreen() {
     value: y.value,
   }))
 
-  const backgroundProps: any = {
-    src: numbersbg,
-    width: isHydrated && width > 0 ? width : 1920,
-    height: isHydrated && height > 0 ? height : 1080,
-    contentFit: 'cover',
-    resizeMode: 'cover',
-    transition: 0,
-    alt: 'Abstract numbers background',
-  }
-
-  const background = <SolitoImage {...backgroundProps} />
-
   return (
-    <>
-      <ParallaxScrollView
-        background={background}
-        style={{ backgroundColor: '#5a0061cc' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : insets.top,
-          paddingBottom: insets.bottom + 40,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
-        <View style={styles.formContainer}>
+    <View style={styles.formContainer}>
           {isLoading ? (
             <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
               <ActivityIndicator size="large" color="#ffffff" />
@@ -693,9 +641,7 @@ export function ProfileScreen() {
               </View>
             </View>
           )}
-        </View>
-      </ParallaxScrollView>
-    </>
+    </View>
   )
 }
 

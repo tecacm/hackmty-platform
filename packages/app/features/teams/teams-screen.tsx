@@ -1,15 +1,11 @@
 import * as React from 'react'
 import { useState, useEffect } from 'react'
 import { StyleSheet, View, Text, Platform, ActivityIndicator, Pressable, useWindowDimensions, Image, Clipboard, Modal } from 'react-native'
-import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
+
 import { PillButton } from 'app/components/pill-button'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
-import { SolitoImage } from 'solito/image'
-import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 import { StyledInput } from 'app/components/styled-input'
 import { PersonSilhouette } from 'app/components/person-silhouette'
-import numbersbg from 'app/assets/images/numbers-bg.webp'
 
 interface Member {
   id: string
@@ -30,7 +26,6 @@ interface Team {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1d041f',
   },
   formContainer: {
     width: '90%',
@@ -509,8 +504,7 @@ const styles = StyleSheet.create({
 })
 
 export function TeamsScreen() {
-  const insets = useSafeArea()
-  const headerHeight = useHeaderHeightSafe()
+
   const { width } = useWindowDimensions()
 
   const [loading, setLoading] = useState(true)
@@ -1019,34 +1013,11 @@ export function TeamsScreen() {
     }
   }
 
-  const backgroundProps: any = {
-    src: numbersbg,
-    width: isHydrated && width > 0 ? width : 1920,
-    height: 1080,
-    contentFit: 'cover' as const,
-    resizeMode: 'cover' as const,
-    transition: 0,
-    alt: 'Abstract numbers background',
-  }
 
-  const background = <SolitoImage {...backgroundProps} />
 
   return (
-    <View style={styles.container}>
-      <ParallaxScrollView
-        background={background}
-        style={{ backgroundColor: '#5a0061cc' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : Math.max(headerHeight, insets.top) + 16,
-          paddingBottom: insets.bottom + 40,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
-        <View style={styles.formContainer}>
+    <>
+      <View style={styles.formContainer}>
           {loading ? (
             <View style={styles.innerCard}>
               <ActivityIndicator size="large" color="#c2b75f" style={{ marginVertical: 32 }} />
@@ -1358,7 +1329,6 @@ export function TeamsScreen() {
             </View>
           )}
         </View>
-      </ParallaxScrollView>
 
       <Modal
         transparent={true}
@@ -1417,6 +1387,6 @@ export function TeamsScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   )
 }

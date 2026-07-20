@@ -11,15 +11,10 @@ import {
   ScrollView,
   Modal
 } from 'react-native'
-import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import { PillButton } from 'app/components/pill-button'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
-import { SolitoImage } from 'solito/image'
-import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
-import numbersbg from 'app/assets/images/numbers-bg.webp'
 
 interface Application {
   id: string
@@ -100,9 +95,7 @@ export function AdminDashboardScreen() {
   }
 
   // Layout sizing
-  const insets = useSafeArea()
-  const headerHeight = useHeaderHeightSafe()
-  const { width, height: screenHeight } = useWindowDimensions()
+  const { height: screenHeight } = useWindowDimensions()
   // Load applications
   const fetchApplications = async () => {
     try {
@@ -315,14 +308,14 @@ export function AdminDashboardScreen() {
 
   if (!isReady) {
     return (
-      <View style={[styles.container, { backgroundColor: '#1d041f' }]} />
+      <View style={[styles.container]} />
     )
   }
 
   // Security Gate
   if (permissionsLoading) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: '#1d041f' }]}>
+      <View style={[styles.centerContainer]}>
         <ActivityIndicator size="large" color="#c2b75f" />
       </View>
     )
@@ -330,7 +323,7 @@ export function AdminDashboardScreen() {
 
   if (!hasPermission('applications', 'view_others')) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: '#1d041f' }]}>
+      <View style={[styles.centerContainer]}>
         <View style={styles.accessDeniedCard}>
           <Text style={styles.accessDeniedTitle}>Access Denied</Text>
           <Text style={styles.accessDeniedSubtitle}>
@@ -345,19 +338,6 @@ export function AdminDashboardScreen() {
       </View>
     )
   }
-
-  const backgroundProps: any = {
-    src: numbersbg,
-    width,
-    height: Math.max(screenHeight, 1000),
-    contentFit: 'cover',
-    resizeMode: 'cover',
-    alt: 'Numbers Background',
-  }
-
-  const background = (
-    <SolitoImage {...backgroundProps} />
-  )
 
   const renderStatusBadge = (status: string) => {
     let bgColor = 'rgba(255,255,255,0.08)'
@@ -431,7 +411,7 @@ export function AdminDashboardScreen() {
 
   if (permissionsLoading) {
     return (
-      <View style={{ backgroundColor: '#1d041f', flex: 1, height: screenHeight || '100%', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{flex: 1, height: screenHeight || '100%', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#c2b75f" />
       </View>
     )
@@ -440,7 +420,7 @@ export function AdminDashboardScreen() {
   if (!hasViewOthersPermission) {
     return (
       <>
-        <View style={{ backgroundColor: '#1d041f', flex: 1, minHeight: 600, justifyContent: 'center', alignItems: 'center', alignSelf: 'stretch', padding: 20 }}>
+        <View style={{flex: 1, minHeight: 600, justifyContent: 'center', alignItems: 'center', alignSelf: 'stretch', padding: 20 }}>
           <View style={{
             backgroundColor: '#27082a',
             padding: 32,
@@ -473,19 +453,6 @@ export function AdminDashboardScreen() {
 
   return (
     <>
-      <ParallaxScrollView
-        background={background}
-        style={{ backgroundColor: '#1d041f' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : insets.top,
-          paddingBottom: insets.bottom + 40,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
         <View style={styles.contentWrapper}>
           {Platform.OS === 'web' ? (
             <View style={styles.headerTitleRow}>
@@ -708,7 +675,6 @@ export function AdminDashboardScreen() {
             </View>
           )}
         </View>
-      </ParallaxScrollView>
     </>
   )
 }
@@ -807,7 +773,6 @@ const mockApplications: Application[] = [
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1d041f',
   },
   centerContainer: {
     flex: 1,

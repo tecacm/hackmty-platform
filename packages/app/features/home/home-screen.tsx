@@ -1,16 +1,13 @@
 'use client'
 
-import { Dimensions, Text, View, useWindowDimensions, ActivityIndicator } from 'react-native'
-import { SolitoImage } from 'solito/image'
-import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
+import { Text, View, useWindowDimensions, ActivityIndicator } from 'react-native'
 import { useEffect, useState } from 'react'
 import { StyleSheet, Platform } from 'react-native'
-import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
+
 import { PillButton } from 'app/components/pill-button'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
-import numbersbg from 'app/assets/images/numbers-bg.webp'
+
 import { getApplicationTypes, getApplicantFieldsForRole, getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { formFieldColors, formFieldStyles } from 'app/components/form-field-styles'
@@ -129,13 +126,8 @@ const styles = StyleSheet.create({
 export function HomeScreen() {
   const { navigateTo, replaceTo } = useSmartNavigate();
   const { hasPermission, role, loading: permissionsLoading } = useUserPermissions();
-  const insets = useSafeArea();
-  const headerHeight = useHeaderHeightSafe();
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
   const [isWide, setIsWide] = useState(false);
   const { width } = useWindowDimensions();
-  const [height, setHeight] = useState(0);
   
   const [rolesList, setRolesList] = useState<Array<{ id: string; label: string; fieldCount: number; closeAt: string | null }>>([])
   const [userApps, setUserApps] = useState<Array<{ application_type_id: string; status: string }>>([])
@@ -264,64 +256,12 @@ export function HomeScreen() {
   }, [permissionsLoading, isRolesLoading, hasPermission, replaceTo])
 
   useEffect(() => {
-    setIsHydrated(true)
-  }, [])
-
-  useEffect(() => {
-    if (headerHeight > stableHeaderHeight) {
-      setStableHeaderHeight(headerHeight);
-    }
-  }, [headerHeight, stableHeaderHeight]);
-
-  useEffect(() => {
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        const update = () => {
-          setHeight(window.innerHeight);
-        };
-        update();
-        window.addEventListener('resize', update);
-        window.addEventListener('orientationchange', update);
-        return () => {
-          window.removeEventListener('resize', update);
-          window.removeEventListener('orientationchange', update);
-        };
-      } else {
-        const update = () => {
-          const { width: w, height: h } = Dimensions.get('screen');
-          setHeight(h);
-        };
-        update();
-        const sub = Dimensions.addEventListener('change', update);
-        return () => sub?.remove();
-      }
-  }, []);
-
-  useEffect(() => {
     if (width > 0) {
       setIsWide(width >= 520);
     }
   }, [width]);
 
-  const intrinsicWidth = (numbersbg as any)?.width ?? 1920
-  const intrinsicHeight = (numbersbg as any)?.height ?? 1080
-  const backgroundWidth = isHydrated && width > 0 ? width : intrinsicWidth
-  const backgroundHeight = isHydrated && height > 0 ? height : intrinsicHeight
-  const backgroundImageProps: any = {
-    src: numbersbg,
-    width: backgroundWidth,
-    height: backgroundHeight,
-    contentFit: 'cover',
-    resizeMode: 'cover',
-    transition: 0,
-    onLayout: () => {},
-    alt: 'Abstract numbers background',
-  }
 
-  const background = (
-    <>
-      <SolitoImage {...backgroundImageProps} />
-    </>
-  );
   const draftApps = userApps.filter(app => app.status === 'draft')
   const submittedApps = userApps.filter(app => {
     if (role === 'user' || role === 'admin') {
@@ -421,19 +361,6 @@ export function HomeScreen() {
 
   return (
     <>
-      <ParallaxScrollView
-        background={background}
-        style={{ backgroundColor: '#5a0061cc' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          gap: 24,
-          paddingTop: Platform.OS === 'web' ? 104 : insets.top,
-          paddingBottom: insets.bottom + 40,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
         <View style={[styles.container, { width: '90%', maxWidth: 1000 }]}>
           <View style={styles.contentContainer}>
             
@@ -584,7 +511,6 @@ export function HomeScreen() {
             )}
           </View>
         </View>          
-      </ParallaxScrollView>
     </>
   )
 }
