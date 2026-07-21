@@ -18,6 +18,7 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { notifyApplicantOnStatusChanged, notifyTeamOnChangesRequested } from 'app/services/notification-service'
 import { useParams, useSearchParams } from 'solito/navigation'
 import { PillButton } from 'app/components/pill-button'
+import { sanitizeString } from 'app/utils/sanitization'
 
 interface Application {
   id: string
@@ -205,8 +206,9 @@ export function UserDetailScreen() {
       }
 
       if (status === 'changes_requested' && feedback) {
+        const cleanFeedback = sanitizeString(feedback)
         updatedFeedback.push({
-          feedback,
+          feedback: cleanFeedback,
           requested_at: new Date().toISOString(),
           resolved_at: null
         })
@@ -228,7 +230,7 @@ export function UserDetailScreen() {
         if (status === 'changes_requested' && feedback) {
           notifyTeamOnChangesRequested({
             applicationId: app.id,
-            reason: feedback
+            reason: sanitizeString(feedback)
           }).catch(e => console.warn('Failed to trigger team notification:', e))
         } else if (status === 'accepted' || status === 'rejected') {
           notifyApplicantOnStatusChanged({
@@ -253,13 +255,15 @@ export function UserDetailScreen() {
 
   // Submit request changes
   const submitRequestChanges = async () => {
-    if (!requestReason.trim()) {
+    const cleanReason = sanitizeString(requestReason)
+    if (!cleanReason) {
       alert('Please specify a reason for requesting changes.')
       return
     }
 
     setShowRequestChangesModal(false)
-    await handleUpdateStatus('changes_requested', requestReason)
+    setRequestReason('')
+    await handleUpdateStatus('changes_requested', cleanReason)
   }
 
   // Parse dynamic application fields configurations

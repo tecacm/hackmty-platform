@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
+import { sanitizeString } from 'app/utils/sanitization'
 
 export interface AnnouncementParams {
   title: string
@@ -38,9 +39,9 @@ export async function sendAnnouncement({
     const { data, error } = await supabase.functions.invoke('dispatch-notification', {
       body: {
         category: 'announcement',
-        title,
-        message,
-        badge,
+        title: sanitizeString(title),
+        message: sanitizeString(message),
+        badge: sanitizeString(badge),
         targetTeamIds,
         targetRole,
         targetUserIds,
@@ -74,7 +75,7 @@ export async function notifyTeamOnChangesRequested({
       body: {
         category: 'application_changes',
         applicationId,
-        reason,
+        reason: sanitizeString(reason),
       }
     })
 
