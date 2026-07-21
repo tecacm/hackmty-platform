@@ -75,7 +75,7 @@ const labelReferences: Record<string, ReactNode> = {
 }
 
 // Map for file type configurations
-const fileTypeConfigs: Record<string, FileSelectorProps> = {
+export const fileTypeConfigs: Record<string, FileSelectorProps> = {
   pdf: {
     acceptedMimeTypes: ['application/pdf'],
     acceptedExtensions: ['pdf'],

@@ -194,6 +194,17 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         const uiMetadata = field.ui_metadata || {}
         const optionsRef = uiMetadata.optionsRef
 
+        // Resolve fileSelectorProps directly from ui_metadata in DB response (with i18n support for message strings)
+        let resolvedFileSelectorProps = uiMetadata.fileSelectorProps
+        if (resolvedFileSelectorProps) {
+          resolvedFileSelectorProps = {
+            ...resolvedFileSelectorProps,
+            invalidFileTypeMessage: getVal(resolvedFileSelectorProps.invalidFileTypeMessage) || undefined,
+            invalidFileSizeMessage: getVal(resolvedFileSelectorProps.invalidFileSizeMessage) || undefined,
+            fileSizeUnknownMessage: getVal(resolvedFileSelectorProps.fileSizeUnknownMessage) || undefined,
+          }
+        }
+
         // Resolve options with translations
         let resolvedOptions = field.options?.map((opt: any) => ({
           label: getVal(opt.label),
@@ -230,7 +241,8 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
             order: section.display_order
           } : undefined,
           sectionKey: sectionId,
-          ...uiMetadata // Spread multiple, layout, height, fileSelectorProps, etc.
+          ...uiMetadata,
+          fileSelectorProps: resolvedFileSelectorProps || undefined,
         } as ApplicantField
       })
 
