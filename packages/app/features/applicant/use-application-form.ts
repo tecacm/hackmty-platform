@@ -7,6 +7,7 @@ import {
   dataReferences,
   type ApplicantField
 } from './applicant-field-config'
+import { sanitizeFormData } from 'app/utils/sanitization'
 import type { ApplicantRole, ApplicantFormData } from './applicant-types'
 
 export type UseApplicationFormResult = {
@@ -357,7 +358,8 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
   }, [loadData])
 
   // Save full answers as draft
-  const onSaveDraft = async (answers: ApplicantFormData) => {
+  const onSaveDraft = async (rawAnswers: ApplicantFormData) => {
+    const answers = sanitizeFormData(rawAnswers)
     if (isClosed) {
       throw new Error('Registration has closed. You cannot save drafts.')
     }
@@ -427,7 +429,8 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
   }
 
   // Submit final application answers
-  const onSubmit = async (answers: ApplicantFormData) => {
+  const onSubmit = async (rawAnswers: ApplicantFormData) => {
+    const answers = sanitizeFormData(rawAnswers)
     if (isClosed) {
       throw new Error('Registration has closed. You cannot submit applications.')
     }

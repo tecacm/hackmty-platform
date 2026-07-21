@@ -6,6 +6,7 @@ import { PillButton } from 'app/components/pill-button'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { StyledInput } from 'app/components/styled-input'
 import { PersonSilhouette } from 'app/components/person-silhouette'
+import { sanitizeEmail, sanitizeName, sanitizeString } from 'app/utils/sanitization'
 
 interface Member {
   id: string
@@ -746,7 +747,8 @@ export function TeamsScreen() {
   }
 
   const handleCreateTeam = async () => {
-    if (!teamNameInput.trim()) {
+    const cleanTeamName = sanitizeName(teamNameInput)
+    if (!cleanTeamName) {
       setError('Please enter a team name.')
       return
     }
@@ -758,7 +760,7 @@ export function TeamsScreen() {
       if (!isSupabaseConfigured) {
         setTeam({
           id: 'dev-team-123',
-          name: teamNameInput.trim(),
+          name: cleanTeamName,
           code: 'ACM999',
           creator_id: '1',
           members: [{ id: '1', first_name: 'Ernesto', last_name: 'Developer', avatar_url: null }]
@@ -768,7 +770,7 @@ export function TeamsScreen() {
       }
 
       const { error: createError } = await supabase.rpc('create_team', {
-        team_name: teamNameInput.trim()
+        team_name: cleanTeamName
       })
 
       if (createError) throw createError
@@ -783,7 +785,8 @@ export function TeamsScreen() {
   }
 
   const handleJoinTeam = async () => {
-    if (!joinCodeInput.trim()) {
+    const cleanJoinCode = sanitizeString(joinCodeInput).toUpperCase()
+    if (!cleanJoinCode) {
       setError('Please enter a join code.')
       return
     }
@@ -796,7 +799,7 @@ export function TeamsScreen() {
         setTeam({
           id: 'dev-team-123',
           name: 'Tech ACM Team',
-          code: joinCodeInput.trim().toUpperCase(),
+          code: cleanJoinCode,
           creator_id: '1',
           members: [
             { id: '1', first_name: 'Ernesto', last_name: 'Developer', avatar_url: null },
@@ -808,7 +811,7 @@ export function TeamsScreen() {
       }
 
       const { error: joinError } = await supabase.rpc('join_team', {
-        join_code: joinCodeInput.trim().toUpperCase()
+        join_code: cleanJoinCode
       })
 
       if (joinError) throw joinError
@@ -901,7 +904,7 @@ export function TeamsScreen() {
   }
 
   const handleSendInvite = async () => {
-    const email = inviteEmailInput.trim()
+    const email = sanitizeEmail(inviteEmailInput)
     if (!email) {
       setInviteResult({ status: 'error', message: 'Please enter a valid email address.' })
       return

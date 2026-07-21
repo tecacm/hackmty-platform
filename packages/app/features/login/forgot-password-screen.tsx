@@ -22,6 +22,8 @@ import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 
+import { sanitizeEmail } from 'app/utils/sanitization'
+
 type ForgotPasswordValues = {
   email: string
 }
@@ -190,7 +192,7 @@ export function ForgotPasswordScreen() {
         redirectTo = `${window.location.origin}/reset-password`
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      const { error } = await supabase.auth.resetPasswordForEmail(sanitizeEmail(email), {
         redirectTo,
       })
 

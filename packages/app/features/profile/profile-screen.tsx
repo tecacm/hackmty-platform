@@ -25,6 +25,8 @@ import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 
 
+import { sanitizeName, sanitizeString, sanitizeUrl } from 'app/utils/sanitization'
+
 // Static fallback option arrays for selects
 const defaultGenderOptions = [
   { label: 'Male', value: 'male' },
@@ -321,24 +323,39 @@ export function ProfileScreen() {
       setIsSaving(true)
       setFeedbackMessage(null)
 
+      const cleanFirstName = sanitizeName(firstName)
+      const cleanLastName = sanitizeName(lastName)
+      const cleanPhone = sanitizeString(phone)
+      const cleanGender = sanitizeString(gender)
+      const cleanUniversity = sanitizeName(university)
+      const cleanMajor = sanitizeName(major)
+      const cleanGradYear = sanitizeString(gradYear)
+      const cleanLevelOfStudy = sanitizeString(levelOfStudy)
+      const cleanTshirtSize = sanitizeString(tshirtSize)
+      const cleanDietary = sanitizeString(dietary)
+      const cleanGithub = sanitizeUrl(github)
+      const cleanDevpost = sanitizeUrl(devpost)
+      const cleanLinkedin = sanitizeUrl(linkedin)
+      const cleanPersonalSite = sanitizeUrl(personalSite)
+
       const { error: saveError } = await supabase
         .from('profiles')
         .upsert({
           id: userId,
-          first_name: firstName,
-          last_name: lastName,
-          phone,
-          gender,
-          university,
-          major,
-          graduation_year: gradYear,
-          level_of_study: levelOfStudy,
-          tshirt_size: tshirtSize,
-          dietary_restrictions: dietary,
-          github,
-          devpost,
-          linkedin,
-          personal_site: personalSite,
+          first_name: cleanFirstName,
+          last_name: cleanLastName,
+          phone: cleanPhone,
+          gender: cleanGender,
+          university: cleanUniversity,
+          major: cleanMajor,
+          graduation_year: cleanGradYear,
+          level_of_study: cleanLevelOfStudy,
+          tshirt_size: cleanTshirtSize,
+          dietary_restrictions: cleanDietary,
+          github: cleanGithub,
+          devpost: cleanDevpost,
+          linkedin: cleanLinkedin,
+          personal_site: cleanPersonalSite,
         })
 
       if (saveError) throw saveError

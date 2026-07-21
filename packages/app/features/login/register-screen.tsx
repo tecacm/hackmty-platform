@@ -130,6 +130,8 @@ const styles = StyleSheet.create({
   },
 })
 
+import { sanitizeEmail, sanitizeName } from 'app/utils/sanitization'
+
 type RegisterFormValues = {
   firstName: string
   lastName: string
@@ -175,13 +177,17 @@ export function RegisterScreen() {
         return
       }
 
+      const cleanEmail = sanitizeEmail(formData.email)
+      const cleanFirstName = sanitizeName(formData.firstName)
+      const cleanLastName = sanitizeName(formData.lastName)
+
       const { data, error } = await supabase.auth.signUp({
-        email: formData.email.trim(),
+        email: cleanEmail,
         password: formData.password,
         options: {
           data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
+            first_name: cleanFirstName,
+            last_name: cleanLastName,
             agree_mlh: formData.agreeMLH,
             subscribe_mailing_list: formData.subscribeMailingList,
           },

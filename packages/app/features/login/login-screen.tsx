@@ -22,6 +22,8 @@ import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 
+import { sanitizeEmail } from 'app/utils/sanitization'
+
 type LoginFormValues = {
   email: string
   password: string
@@ -187,7 +189,7 @@ export function LoginScreen() {
       }
 
       const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: sanitizeEmail(email),
         password,
       })
 
