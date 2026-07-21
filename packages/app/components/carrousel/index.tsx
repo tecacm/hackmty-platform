@@ -10,12 +10,33 @@ type CarouselProps = {
   mode?: 'slide' | 'crossfade';
 };
 
+// Global memory cache to hold instantiated Image objects on Web.
+// Keeps textures decoded in browser RAM across page transitions (/login <-> /register <-> /forgot-password)
+// so navigating auth screens never re-requests or re-decodes images.
+const globalImageMemoryMap = new Map<string, any>();
+
+function preloadSlideImages(images: any[]) {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  images.forEach((item) => {
+    const src = item?.src || item?.default || item;
+    if (typeof src === 'string' && src && !globalImageMemoryMap.has(src)) {
+      const img = new Image();
+      img.src = src;
+      globalImageMemoryMap.set(src, img);
+    }
+  });
+}
+
 function CrossfadeCarrousel({ slideImages, secondsPerImage = 6 }: { slideImages: any[]; secondsPerImage?: number }) {
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
   const total = slideImages.length;
   const [currentIndex, setCurrentIndex] = useState(0);
   const incomingOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    preloadSlideImages(slideImages);
+  }, [slideImages]);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {

@@ -181,6 +181,7 @@ export function LoginScreen() {
 
     setAuthError(null)
     setIsSubmitting(true)
+    let shouldNavigate = false
 
     try {
       if (!isSupabaseConfigured) {
@@ -198,11 +199,18 @@ export function LoginScreen() {
         return
       }
 
-      navigateTo('/home')
-    } catch {
-      setAuthError('Unable to log in. Please try again.')
+      shouldNavigate = true
+    } catch (err: any) {
+      if (err?.digest?.startsWith?.('NEXT_REDIRECT') || err?.message === 'NEXT_REDIRECT') {
+        return
+      }
+      setAuthError(err?.message || 'Unable to log in. Please try again.')
     } finally {
       setIsSubmitting(false)
+    }
+
+    if (shouldNavigate) {
+      navigateTo('/home')
     }
   }
 

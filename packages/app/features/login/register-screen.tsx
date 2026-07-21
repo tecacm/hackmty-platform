@@ -170,6 +170,7 @@ export function RegisterScreen() {
 
     setAuthError(null)
     setIsSubmitting(true)
+    let shouldNavigate = false
 
     try {
       if (!isSupabaseConfigured) {
@@ -199,23 +200,20 @@ export function RegisterScreen() {
         return
       }
 
-      // Supabase returns no error and a null user/session when the email is
-      // already registered, instead of an error (to avoid leaking which
-      // emails exist). Some project configs instead return a user with an
-      // empty identities array for the same case, so check both.
-      if (!data.user || (data.user.identities && data.user.identities.length === 0)) {
-        setAuthError('An account with this email already exists. Please log in instead.')
+      shouldNavigate = true
+    } catch (err: any) {
+      if (err?.digest?.startsWith?.('NEXT_REDIRECT') || err?.message === 'NEXT_REDIRECT') {
         return
       }
-
-      navigateTo('/login')
-    } catch {
-      setAuthError('Unable to sign up. Please try again.')
+      console.error('Registration error:', err)
+      setAuthError(err?.message || 'Unable to sign up. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
 
-    // Send to Supabase/Firebase/Auth0
+    if (shouldNavigate) {
+      navigateTo('/login')
+    }
   }
 
   useEffect(() => {
@@ -383,7 +381,8 @@ export function RegisterScreen() {
             <PillButton
               variant="gradient"
               title={isSubmitting ? 'Registering...' : 'Register'}
-              onPress={handleSubmit(onSubmit)}
+              isLoading={isSubmitting}
+              onPress={isSubmitting ? undefined : handleSubmit(onSubmit)}
               additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
             />
             <SimpleTextLink
