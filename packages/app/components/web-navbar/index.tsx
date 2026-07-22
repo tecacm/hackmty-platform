@@ -181,55 +181,85 @@ export function WebNavbar() {
             />    
           </Pressable>
         </View>
+
         {/* Center: Main Links */}
         <View pointerEvents="box-none" style={styles.linksOverlay}>
           <View style={styles.linksContainer}>
-          {showApplicationTab && (
-            <Pressable
-              onPress={() => navigateTo('/home')}
-              style={({ hovered }) => [
-                styles.navLink,
-                pathname === '/home' && styles.navLinkActive,
-              ]}
-            >
-              {({ hovered }) => (
-                <Text
-                  style={[
-                    styles.navLinkText,
-                    hovered && styles.navLinkTextHover,
-                    pathname === '/home' && styles.navLinkTextActive,
-                  ]}
-                >
-                  Application
-                </Text>
-              )}
-            </Pressable>
-          )}
-          <Pressable
-            onPress={() => navigateTo('/profile')}
-            style={({ hovered }) => [
-              styles.navLink,
-              pathname === '/profile' && styles.navLinkActive,
-            ]}
-          >
-            {({ hovered }) => (
-              <Text
-                style={[
-                  styles.navLinkText,
-                  hovered && styles.navLinkTextHover,
-                  pathname === '/profile' && styles.navLinkTextActive,
+            {/* 1st Link: Feed / Announcements */}
+            {hasPermission('announcements', 'view') && (
+              <Pressable
+                onPress={() => navigateTo('/home')}
+                style={({ hovered }) => [
+                  styles.navLink,
+                  (pathname === '/home' || pathname === '/announcements') && styles.navLinkActive,
                 ]}
               >
-                Profile
-              </Text>
+                {({ hovered }) => (
+                  <Text
+                    style={[
+                      styles.navLinkText,
+                      hovered && styles.navLinkTextHover,
+                      (pathname === '/home' || pathname === '/announcements') && styles.navLinkTextActive,
+                    ]}
+                  >
+                    Feed
+                  </Text>
+                )}
+              </Pressable>
             )}
-          </Pressable>
-          {hasPermission('teams', 'create') && (
+
+            {/* 2nd Link: Application */}
+            {showApplicationTab && (
+              <Pressable
+                onPress={() => navigateTo('/applications')}
+                style={({ hovered }) => [
+                  styles.navLink,
+                  (pathname === '/applications' || pathname === '/application') && styles.navLinkActive,
+                ]}
+              >
+                {({ hovered }) => (
+                  <Text
+                    style={[
+                      styles.navLinkText,
+                      hovered && styles.navLinkTextHover,
+                      (pathname === '/applications' || pathname === '/application') && styles.navLinkTextActive,
+                    ]}
+                  >
+                    Application
+                  </Text>
+                )}
+              </Pressable>
+            )}
+
+            {/* 3rd Link: My Team */}
+            {hasPermission('teams', 'create') && (
+              <Pressable
+                onPress={() => navigateTo('/teams')}
+                style={({ hovered }) => [
+                  styles.navLink,
+                  pathname === '/teams' && styles.navLinkActive,
+                ]}
+              >
+                {({ hovered }) => (
+                  <Text
+                    style={[
+                      styles.navLinkText,
+                      hovered && styles.navLinkTextHover,
+                      pathname === '/teams' && styles.navLinkTextActive,
+                    ]}
+                  >
+                    My Team
+                  </Text>
+                )}
+              </Pressable>
+            )}
+
+            {/* 4th Link: Profile */}
             <Pressable
-              onPress={() => navigateTo('/teams')}
+              onPress={() => navigateTo('/profile')}
               style={({ hovered }) => [
                 styles.navLink,
-                pathname === '/teams' && styles.navLinkActive,
+                pathname === '/profile' && styles.navLinkActive,
               ]}
             >
               {({ hovered }) => (
@@ -237,56 +267,36 @@ export function WebNavbar() {
                   style={[
                     styles.navLinkText,
                     hovered && styles.navLinkTextHover,
-                    pathname === '/teams' && styles.navLinkTextActive,
+                    pathname === '/profile' && styles.navLinkTextActive,
                   ]}
                 >
-                  My Team
+                  Profile
                 </Text>
               )}
             </Pressable>
-          )}
-          {hasPermission('announcements', 'view') && (
-            <Pressable
-              onPress={() => navigateTo('/announcements')}
-              style={({ hovered }) => [
-                styles.navLink,
-                pathname === '/announcements' && styles.navLinkActive,
-              ]}
-            >
-              {({ hovered }) => (
-                <Text
-                  style={[
-                    styles.navLinkText,
-                    hovered && styles.navLinkTextHover,
-                    pathname === '/announcements' && styles.navLinkTextActive,
-                  ]}
-                >
-                  Announcements
-                </Text>
-              )}
-            </Pressable>
-          )}
-          {hasPermission('applications', 'view_others') && (
-            <Pressable
-              onPress={() => navigateTo('/admin')}
-              style={({ hovered }) => [
-                styles.navLink,
-                pathname === '/admin' && styles.navLinkActive,
-              ]}
-            >
-              {({ hovered }) => (
-                <Text
-                  style={[
-                    styles.navLinkText,
-                    hovered && styles.navLinkTextHover,
-                    pathname === '/admin' && styles.navLinkTextActive,
-                  ]}
-                >
-                  Admin
-                </Text>
-              )}
-            </Pressable>
-          )}
+
+            {/* 5th Link: Admin */}
+            {hasPermission('applications', 'view_others') && (
+              <Pressable
+                onPress={() => navigateTo('/admin')}
+                style={({ hovered }) => [
+                  styles.navLink,
+                  pathname === '/admin' && styles.navLinkActive,
+                ]}
+              >
+                {({ hovered }) => (
+                  <Text
+                    style={[
+                      styles.navLinkText,
+                      hovered && styles.navLinkTextHover,
+                      pathname === '/admin' && styles.navLinkTextActive,
+                    ]}
+                  >
+                    Admin
+                  </Text>
+                )}
+              </Pressable>
+            )}
           </View>
         </View>
 

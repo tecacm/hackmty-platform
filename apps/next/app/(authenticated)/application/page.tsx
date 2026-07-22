@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
-import { ApplicationScreen } from 'app/features/home/application-screen'
+import { ApplicationScreen } from 'app/features/role-application/application-screen'
 
 export default function Page() {
   return (

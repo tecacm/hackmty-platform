@@ -26,7 +26,7 @@ export function useSmartNavigate() {
     const targetName = typeof target === 'string' ? target.replace(/^\//, '') : target.pathname.replace(/^\//, '')
 
     const hasTabs = routes && routes.some(r => r.name === 'tabs')
-    if ((targetName === 'home' || targetName === 'tabs') && !hasTabs) {
+    if ((targetName === 'home' || targetName === 'applications' || targetName === 'tabs') && !hasTabs) {
       return
     }
     if (targetName === 'login' && hasTabs) {
@@ -60,7 +60,7 @@ export function useSmartNavigate() {
     const targetName = typeof target === 'string' ? target.replace(/^\//, '') : target.pathname.replace(/^\//, '')
 
     const hasTabs = routes && routes.some(r => r.name === 'tabs')
-    if ((targetName === 'home' || targetName === 'tabs') && !hasTabs) {
+    if ((targetName === 'home' || targetName === 'applications' || targetName === 'tabs') && !hasTabs) {
       return
     }
     if (targetName === 'login' && hasTabs) {

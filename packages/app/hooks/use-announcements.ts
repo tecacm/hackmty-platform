@@ -12,6 +12,7 @@ export interface AnnouncementItem {
   target_roles?: string[] | null
   author_id?: string | null
   author_name: string
+  author_avatar_url?: string | null
   likes_count: number
   created_at: string
 }
@@ -78,20 +79,68 @@ export function useAnnouncements() {
     }
 
     try {
-      const { data, error: fetchErr } = await supabase
+      let data: any[] | null = null
+
+      // Try relational query first (supported once DB migration is executed)
+      const { data: relData, error: relErr } = await supabase
         .from('announcements')
-        .select('*')
+        .select('*, profiles:author_id(avatar_url)')
         .order('created_at', { ascending: false })
 
-      if (fetchErr) throw fetchErr
-      setRawAnnouncements(data || [])
+      if (!relErr && relData) {
+        data = relData
+      } else {
+        // Graceful fallback to flat query if foreign key migration hasn't been executed yet
+        const { data: flatData, error: flatErr } = await supabase
+          .from('announcements')
+          .select('*')
+          .order('created_at', { ascending: false })
+        if (flatErr) throw flatErr
+        data = flatData
+      }
 
       const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
+      const currentUserId = session?.user?.id
+
+      let currentUserAvatarUrl: string | null = null
+      if (currentUserId) {
+        try {
+          const { data: myProfile } = await supabase
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', currentUserId)
+            .maybeSingle()
+          if (myProfile?.avatar_url) {
+            currentUserAvatarUrl = supabase.storage
+              .from('avatars')
+              .getPublicUrl(myProfile.avatar_url).data.publicUrl
+          }
+        } catch (_) {}
+      }
+
+      const itemsWithAvatars = (data || []).map((item: any) => {
+        let resolvedAvatar: string | null = item.author_avatar_url || null
+        if (!resolvedAvatar && item.profiles?.avatar_url) {
+          resolvedAvatar = supabase.storage
+            .from('avatars')
+            .getPublicUrl(item.profiles.avatar_url).data.publicUrl
+        }
+        if (!resolvedAvatar && item.author_id === currentUserId && currentUserAvatarUrl) {
+          resolvedAvatar = currentUserAvatarUrl
+        }
+        return {
+          ...item,
+          author_avatar_url: resolvedAvatar,
+        }
+      })
+
+      setRawAnnouncements(itemsWithAvatars)
+
+      if (currentUserId) {
         const { data: likesData } = await supabase
           .from('announcement_likes')
           .select('announcement_id')
-          .eq('user_id', session.user.id)
+          .eq('user_id', currentUserId)
 
         if (likesData) {
           setUserLikes(new Set(likesData.map((l: any) => l.announcement_id)))
@@ -132,8 +181,9 @@ export function useAnnouncements() {
     // 4. Supabase Realtime WebSockets for instant live updates
     let channel: any = null
     if (isSupabaseConfigured) {
+      const channelId = `announcements_realtime_${Date.now()}_${Math.random().toString(36).substring(7)}`
       channel = supabase
-        .channel('announcements_realtime')
+        .channel(channelId)
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'announcements' },
@@ -226,9 +276,10 @@ export function useAnnouncements() {
       uploadedMediaUrl = mediaFile.uri
     }
 
-    // 2. Resolve author profile name
+    // 2. Resolve author profile name & avatar URL
     let authorName = 'Organizing Team'
     let authorId: string | null = null
+    let authorAvatarUrl: string | null = null
     if (isSupabaseConfigured) {
       try {
         const { data: { session } } = await supabase.auth.getSession()
@@ -236,12 +287,17 @@ export function useAnnouncements() {
           authorId = session.user.id
           const { data: profile } = await supabase
             .from('profiles')
-            .select('first_name, last_name')
+            .select('first_name, last_name, avatar_url')
             .eq('id', session.user.id)
             .maybeSingle()
 
           if (profile) {
             authorName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Organizing Team'
+            if (profile.avatar_url) {
+              authorAvatarUrl = supabase.storage
+                .from('avatars')
+                .getPublicUrl(profile.avatar_url).data.publicUrl
+            }
           }
         }
       } catch (e) {}
@@ -255,6 +311,7 @@ export function useAnnouncements() {
       target_roles: targetRoles.length > 0 ? targetRoles : ['all'],
       author_id: authorId,
       author_name: authorName,
+      author_avatar_url: authorAvatarUrl,
     }
 
     // 3. Save to database

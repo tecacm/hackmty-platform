@@ -85,7 +85,7 @@ export function PillButton({
         ) : (
           <GlassView
             isInteractive={!isDisabled}
-            style={[styles.glassContainer]}
+            style={[styles.glassContainer, additionalStyle?.paddingHorizontal && { paddingHorizontal: additionalStyle.paddingHorizontal }]}
             colorScheme='dark'
             tintColor={isDisabled ? 'rgba(0,0,0,0.2)' : (pressed ? pressedColor : baseColor)}
           >

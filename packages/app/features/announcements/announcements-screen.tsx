@@ -1,19 +1,18 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   View,
   Text,
   StyleSheet,
   Platform,
-  Pressable,
   ActivityIndicator,
-  RefreshControl,
-  ScrollView,
 } from 'react-native'
 import { useAnnouncements } from 'app/hooks/use-announcements'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { formFieldColors } from 'app/components/form-field-styles'
 import { AnnouncementCard } from './announcement-card'
+import { PillButton } from 'app/components/pill-button'
+import { Pressable } from 'react-native'
 
 // useIsFocused detects when this tab screen is no longer active.
 // On web, @react-navigation/native may not provide useIsFocused,
@@ -71,10 +70,10 @@ export function AnnouncementsScreen() {
 
   return (
     <View style={styles.screenWrapper}>
-      <View style={styles.contentContainer}>
-        {/* Header Bar */}
+      {/* Sticky Top Header Toolbar - Remains pinned at top during scroll (Apple HIG Toolbar Pattern) */}
+      <View style={styles.stickyHeaderContainer}>
         <View style={styles.headerRow}>
-          <View>
+          <View style={styles.headerTitleCol}>
             <Text style={styles.heading}>Announcements</Text>
             <Text style={styles.subheading}>
               Live timeline & official updates from HackMTY staff
@@ -82,22 +81,20 @@ export function AnnouncementsScreen() {
           </View>
 
           {canCreate && (
-            <Pressable
-              onPress={handleCreatePress}
-              style={({ hovered }: any) => [
-                styles.createButtonHeader,
-                hovered && styles.createButtonHeaderHovered,
-              ]}
-            >
-              <Text style={styles.createButtonIcon}>+</Text>
-              <Text style={styles.createButtonText}>Post</Text>
-            </Pressable>
+            <View style={styles.createButtonContainer}>
+              <PillButton
+                title="+ Post"
+                onPress={handleCreatePress}
+                variant="primary"
+                additionalStyle={styles.createPillButton}
+              />
+            </View>
           )}
         </View>
+      </View>
 
-        <View style={styles.sectionDivider} />
-
-        {/* Timeline Feed */}
+      {/* Timeline Feed Container */}
+      <View style={styles.contentContainer}>
         {announcements.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <Text style={styles.emptyStateIcon}>📸</Text>
@@ -126,19 +123,6 @@ export function AnnouncementsScreen() {
           </View>
         )}
       </View>
-
-      {/* Floating Action Button (FAB) for Mobile / Admin */}
-      {canCreate && (
-        <Pressable
-          onPress={handleCreatePress}
-          style={({ hovered }: any) => [
-            styles.fabButton,
-            hovered && styles.fabButtonHovered,
-          ]}
-        >
-          <Text style={styles.fabIcon}>+</Text>
-        </Pressable>
-      )}
     </View>
   )
 }
@@ -149,6 +133,7 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
     alignItems: 'center',
+    paddingHorizontal: Platform.OS === 'web' ? 0 : 12,
   },
   centerContainer: {
     flex: 1,
@@ -163,21 +148,49 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Montserrat',
   },
+  stickyHeaderContainer: {
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 820 : 580,
+    backgroundColor: 'rgba(244, 244, 244, 0.95)',
+    borderRadius: 22,
+    paddingHorizontal: Platform.OS === 'web' ? 24 : 10,
+    paddingVertical: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    zIndex: 100,
+    ...Platform.select({
+      web: {
+        position: 'sticky',
+        top: 60,
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        boxShadow: '0 6px 24px rgba(34, 0, 44, 0.1)',
+      } as any,
+      native: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
+  },
   contentContainer: {
     alignItems: 'center',
     width: '100%',
     maxWidth: Platform.OS === 'web' ? 820 : 580,
     gap: 12,
-    marginVertical: 12,
+    marginBottom: 12,
     backgroundColor: '#f4f4f4',
     ...Platform.select({
       web: {
-        paddingVertical: 32,
+        paddingVertical: 24,
         paddingHorizontal: 32,
       },
       default: {
-        paddingHorizontal: 14,
-        paddingVertical: 18,
+        paddingHorizontal: 18,
+        paddingVertical: 20,
       },
     }),
     borderRadius: 24,
@@ -201,53 +214,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
+    paddingLeft: 10,
+  },
+  headerTitleCol: {
+    flex: 1,
+    flexShrink: 1,
   },
   heading: {
     color: formFieldColors.theme,
-    fontSize: 28,
+    fontSize: Platform.OS === 'web' ? 24 : 21,
     fontWeight: '800',
     fontFamily: 'Montserrat',
   },
   subheading: {
     color: '#5b4d61',
-    fontSize: 13.5,
+    fontSize: 12.5,
     fontWeight: '500',
-    marginTop: 4,
+    marginTop: 2,
     fontFamily: 'Montserrat',
+    flexWrap: 'wrap',
+    lineHeight: 17,
   },
-  sectionDivider: {
-    width: '100%',
-    height: 1,
-    backgroundColor: 'rgba(90, 0, 97, 0.12)',
-    marginVertical: 10,
+  createButtonContainer: {
+    minWidth: 120,
+    height: 46,
+    flexShrink: 0,
   },
-  createButtonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#5a0061',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    ...Platform.select({
-      web: { cursor: 'pointer', transition: 'all 0.2s ease' } as any,
-    }),
-  },
-  createButtonHeaderHovered: {
-    backgroundColor: '#7a0083',
-    transform: [{ scale: 1.03 }],
-  },
-  createButtonIcon: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: -2,
-  },
-  createButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Montserrat',
+  createPillButton: {
+    height: 46,
+    borderRadius: 23,
+    paddingRight: 10,
+    width: 'auto',
   },
   feedList: {
     width: '100%',
@@ -316,42 +314,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     fontFamily: 'Montserrat',
-  },
-  fabButton: {
-    position: 'absolute',
-    bottom: 28,
-    right: 28,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#5a0061',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#c2b75f',
-    ...Platform.select({
-      native: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 8,
-      },
-      web: {
-        boxShadow: '0 8px 24px rgba(90, 0, 97, 0.4)',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-      } as any,
-    }),
-  },
-  fabButtonHovered: {
-    backgroundColor: '#7a0083',
-    transform: [{ scale: 1.08 }],
-  },
-  fabIcon: {
-    color: '#ffffff',
-    fontSize: 32,
-    fontWeight: '400',
-    marginTop: -3,
   },
 })

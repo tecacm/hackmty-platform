@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { View, Text, StyleSheet, Platform, Pressable, Modal, Animated, Dimensions } from 'react-native'
+import { View, Text, StyleSheet, Platform, Pressable, Modal, Animated, Dimensions, Image } from 'react-native'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AnnouncementMedia } from 'app/components/announcement-media'
 import type { AnnouncementItem } from 'app/hooks/use-announcements'
@@ -240,7 +240,14 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
           <View style={styles.cardFooter}>
             <View style={styles.authorInfo}>
               <View style={styles.authorAvatar}>
-                <PersonSilhouette width={20} height={20} />
+                {announcement.author_avatar_url ? (
+                  <Image
+                    source={{ uri: announcement.author_avatar_url }}
+                    style={styles.authorAvatarImage}
+                  />
+                ) : (
+                  <PersonSilhouette size={34} color="#7a47a2" />
+                )}
               </View>
               <View>
                 <Text style={styles.authorName}>{announcement.author_name}</Text>
@@ -330,9 +337,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: '#ffffff',
     borderRadius: 8,
-    paddingTop: 14,
-    paddingHorizontal: 14,
-    paddingBottom: 20,
+    paddingTop: 16,
+    paddingHorizontal: Platform.OS === 'web' ? 18 : 16,
+    paddingBottom: 22,
     marginVertical: 10,
     position: 'relative',
     borderWidth: 1,
@@ -471,7 +478,7 @@ const styles = StyleSheet.create({
   },
   captionArea: {
     marginTop: 12,
-    paddingHorizontal: 2,
+    paddingHorizontal: 4,
   },
   roleContainer: {
     flexDirection: 'row',
@@ -529,12 +536,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   authorAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#f0e6f2',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(90, 0, 97, 0.12)',
+  },
+  authorAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    resizeMode: 'cover',
   },
   authorAvatarText: {
     color: '#5a0061',

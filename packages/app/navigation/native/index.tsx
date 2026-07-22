@@ -17,9 +17,9 @@ import { ForgotPasswordScreen } from 'app/features/login/forgot-password-screen'
 import { ResetPasswordScreen } from 'app/features/login/reset-password-screen'
 import { CompleteSignupScreen } from 'app/features/login/complete-signup-screen'
 import { UserDetailScreen } from 'app/features/user/detail-screen'
-import { HomeScreen } from 'app/features/home/home-screen'  
+import { RoleApplicationScreen } from 'app/features/role-application/role-application-screen'  
 import { ProfileScreen } from 'app/features/profile/profile-screen'
-import { ApplicationScreen } from 'app/features/home/application-screen'
+import { ApplicationScreen } from 'app/features/role-application/application-screen'
 import { TeamsScreen } from 'app/features/teams/teams-screen'
 import { AdminDashboardScreen } from 'app/features/admin/dashboard-screen'
 import { AnnouncementsScreen } from 'app/features/announcements/announcements-screen'
@@ -37,6 +37,8 @@ type StackParamList = {
   'reset-password': undefined
   'complete-signup': undefined
   tabs: undefined
+  home: undefined
+  applications: undefined
   application: { role?: string }
   announcements: undefined
   'create-announcement': undefined
@@ -46,14 +48,14 @@ type StackParamList = {
 
 type TabParamList = {
   home: undefined
-  announcements: undefined
-  profile: undefined
+  applications: undefined
   teams: undefined
+  profile: undefined
   admin: undefined
 }
 
 const Stack = createNativeStackNavigator<StackParamList>()
-const Tab = createBottomTabNavigator<TabParamList>() // Using the unstable native navigator
+const Tab = createBottomTabNavigator<TabParamList>() // Using the native tab navigator
 
 const AdminStack = createNativeStackNavigator()
 
@@ -108,7 +110,7 @@ function withNumbersBackground<P extends object>(ScreenComponent: ComponentType<
   return ScreenWithNumbersBackground
 }
 
-const HomeScreenWithBackground = withNumbersBackground(HomeScreen)
+const RoleApplicationScreenWithBackground = withNumbersBackground(RoleApplicationScreen)
 const ProfileScreenWithBackground = withNumbersBackground(ProfileScreen)
 const TeamsScreenWithBackground = withNumbersBackground(TeamsScreen)
 const ApplicationScreenWithBackground = withNumbersBackground(ApplicationScreen)
@@ -117,26 +119,11 @@ const AdminDashboardScreenWithBackground = withNumbersBackground(AdminDashboardS
 const AnnouncementsScreenWithBackground = withNumbersBackground(AnnouncementsScreen)
 const CreateAnnouncementScreenWithBackground = withNumbersBackground(CreateAnnouncementScreen)
 
-function AdminTabNavigator() {
+function AdminNavigator() {
   return (
-    <AdminStack.Navigator
-      screenOptions={{
-        contentStyle: { backgroundColor: 'transparent' },
-      }}
-    >
-      <AdminStack.Screen
-        name="admin-dashboard"
-        component={AdminDashboardScreenWithBackground}
-        options={{
-          headerTitleAlign: 'center',
-          headerShown: true,
-          headerLargeTitleEnabled: true,
-          headerTitle: 'Review Portal',
-          headerTransparent: Platform.OS === 'ios',
-          headerStyle: Platform.OS !== 'ios' ? { backgroundColor: '#1d041f' } : undefined,
-          headerTintColor: '#FFFFFF',
-        }}
-      />
+    <AdminStack.Navigator screenOptions={{ headerShown: false }}>
+      <AdminStack.Screen name="dashboard" component={AdminDashboardScreenWithBackground} />
+      <AdminStack.Screen name="user-detail" component={UserDetailScreenWithBackground} />
     </AdminStack.Navigator>
   )
 }
@@ -156,28 +143,10 @@ function TabNavigator() {
         tabBarInactiveTintColor: '#a3a3a3',
       }}
     >
-      {showApplicationTab && (
-        <Tab.Screen
-          name="home"
-          component={HomeScreenWithBackground}
-          options={{ 
-            tabBarLabel: 'Application',
-            tabBarIcon: Platform.select({
-              ios: {
-                type: 'sfSymbol',
-                name: 'doc.text',
-              },
-              android: {
-                type: 'materialSymbol',
-                name: 'assignment',
-              },
-            }) as any,
-          }}
-        />
-      )}
+      {/* 1st Tab: Feed / Announcements */}
       {hasPermission('announcements', 'view') && (
         <Tab.Screen
-          name="announcements"
+          name="home"
           component={AnnouncementsScreenWithBackground}
           options={{ 
             tabBarLabel: 'Feed',
@@ -194,6 +163,29 @@ function TabNavigator() {
           }}
         />
       )}
+
+      {/* 2nd Tab: Application */}
+      {showApplicationTab && (
+        <Tab.Screen
+          name="applications"
+          component={RoleApplicationScreenWithBackground}
+          options={{ 
+            tabBarLabel: 'Application',
+            tabBarIcon: Platform.select({
+              ios: {
+                type: 'sfSymbol',
+                name: 'doc.text',
+              },
+              android: {
+                type: 'materialSymbol',
+                name: 'assignment',
+              },
+            }) as any,
+          }}
+        />
+      )}
+
+      {/* 3rd Tab: My Team */}
       {hasPermission('teams', 'create') && (
         <Tab.Screen
           name="teams"
@@ -213,6 +205,8 @@ function TabNavigator() {
           }}
         />
       )}
+
+      {/* 4th Tab: Profile */}
       <Tab.Screen
         name="profile"
         component={ProfileScreenWithBackground}
@@ -230,16 +224,18 @@ function TabNavigator() {
           }) as any,
         }}
       />
+
+      {/* 5th Tab: Admin */}
       {hasPermission('applications', 'view_others') && (
         <Tab.Screen
           name="admin"
-          component={AdminTabNavigator}
+          component={AdminDashboardScreenWithBackground}
           options={{ 
-            tabBarLabel: 'Review',
+            tabBarLabel: 'Admin',
             tabBarIcon: Platform.select({
               ios: {
                 type: 'sfSymbol',
-                name: 'lock.shield.fill',
+                name: 'shield.fill',
               },
               android: {
                 type: 'materialSymbol',
@@ -255,27 +251,30 @@ function TabNavigator() {
 
 export function NativeNavigation() {
   const [session, setSession] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(isSupabaseConfigured)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return
+    if (!isSupabaseConfigured) {
+      setLoading(false)
+      return
+    }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      setIsLoading(false)
+      setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      setIsLoading(false)
+      setLoading(false)
     })
 
-    return () => {
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
-  if (isLoading) {
+  if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1d041f' }}>
         <ActivityIndicator size="large" color="#c2b75f" />
@@ -295,6 +294,20 @@ export function NativeNavigation() {
         <>
           <Stack.Screen name="tabs" component={TabNavigator} options={{ headerShown: false }} />
           <Stack.Screen 
+            name="applications" 
+            component={RoleApplicationScreenWithBackground} 
+            options={{
+              headerTitleAlign: 'center',
+              headerShown: true,
+              headerLargeTitleEnabled: true,
+              headerTitle: 'Applications',
+              headerTransparent: Platform.OS === 'ios',
+              headerShadowVisible: true,
+              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
+              headerBackTitle: 'Feed',
+            }}
+          />
+          <Stack.Screen 
             name="application" 
             component={ApplicationScreenWithBackground} 
             options={{
@@ -304,7 +317,7 @@ export function NativeNavigation() {
               headerTransparent: Platform.OS === 'ios',
               headerShadowVisible: true,
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
-              headerBackTitle: 'Application',
+              headerBackTitle: 'Back',
             }}
           />
           <Stack.Screen 

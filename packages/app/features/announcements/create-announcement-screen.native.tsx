@@ -4,10 +4,9 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  Platform,
   Pressable,
-  ScrollView,
   ActivityIndicator,
+  Platform,
 } from 'react-native'
 import { useAnnouncements } from 'app/hooks/use-announcements'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
@@ -133,26 +132,15 @@ export function CreateAnnouncementScreen() {
           <Text style={styles.unauthorizedText}>
             You do not have permission to post announcements.
           </Text>
-          <Pressable onPress={() => navigateTo('/announcements')} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Return to Feed</Text>
-          </Pressable>
         </View>
       </View>
     )
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+    <View style={styles.screenWrapper}>
+      {/* Signature White Card Form Container - Native Stack Header handles Title and Back Button */}
       <View style={styles.contentContainer}>
-        {/* Back Button */}
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => navigateTo('/announcements')} style={styles.backNavButton}>
-            <Text style={styles.backNavIcon}>←</Text>
-            <Text style={styles.backNavText}>Back to Feed</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.heading}>New Announcement</Text>
         <Text style={styles.subheading}>
           Create an official post. It will appear on the timeline feed and notify tagged roles.
         </Text>
@@ -171,7 +159,7 @@ export function CreateAnnouncementScreen() {
           <View style={styles.inputShell}>
             <TextInput
               style={styles.inputText}
-              placeholder="e.g. 🚀 HackMTY Opening Ceremony Starting Soon!"
+              placeholder="e.g. 🚀 Opening Ceremony Starting Soon!"
               placeholderTextColor="#908098"
               value={title}
               onChangeText={setTitle}
@@ -188,7 +176,7 @@ export function CreateAnnouncementScreen() {
               placeholder="Enter announcement message details..."
               placeholderTextColor="#908098"
               multiline
-              numberOfLines={6}
+              numberOfLines={5}
               textAlignVertical="top"
               value={message}
               onChangeText={setMessage}
@@ -196,7 +184,7 @@ export function CreateAnnouncementScreen() {
           </View>
         </View>
 
-        {/* Role Tagging Selector */}
+        {/* Role Tagging Selector (Flex Wrap) */}
         <View style={styles.fieldContainer}>
           <Text style={styles.fieldLabel}>Tag Specific Roles (Recipient Target)</Text>
           <View style={styles.roleChipsWrapContainer}>
@@ -206,10 +194,9 @@ export function CreateAnnouncementScreen() {
                 <Pressable
                   key={r.id}
                   onPress={() => toggleRole(r.id)}
-                  style={({ hovered }: any) => [
+                  style={[
                     styles.roleChip,
                     isSelected && styles.roleChipSelected,
-                    hovered && styles.roleChipHovered,
                   ]}
                 >
                   <Text style={[styles.roleChipText, isSelected && styles.roleChipTextSelected]}>
@@ -240,13 +227,7 @@ export function CreateAnnouncementScreen() {
               </Pressable>
             </View>
           ) : (
-            <Pressable
-              onPress={handlePickMedia}
-              style={({ hovered }: any) => [
-                styles.mediaUploadBox,
-                hovered && styles.mediaUploadBoxHovered,
-              ]}
-            >
+            <Pressable onPress={handlePickMedia} style={styles.mediaUploadBox}>
               <Text style={styles.uploadIcon}>📷</Text>
               <Text style={styles.uploadTitle}>Upload Image or Video</Text>
               <Text style={styles.uploadSubtext}>JPG, PNG, GIF, WEBP, or MP4 video</Text>
@@ -273,7 +254,7 @@ export function CreateAnnouncementScreen() {
               <View style={styles.checkboxLabelGroup}>
                 <Text style={styles.checkboxTitle}>📱 Push Notifications</Text>
                 <Text style={styles.checkboxSubtext}>
-                  Send instant mobile and web push alerts to users with tagged roles.
+                  Send instant mobile push alerts to users with tagged roles.
                 </Text>
               </View>
             </Pressable>
@@ -291,15 +272,23 @@ export function CreateAnnouncementScreen() {
               <View style={styles.checkboxLabelGroup}>
                 <Text style={styles.checkboxTitle}>📧 Email Notifications</Text>
                 <Text style={styles.checkboxSubtext}>
-                  Send formatted Mandrill HTML email updates to users with tagged roles.
+                  Send formatted HTML email updates to users with tagged roles.
                 </Text>
               </View>
             </Pressable>
           </View>
         </View>
 
-        {/* Form Action Buttons */}
-        <View style={styles.actionButtonsRow}>
+        {/* Action Buttons Section */}
+        <View style={styles.actionButtonsStack}>
+          <PillButton
+            title="🚀 Publish Announcement"
+            onPress={handleSubmit}
+            isLoading={submitting}
+            disabled={submitting}
+            variant="primary"
+            additionalStyle={styles.submitPillButton}
+          />
           <Pressable
             onPress={() => navigateTo('/announcements')}
             disabled={submitting}
@@ -307,98 +296,41 @@ export function CreateAnnouncementScreen() {
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </Pressable>
-
-          <View style={styles.submitButtonContainer}>
-            <PillButton
-              title="🚀 Publish Announcement"
-              onPress={handleSubmit}
-              isLoading={submitting}
-              disabled={submitting}
-              variant="primary"
-              additionalStyle={styles.submitPillButton}
-            />
-          </View>
         </View>
       </View>
-    </ScrollView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    alignItems: 'center',
-    paddingVertical: 16,
+  screenWrapper: {
     width: '100%',
-    paddingHorizontal: Platform.OS === 'web' ? 0 : 8,
+    alignItems: 'center',
+    paddingHorizontal: 8,
   },
   centerContainer: {
     flex: 1,
-    minHeight: 400,
+    minHeight: 300,
     justifyContent: 'center',
     alignItems: 'center',
   },
   contentContainer: {
     alignItems: 'flex-start',
     width: '100%',
-    maxWidth: Platform.OS === 'web' ? 820 : 580,
+    maxWidth: 580,
     gap: 16,
-    marginVertical: 10,
+    marginVertical: 8,
     backgroundColor: '#f4f4f4',
-    ...Platform.select({
-      web: {
-        paddingVertical: 32,
-        paddingHorizontal: 32,
-      },
-      default: {
-        paddingHorizontal: 16,
-        paddingVertical: 20,
-      },
-    }),
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.4)',
-    ...Platform.select({
-      native: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.12)',
-      },
-    }),
-  },
-  headerRow: {
-    width: '100%',
-    marginBottom: 4,
-  },
-  backNavButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-    ...Platform.select({
-      web: { cursor: 'pointer' },
-    }),
-  },
-  backNavIcon: {
-    color: '#5a0061',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  backNavText: {
-    color: '#5a0061',
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Montserrat',
-  },
-  heading: {
-    color: formFieldColors.theme,
-    fontSize: Platform.OS === 'web' ? 28 : 22,
-    fontWeight: '800',
-    fontFamily: 'Montserrat',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
   },
   subheading: {
     color: '#5b4d61',
@@ -411,7 +343,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 1,
     backgroundColor: 'rgba(90, 0, 97, 0.12)',
-    marginVertical: 4,
+    marginVertical: 2,
   },
   errorBox: {
     width: '100%',
@@ -419,11 +351,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ff6554',
     borderRadius: 12,
-    padding: 12,
+    padding: 10,
   },
   errorText: {
     color: '#d32f2f',
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '600',
     fontFamily: 'Montserrat',
   },
@@ -432,7 +364,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   fieldLabel: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
     color: '#28002d',
     fontFamily: 'Montserrat',
@@ -460,10 +392,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   textAreaShell: {
-    minHeight: 120,
+    minHeight: 110,
   },
   textAreaText: {
-    minHeight: 100,
+    minHeight: 90,
   },
   roleChipsWrapContainer: {
     flexDirection: 'row',
@@ -480,16 +412,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(90, 0, 97, 0.12)',
     flexShrink: 0,
-    ...Platform.select({
-      web: { cursor: 'pointer', transition: 'all 0.2s ease' } as any,
-    }),
   },
   roleChipSelected: {
     backgroundColor: '#5a0061',
     borderColor: '#5a0061',
-  },
-  roleChipHovered: {
-    backgroundColor: '#d8cfdd',
   },
   roleChipText: {
     fontSize: 12,
@@ -507,21 +433,14 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: 'rgba(90, 0, 97, 0.25)',
     borderRadius: 16,
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#ffffff',
-    gap: 6,
-    ...Platform.select({
-      web: { cursor: 'pointer', transition: 'all 0.2s ease' } as any,
-    }),
-  },
-  mediaUploadBoxHovered: {
-    backgroundColor: '#f7f2f8',
-    borderColor: '#5a0061',
+    gap: 4,
   },
   uploadIcon: {
-    fontSize: 32,
+    fontSize: 28,
   },
   uploadTitle: {
     fontSize: 14,
@@ -536,7 +455,7 @@ const styles = StyleSheet.create({
   },
   mediaPreviewContainer: {
     width: '100%',
-    height: 220,
+    height: 180,
     borderRadius: 16,
     overflow: 'hidden',
     position: 'relative',
@@ -548,19 +467,16 @@ const styles = StyleSheet.create({
   },
   removeMediaButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 8,
+    right: 8,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    ...Platform.select({
-      web: { cursor: 'pointer' },
-    }),
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
   removeMediaText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     fontFamily: 'Montserrat',
   },
@@ -578,9 +494,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     width: '100%',
-    ...Platform.select({
-      web: { cursor: 'pointer' },
-    }),
   },
   checkboxSquare: {
     width: 22,
@@ -624,45 +537,24 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(90, 0, 97, 0.08)',
   },
-  actionButtonsRow: {
+  actionButtonsStack: {
     width: '100%',
-    marginTop: 12,
-    ...Platform.select({
-      web: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        gap: 12,
-      },
-      default: {
-        flexDirection: 'column-reverse',
-        gap: 10,
-      },
-    }),
+    gap: 10,
+    marginTop: 8,
   },
   cancelButton: {
-    paddingHorizontal: 18,
+    width: '100%',
     paddingVertical: 12,
     borderRadius: 14,
     backgroundColor: '#e6e0ea',
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      web: { cursor: 'pointer' },
-      default: { width: '100%' },
-    }),
   },
   cancelButtonText: {
     color: '#5b4d61',
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Montserrat',
-  },
-  submitButtonContainer: {
-    ...Platform.select({
-      web: { minWidth: 200 },
-      default: { width: '100%' },
-    }),
   },
   submitPillButton: {
     width: '100%',
@@ -690,19 +582,6 @@ const styles = StyleSheet.create({
     color: '#6b5c73',
     fontSize: 14,
     textAlign: 'center',
-    fontFamily: 'Montserrat',
-  },
-  backButton: {
-    marginTop: 8,
-    backgroundColor: '#5a0061',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  backButtonText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '700',
     fontFamily: 'Montserrat',
   },
 })

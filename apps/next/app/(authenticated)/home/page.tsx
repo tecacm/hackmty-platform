@@ -1,3 +1,3 @@
 'use client'
 
-export { HomeScreen as default } from 'app/features/home/home-screen'
+export { AnnouncementsScreen as default } from 'app/features/announcements/announcements-screen'

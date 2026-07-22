@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
 })
 
-export function HomeScreen() {
+export function RoleApplicationScreen() {
   const { navigateTo, replaceTo } = useSmartNavigate();
   const { hasPermission, role, loading: permissionsLoading } = useUserPermissions();
   const [isWide, setIsWide] = useState(false);
