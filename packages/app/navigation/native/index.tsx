@@ -22,6 +22,8 @@ import { ProfileScreen } from 'app/features/profile/profile-screen'
 import { ApplicationScreen } from 'app/features/home/application-screen'
 import { TeamsScreen } from 'app/features/teams/teams-screen'
 import { AdminDashboardScreen } from 'app/features/admin/dashboard-screen'
+import { AnnouncementsScreen } from 'app/features/announcements/announcements-screen'
+import { CreateAnnouncementScreen } from 'app/features/announcements/create-announcement-screen'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { formFieldColors } from 'app/components/form-field-styles'
 
@@ -36,12 +38,15 @@ type StackParamList = {
   'complete-signup': undefined
   tabs: undefined
   application: { role?: string }
+  announcements: undefined
+  'create-announcement': undefined
   'user-detail': { id: string }
   admin: undefined
 }
 
 type TabParamList = {
   home: undefined
+  announcements: undefined
   profile: undefined
   teams: undefined
   admin: undefined
@@ -109,6 +114,9 @@ const TeamsScreenWithBackground = withNumbersBackground(TeamsScreen)
 const ApplicationScreenWithBackground = withNumbersBackground(ApplicationScreen)
 const UserDetailScreenWithBackground = withNumbersBackground(UserDetailScreen)
 const AdminDashboardScreenWithBackground = withNumbersBackground(AdminDashboardScreen)
+const AnnouncementsScreenWithBackground = withNumbersBackground(AnnouncementsScreen)
+const CreateAnnouncementScreenWithBackground = withNumbersBackground(CreateAnnouncementScreen)
+
 function AdminTabNavigator() {
   return (
     <AdminStack.Navigator
@@ -162,6 +170,25 @@ function TabNavigator() {
               android: {
                 type: 'materialSymbol',
                 name: 'assignment',
+              },
+            }) as any,
+          }}
+        />
+      )}
+      {hasPermission('announcements', 'view') && (
+        <Tab.Screen
+          name="announcements"
+          component={AnnouncementsScreenWithBackground}
+          options={{ 
+            tabBarLabel: 'Feed',
+            tabBarIcon: Platform.select({
+              ios: {
+                type: 'sfSymbol',
+                name: 'megaphone.fill',
+              },
+              android: {
+                type: 'materialSymbol',
+                name: 'campaign',
               },
             }) as any,
           }}
@@ -278,6 +305,32 @@ export function NativeNavigation() {
               headerShadowVisible: true,
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
               headerBackTitle: 'Application',
+            }}
+          />
+          <Stack.Screen 
+            name="announcements" 
+            component={AnnouncementsScreenWithBackground} 
+            options={{
+              headerTitleAlign: 'center',
+              headerShown: true,
+              headerLargeTitleEnabled: true,
+              headerTitle: 'Announcements Feed',
+              headerTransparent: Platform.OS === 'ios',
+              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
+              headerBackTitle: 'Back',
+            }}
+          />
+          <Stack.Screen 
+            name="create-announcement" 
+            component={CreateAnnouncementScreenWithBackground} 
+            options={{
+              headerTitleAlign: 'center',
+              headerShown: true,
+              headerLargeTitleEnabled: true,
+              headerTitle: 'New Announcement',
+              headerTransparent: Platform.OS === 'ios',
+              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
+              headerBackTitle: 'Cancel',
             }}
           />
           <Stack.Screen name="user-detail" component={UserDetailScreenWithBackground} options={{ title: 'User' }} />

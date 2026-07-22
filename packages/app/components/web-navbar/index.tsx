@@ -245,6 +245,27 @@ export function WebNavbar() {
               )}
             </Pressable>
           )}
+          {hasPermission('announcements', 'view') && (
+            <Pressable
+              onPress={() => navigateTo('/announcements')}
+              style={({ hovered }) => [
+                styles.navLink,
+                pathname === '/announcements' && styles.navLinkActive,
+              ]}
+            >
+              {({ hovered }) => (
+                <Text
+                  style={[
+                    styles.navLinkText,
+                    hovered && styles.navLinkTextHover,
+                    pathname === '/announcements' && styles.navLinkTextActive,
+                  ]}
+                >
+                  Announcements
+                </Text>
+              )}
+            </Pressable>
+          )}
           {hasPermission('applications', 'view_others') && (
             <Pressable
               onPress={() => navigateTo('/admin')}

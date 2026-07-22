@@ -23,7 +23,8 @@
       "./sdk-lockdown",
       "expo-splash-screen",
       "expo-status-bar",
-      "expo-notifications"
+      "expo-notifications",
+      ["expo-video", { "supportsBackgroundPlayback": false }]
     ],
     "android": {
       "package": "com.hackmty"

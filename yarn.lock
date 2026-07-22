@@ -5816,6 +5816,7 @@ __metadata:
     expo-notifications: "npm:~57.0.0"
     expo-splash-screen: "npm:~57.0.2"
     expo-status-bar: "npm:~57.0.0"
+    expo-video: "npm:~57.0.1"
     moti: "npm:^0.30.0"
     react: "npm:19.2.0"
     react-compiler-runtime: "npm:19.0.0-beta-3229e95-20250315"
@@ -6150,6 +6151,17 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10/91e602d21be4719979b9e0fa5df912d4fed4d9e927ecc8f6fdd336f785c6ac565826542ca562121138c441a41634a5368b1a3b0a91e3aa5bb2d13cd739307c84
+  languageName: node
+  linkType: hard
+
+"expo-video@npm:~57.0.1":
+  version: 57.0.1
+  resolution: "expo-video@npm:57.0.1"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 10/524854befecd4731d85ebe83328a9f69cdcb87818e6883e0b5a33b29d04185f94f85dd6a26d117c9b531e5acc8df559e46ce889bffcfdcc6d9768a803faae55d
   languageName: node
   linkType: hard
 

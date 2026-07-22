@@ -34,7 +34,7 @@ async function loadPermissions() {
   const generation = cacheGeneration
   const promise = (async () => {
     if (!isSupabaseConfigured) {
-      cachedPermissions = ['teams:create', 'teams:view', 'applications:view_others', 'applications:review', 'sponsor_portal:view']
+      cachedPermissions = ['teams:create', 'teams:view', 'applications:view_others', 'applications:review', 'sponsor_portal:view', 'announcements:view', 'announcements:create']
       cachedRole = 'admin'
       return
     }

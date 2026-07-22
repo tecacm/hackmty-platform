@@ -7,8 +7,9 @@ export interface AnnouncementParams {
   badge?: string
   targetTeamIds?: string[]
   targetRole?: string
+  targetRoles?: string[]
   targetUserIds?: string[]
-  channel?: 'both' | 'push' | 'email'
+  channel?: 'both' | 'push' | 'email' | 'none'
 }
 
 export interface ApplicationChangesParams {
@@ -30,10 +31,15 @@ export async function sendAnnouncement({
   badge = 'Announcement',
   targetTeamIds,
   targetRole,
+  targetRoles,
   targetUserIds,
   channel = 'both'
 }: AnnouncementParams) {
-  if (!isSupabaseConfigured) return
+  if (!isSupabaseConfigured || channel === 'none') return
+
+  const resolvedRole = targetRoles && targetRoles.length > 0 && targetRoles[0] !== 'all' 
+    ? targetRoles[0] 
+    : targetRole || 'all'
 
   try {
     const { data, error } = await supabase.functions.invoke('dispatch-notification', {
@@ -43,7 +49,7 @@ export async function sendAnnouncement({
         message: sanitizeString(message),
         badge: sanitizeString(badge),
         targetTeamIds,
-        targetRole,
+        targetRole: resolvedRole,
         targetUserIds,
         channel,
       }
