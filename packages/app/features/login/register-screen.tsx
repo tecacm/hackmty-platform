@@ -193,11 +193,12 @@ export function RegisterScreen() {
         return
       }
 
-      // Supabase returns no error and a null user/session when the email is
-      // already registered, instead of an error (to avoid leaking which
-      // emails exist). Some project configs instead return a user with an
-      // empty identities array for the same case, so check both.
-      if (!data.user || (data.user.identities && data.user.identities.length === 0)) {
+      // Supabase never returns a null user on a successful signUp call. For
+      // an already-registered email it instead returns a fake user with an
+      // empty (or missing) identities array, to avoid leaking which emails
+      // exist. A genuinely new signup always has at least one identity.
+      const identities = data.user?.identities
+      if (!identities || identities.length === 0) {
         setAuthError('An account with this email already exists. Please log in instead.')
         return
       }
