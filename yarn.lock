@@ -6836,6 +6836,7 @@ __metadata:
     expo-glass-effect: "npm:^57.0.1"
     expo-linear-gradient: "npm:57.0.1"
     expo-symbols: "npm:^57.0.1"
+    lucide-react: "npm:^1.26.0"
     react-hook-form: "npm:^7.82.0"
     react-native-gesture-handler: "npm:^3.1.0"
     react-native-reanimated: "npm:4.5.2"
@@ -8048,6 +8049,15 @@ __metadata:
   dependencies:
     yallist: "npm:^3.0.2"
   checksum: 10/951d2673dcc64a7fb888bf3d13bc2fdf923faca97d89cdb405ba3dfff77e2b26e5798d405e78fcd7094c9e7b8b4dab2ddc5a4f8a11928af24a207b7c738ca3f8
+  languageName: node
+  linkType: hard
+
+"lucide-react@npm:^1.26.0":
+  version: 1.26.0
+  resolution: "lucide-react@npm:1.26.0"
+  peerDependencies:
+    react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10/c7bc383b3b0061dc9e8105349dcdca10f03ce9f72ca6377b7db0f97dfbbfddac5166a778e7f6f250e145440e3a6f581fa6eec4bce89593a945a23ccb9ca338b9
   languageName: node
   linkType: hard
 

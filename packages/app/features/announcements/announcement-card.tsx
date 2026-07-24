@@ -13,6 +13,8 @@ interface AnnouncementCardProps {
   screenFocused?: boolean
 }
 
+import { AppIcon } from 'app/components/app-icon'
+
 function formatRelativeTime(dateString: string): string {
   try {
     const now = new Date()
@@ -185,7 +187,11 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
                   screenFocused={screenFocused && isInView}
                 />
                 <View style={styles.expandBadge}>
-                  <Text style={styles.expandBadgeIcon}>🔍</Text>
+                  <AppIcon
+                    name="arrow.up.left.and.arrow.down.right"
+                    color="#ffffff"
+                    size={14}
+                  />
                 </View>
               </>
             ) : (
@@ -193,7 +199,13 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
                 <View style={styles.bannerWatermark}>
                   <Text style={styles.bannerWatermarkText}>HACKMTY 2026</Text>
                 </View>
-                <Text style={styles.bannerIcon}>📣</Text>
+                <View style={{ marginBottom: 6 }}>
+                  <AppIcon
+                    name="megaphone.fill"
+                    color="#ffffff"
+                    size={36}
+                  />
+                </View>
                 <Text style={styles.bannerTitleText} numberOfLines={2}>
                   {announcement.title}
                 </Text>
@@ -258,13 +270,19 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
             {/* Like Heart Button */}
             <Pressable
               onPress={handleLikePress}
+              accessibilityRole="button"
+              accessibilityLabel={liked ? "Unlike announcement" : "Like announcement"}
               style={({ hovered }: any) => [
                 styles.likeButton,
                 liked && styles.likeButtonActive,
                 hovered && styles.likeButtonHovered,
               ]}
             >
-              <Text style={styles.heartIcon}>{liked ? '❤️' : '🤍'}</Text>
+              <AppIcon
+                name={liked ? 'heart.fill' : 'heart'}
+                color={liked ? '#7a47a2' : '#8c7b8e'}
+                size={16}
+              />
               <Text style={[styles.likeCountText, liked && styles.likeCountTextActive]}>
                 {likesCount}
               </Text>
@@ -301,9 +319,15 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
             >
               <Pressable
                 onPress={closeFullscreen}
+                accessibilityRole="button"
+                accessibilityLabel="Close media preview"
                 style={styles.modalCloseButton}
               >
-                <Text style={styles.modalCloseText}>✕</Text>
+                <AppIcon
+                  name="xmark"
+                  color="#ffffff"
+                  size={20}
+                />
               </Pressable>
 
               {modalMediaMounted && (
@@ -584,8 +608,8 @@ const styles = StyleSheet.create({
     }),
   },
   likeButtonActive: {
-    backgroundColor: '#ffe6eb',
-    borderColor: '#ff4d6d',
+    backgroundColor: '#f3e8f8',
+    borderColor: '#7a47a2',
   },
   likeButtonHovered: {
     backgroundColor: '#f0e6f2',
@@ -600,7 +624,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
   },
   likeCountTextActive: {
-    color: '#ff4d6d',
+    color: '#7a47a2',
   },
   modalBackdrop: {
     flex: 1,

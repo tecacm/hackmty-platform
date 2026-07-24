@@ -57,8 +57,6 @@ type TabParamList = {
 const Stack = createNativeStackNavigator<StackParamList>()
 const Tab = createBottomTabNavigator<TabParamList>() // Using the native tab navigator
 
-const AdminStack = createNativeStackNavigator()
-
 function NumbersBackground({ children }: { children: ReactNode }) {
   const insets = useSafeArea()
   const { width } = useWindowDimensions()
@@ -121,6 +119,8 @@ const CreateAnnouncementScreenWithBackground = withNumbersBackground(CreateAnnou
 
 const HomeStack = createNativeStackNavigator()
 const ApplicationsStack = createNativeStackNavigator()
+const ProfileStack = createNativeStackNavigator()
+const AdminStack = createNativeStackNavigator()
 
 function HomeNavigator() {
   return (
@@ -170,6 +170,25 @@ function ApplicationsNavigator() {
         }}
       />
     </ApplicationsStack.Navigator>
+  )
+}
+
+function ProfileNavigator() {
+  return (
+    <ProfileStack.Navigator>
+      <ProfileStack.Screen
+        name="profile-main"
+        component={ProfileScreenWithBackground}
+        options={{
+          headerTitleAlign: 'center',
+          headerShown: true,
+          headerLargeTitleEnabled: true,
+          headerTitle: '',
+          headerTransparent: Platform.OS === 'ios',
+          headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
+        }}
+      />
+    </ProfileStack.Navigator>
   )
 }
 
@@ -265,8 +284,9 @@ function TabNavigator() {
       {/* 4th Tab: Profile */}
       <Tab.Screen
         name="profile"
-        component={ProfileScreenWithBackground}
+        component={ProfileNavigator}
         options={{ 
+          headerShown: false,
           tabBarLabel: 'Profile',
           tabBarIcon: Platform.select({
             ios: {
@@ -355,7 +375,6 @@ export function NativeNavigation() {
             options={{
               headerTitleAlign: 'center',
               headerShown: true,
-              headerLargeTitleEnabled: true,
               headerTransparent: Platform.OS === 'ios',
               headerShadowVisible: true,
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
@@ -368,7 +387,6 @@ export function NativeNavigation() {
             options={{
               headerTitleAlign: 'center',
               headerShown: true,
-              headerLargeTitleEnabled: true,
               headerTitle: 'New Announcement',
               headerTransparent: Platform.OS === 'ios',
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
@@ -382,7 +400,6 @@ export function NativeNavigation() {
             options={{
               headerTitleAlign: 'center',
               headerShown: true,
-              headerLargeTitleEnabled: true,
               headerTitle: 'Review Portal',
               headerTransparent: Platform.OS === 'ios',
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',

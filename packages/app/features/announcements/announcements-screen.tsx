@@ -28,6 +28,8 @@ try {
   }
 } catch (_) {}
 
+import { AppIcon } from 'app/components/app-icon'
+
 export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
   const { announcements, userLikes, loading, refreshing, refresh, toggleLike } = useAnnouncements()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
@@ -61,7 +63,7 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
       <View style={styles.contentContainer}>
         <Text style={styles.heading}>Announcements</Text>
         <View style={styles.unauthorizedCard}>
-          <Text style={styles.unauthorizedIcon}>🔒</Text>
+          <AppIcon name="lock.fill" color="#1d041f" size={36} />
           <Text style={styles.unauthorizedTitle}>Access Restricted</Text>
           <Text style={styles.unauthorizedText}>
             You do not have permission to view the announcements feed.
@@ -102,7 +104,7 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
       <View style={styles.contentContainer}>
         {announcements.length === 0 ? (
           <View style={styles.emptyStateContainer}>
-            <Text style={styles.emptyStateIcon}>📸</Text>
+            <AppIcon name="camera.fill" color="#5a0061" size={44} />
             <Text style={styles.emptyStateTitle}>No announcements yet</Text>
             <Text style={styles.emptyStateText}>
               Check back soon! Official updates, schedule changes, and alerts will appear here.
