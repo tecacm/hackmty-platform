@@ -61,8 +61,8 @@ const AdminStack = createNativeStackNavigator()
 
 function NumbersBackground({ children }: { children: ReactNode }) {
   const insets = useSafeArea()
-  const headerHeight = useHeaderHeightSafe()
   const { width } = useWindowDimensions()
+  const topOffset = insets.top - 20
 
   return (
     <ParallaxScrollView
@@ -83,7 +83,7 @@ function NumbersBackground({ children }: { children: ReactNode }) {
       contentContainerStyle={{
         alignItems: 'center',
         gap: 16,
-        paddingTop: Platform.OS === 'web' ? 104 : Math.max(headerHeight, insets.top) + 16,
+        paddingTop: Platform.OS === 'web' ? 104 : topOffset,
         paddingBottom: insets.bottom + 40,
         paddingLeft: insets.left,
         paddingRight: insets.right,
@@ -119,6 +119,60 @@ const AdminDashboardScreenWithBackground = withNumbersBackground(AdminDashboardS
 const AnnouncementsScreenWithBackground = withNumbersBackground(AnnouncementsScreen)
 const CreateAnnouncementScreenWithBackground = withNumbersBackground(CreateAnnouncementScreen)
 
+const HomeStack = createNativeStackNavigator()
+const ApplicationsStack = createNativeStackNavigator()
+
+function HomeNavigator() {
+  return (
+    <HomeStack.Navigator>
+      <HomeStack.Screen
+        name="announcements-feed"
+        component={AnnouncementsScreenWithBackground}
+        options={{
+          headerTitleAlign: 'center',
+          headerShown: true,
+          headerLargeTitleEnabled: true,
+          headerTitle: 'Announcements',
+          headerTransparent: Platform.OS === 'ios',
+          headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
+        }}
+      />
+    </HomeStack.Navigator>
+  )
+}
+
+function ApplicationsNavigator() {
+  return (
+    <ApplicationsStack.Navigator>
+      <ApplicationsStack.Screen
+        name="applications-form"
+        component={RoleApplicationScreenWithBackground}
+        options={{
+          headerTitleAlign: 'center',
+          headerShown: true,
+          headerLargeTitleEnabled: true,
+          headerTitle: 'Role Application',
+          headerTransparent: Platform.OS === 'ios',
+          headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
+        }}
+      />
+      <ApplicationsStack.Screen
+        name="application"
+        component={ApplicationScreenWithBackground}
+        options={{
+          headerTitleAlign: 'center',
+          headerShown: true,
+          headerLargeTitleEnabled: true,
+          headerTransparent: Platform.OS === 'ios',
+          headerShadowVisible: true,
+          headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
+          headerBackButtonDisplayMode: 'minimal',
+        }}
+      />
+    </ApplicationsStack.Navigator>
+  )
+}
+
 function AdminNavigator() {
   return (
     <AdminStack.Navigator screenOptions={{ headerShown: false }}>
@@ -141,14 +195,16 @@ function TabNavigator() {
         },
         tabBarActiveTintColor: '#c2b75f',
         tabBarInactiveTintColor: '#a3a3a3',
+        tabBarMinimizeBehavior: 'onScrollDown'      
       }}
     >
       {/* 1st Tab: Feed / Announcements */}
       {hasPermission('announcements', 'view') && (
         <Tab.Screen
           name="home"
-          component={AnnouncementsScreenWithBackground}
+          component={HomeNavigator}
           options={{ 
+            headerShown: false,
             tabBarLabel: 'Feed',
             tabBarIcon: Platform.select({
               ios: {
@@ -168,7 +224,7 @@ function TabNavigator() {
       {showApplicationTab && (
         <Tab.Screen
           name="applications"
-          component={RoleApplicationScreenWithBackground}
+          component={ApplicationsNavigator}
           options={{ 
             tabBarLabel: 'Application',
             tabBarIcon: Platform.select({
@@ -292,21 +348,7 @@ export function NativeNavigation() {
     >
       {isAuthenticated ? (
         <>
-          <Stack.Screen name="tabs" component={TabNavigator} options={{ headerShown: false }} />
-          <Stack.Screen 
-            name="applications" 
-            component={RoleApplicationScreenWithBackground} 
-            options={{
-              headerTitleAlign: 'center',
-              headerShown: true,
-              headerLargeTitleEnabled: true,
-              headerTitle: 'Applications',
-              headerTransparent: Platform.OS === 'ios',
-              headerShadowVisible: true,
-              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
-              headerBackTitle: 'Feed',
-            }}
-          />
+          <Stack.Screen name="tabs" component={TabNavigator} options={{ headerShown: false }} />          
           <Stack.Screen 
             name="application" 
             component={ApplicationScreenWithBackground} 
@@ -317,22 +359,9 @@ export function NativeNavigation() {
               headerTransparent: Platform.OS === 'ios',
               headerShadowVisible: true,
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : formFieldColors.theme,
-              headerBackTitle: 'Back',
+              headerBackButtonDisplayMode: 'minimal',
             }}
-          />
-          <Stack.Screen 
-            name="announcements" 
-            component={AnnouncementsScreenWithBackground} 
-            options={{
-              headerTitleAlign: 'center',
-              headerShown: true,
-              headerLargeTitleEnabled: true,
-              headerTitle: 'Announcements Feed',
-              headerTransparent: Platform.OS === 'ios',
-              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
-              headerBackTitle: 'Back',
-            }}
-          />
+          />        
           <Stack.Screen 
             name="create-announcement" 
             component={CreateAnnouncementScreenWithBackground} 

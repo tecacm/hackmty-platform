@@ -267,7 +267,7 @@ export function RoleApplicationScreen() {
     if (role === 'user' || role === 'admin') {
       return app.status === 'submitted' || app.status === 'accepted' || app.status === 'rejected' || app.status === 'changes_requested'
     }
-    return app.status === 'accepted' || app.status === 'rejected'
+    return app.status === 'accepted' || app.status === 'confirmed' || app.status === 'rejected'
   })
   const activeRoleIds = userApps.map(app => app.application_type_id)
   const availableRoles = rolesList.filter(role => !activeRoleIds.includes(role.id))

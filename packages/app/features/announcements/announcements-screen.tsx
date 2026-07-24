@@ -13,6 +13,7 @@ import { formFieldColors } from 'app/components/form-field-styles'
 import { AnnouncementCard } from './announcement-card'
 import { PillButton } from 'app/components/pill-button'
 import { Pressable } from 'react-native'
+import { useAnnouncementsNavHeader } from './use-announcements-nav-header'
 
 // useIsFocused detects when this tab screen is no longer active.
 // On web, @react-navigation/native may not provide useIsFocused,
@@ -27,7 +28,7 @@ try {
   }
 } catch (_) {}
 
-export function AnnouncementsScreen() {
+export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
   const { announcements, userLikes, loading, refreshing, refresh, toggleLike } = useAnnouncements()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
   const { navigateTo } = useSmartNavigate()
@@ -40,9 +41,11 @@ export function AnnouncementsScreen() {
     refresh()
   }, [refresh])
 
-  const handleCreatePress = () => {
+  const handleCreatePress = React.useCallback(() => {
     navigateTo('/announcements/create')
-  }
+  }, [navigateTo])
+
+  useAnnouncementsNavHeader(navigation, canCreate, handleCreatePress)
 
   if (permissionsLoading || (loading && announcements.length === 0)) {
     return (
@@ -69,31 +72,33 @@ export function AnnouncementsScreen() {
   }
 
   return (
-    <View style={styles.screenWrapper}>
-      {/* Sticky Top Header Toolbar - Remains pinned at top during scroll (Apple HIG Toolbar Pattern) */}
-      <View style={styles.stickyHeaderContainer}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerTitleCol}>
-            <Text style={styles.heading}>Announcements</Text>
-            <Text style={styles.subheading}>
-              Live timeline & official updates from HackMTY staff
-            </Text>
-          </View>
-
-          {canCreate && (
-            <View style={styles.createButtonContainer}>
-              <PillButton
-                title="+ Post"
-                onPress={handleCreatePress}
-                variant="primary"
-                additionalStyle={styles.createPillButton}
-              />
+    <View style={[styles.container, { width: '90%', maxWidth: 1000 }]}>      
+      {/* Sticky Top Header Toolbar - Web only. Native platforms use the native navigation header and pencil toolbar item */}
+      {Platform.OS === 'web' && (
+        <View style={styles.stickyHeaderContainer}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerTitleCol}>
+              <Text style={styles.heading}>Announcements</Text>
+              <Text style={styles.subheading}>
+                Live timeline & official updates from HackMTY staff
+              </Text>
             </View>
-          )}
-        </View>
-      </View>
 
-      {/* Timeline Feed Container */}
+            {canCreate && (
+              <View style={styles.createButtonContainer}>
+                <PillButton
+                  title="+ Post"
+                  onPress={handleCreatePress}
+                  variant="primary"
+                  additionalStyle={styles.createPillButton}
+                />
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Timeline Feed Tinted Container */}
       <View style={styles.contentContainer}>
         {announcements.length === 0 ? (
           <View style={styles.emptyStateContainer}>
@@ -128,12 +133,10 @@ export function AnnouncementsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screenWrapper: {
-    width: '100%',
-    flex: 1,
-    position: 'relative',
+  container: {
+    overflow: 'visible',
     alignItems: 'center',
-    paddingHorizontal: Platform.OS === 'web' ? 0 : 12,
+    justifyContent: 'center',
   },
   centerContainer: {
     flex: 1,

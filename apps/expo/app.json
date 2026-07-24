@@ -24,7 +24,13 @@
       "expo-splash-screen",
       "expo-status-bar",
       "expo-notifications",
-      ["expo-video", { "supportsBackgroundPlayback": false }]
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false
+        }
+      ],
+      "expo-font"
     ],
     "android": {
       "package": "com.hackmty"

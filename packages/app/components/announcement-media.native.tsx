@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { View, Image, StyleSheet, Text, Platform, AppState } from 'react-native'
+import { View, StyleSheet, Text, Platform, AppState } from 'react-native'
 import type { AppStateStatus } from 'react-native'
+import { SolitoImage } from 'solito/image'
 
 interface AnnouncementMediaProps {
   url: string
@@ -102,7 +103,7 @@ function ExpoAVVideoComponent({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// expo-video component using createVideoPlayer for FULL manual lifecycle
+// expo-video component using createVideoPlayer with mount-scoped lifecycle
 // ─────────────────────────────────────────────────────────────────────────────
 let ExpoVideoViewNative: any = null
 let createExpoVideoPlayer: any = null
@@ -112,12 +113,6 @@ try {
   createExpoVideoPlayer = expoVideo.createVideoPlayer
 } catch (_) {}
 
-/**
- * Uses createVideoPlayer (NOT useVideoPlayer) so we have 100% manual control
- * over player.pause(), player.replace(null), and player.release().
- * This avoids the known useVideoPlayer cleanup regression on recent SDK versions
- * where the JS wrapper is GC'd but native AVPlayer keeps running.
- */
 function ExpoVideoNativeComponent({
   url,
   style,
@@ -137,9 +132,12 @@ function ExpoVideoNativeComponent({
 }) {
   const isPreview = !controls
   const contentFit = resizeMode === 'contain' ? 'contain' : 'cover'
+  const [player, setPlayer] = useState<any>(null)
 
-  // Create the player once with persistent disk caching enabled
-  const [player] = useState(() => {
+  // Re-create player on mount/url change, and explicitly kill + release native player on unmount.
+  // This prevents background audio leaks when modals close while ensuring clean re-instantiation on tab remounts.
+  useEffect(() => {
+    if (!url) return
     const source = typeof url === 'string' ? { uri: url, useCaching: true } : url
     const p = createExpoVideoPlayer(source)
     try {
@@ -147,8 +145,25 @@ function ExpoVideoNativeComponent({
       p.muted = isPreview || muted
       p.volume = (isPreview || muted) ? 0 : 1.0
     } catch (_) {}
-    return p
-  })
+    setPlayer(p)
+
+    return () => {
+      try {
+        p.pause()
+      } catch (_) {}
+      try {
+        p.muted = true
+        p.volume = 0
+      } catch (_) {}
+      try {
+        p.replace(null)
+      } catch (_) {}
+      try {
+        p.release()
+      } catch (_) {}
+      setPlayer(null)
+    }
+  }, [url])
 
   // Compute effective states
   const shouldBeSilent = isPreview || muted || paused || !screenFocused
@@ -184,29 +199,7 @@ function ExpoVideoNativeComponent({
     return () => sub?.remove()
   }, [player])
 
-  // CLEANUP: This is the critical path.
-  // On unmount: pause → mute → clear source → release native player.
-  // We use createVideoPlayer so WE own the lifecycle, not React hooks.
-  useEffect(() => {
-    return () => {
-      if (!player) return
-      try {
-        player.pause()
-      } catch (_) {}
-      try {
-        player.muted = true
-        player.volume = 0
-      } catch (_) {}
-      try {
-        // replace(null) clears the native AVPlayer source, stopping all audio/video
-        player.replace(null)
-      } catch (_) {}
-      try {
-        // release() destroys the native SharedObject
-        player.release()
-      } catch (_) {}
-    }
-  }, [player])
+  if (!player) return null
 
   return (
     <View style={[style, { overflow: 'hidden' }]} pointerEvents={controls ? 'auto' : 'none'}>
@@ -278,11 +271,13 @@ export function AnnouncementMedia({
     )
   }
 
+  const contentFit = resizeMode === 'contain' ? 'contain' : 'cover'
   return (
-    <Image
-      source={{ uri: url }}
+    <SolitoImage
+      src={url}
       style={style}
-      resizeMode={resizeMode}
+      contentFit={contentFit}
+      alt=""
     />
   )
 }
