@@ -9,7 +9,7 @@
     "@react-navigation/native": "8.0.0-alpha.35",
     "@react-navigation/native-stack": "8.0.0-alpha.41",
     "@supabase/ssr": "^0.12.0",
-    "@supabase/supabase-js": "^2.106.1",
+    "@supabase/supabase-js": "^2.110.8",
     "dripsy": "^4.3.3",
     "expo-blur": "^55.0.13",
     "expo-document-picker": "~14.0.7",

@@ -200,6 +200,15 @@ export function RegisterScreen() {
         return
       }
 
+      // With email confirmation enabled, Supabase may return an obfuscated
+      // user with an explicitly empty identities array for an existing
+      // account. Some successful new-signup responses omit identities, so
+      // a missing property must not be treated as an existing account.
+      if (data.user?.identities?.length === 0) {
+        setAuthError('An account with this email already exists. Please log in instead.')
+        return
+      }
+
       shouldNavigate = true
     } catch (err: any) {
       if (err?.digest?.startsWith?.('NEXT_REDIRECT') || err?.message === 'NEXT_REDIRECT') {
