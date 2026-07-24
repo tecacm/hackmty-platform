@@ -193,12 +193,11 @@ export function RegisterScreen() {
         return
       }
 
-      // Supabase never returns a null user on a successful signUp call. For
-      // an already-registered email it instead returns a fake user with an
-      // empty (or missing) identities array, to avoid leaking which emails
-      // exist. A genuinely new signup always has at least one identity.
-      const identities = data.user?.identities
-      if (!identities || identities.length === 0) {
+      // With email confirmation enabled, Supabase may return an obfuscated
+      // user with an explicitly empty identities array for an existing
+      // account. Some successful new-signup responses omit identities, so
+      // a missing property must not be treated as an existing account.
+      if (data.user?.identities?.length === 0) {
         setAuthError('An account with this email already exists. Please log in instead.')
         return
       }
