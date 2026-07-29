@@ -13,7 +13,7 @@ type StyledSelectProps = {
   required?: boolean
   options: SelectOption[]
   onValueChange: (value: string) => void
-  subtitle?: string
+  subtitle?: React.ReactNode | string
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
 }
 
@@ -72,7 +72,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
           ))}
         </select>
       </View>
-      {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
+      {subtitle && (typeof subtitle === 'string' ? <Text style={formFieldStyles.helperText}>{subtitle}</Text> : subtitle)}
       {error && <Text style={formFieldStyles.errorText}>{error}</Text>}
     </View>
   )

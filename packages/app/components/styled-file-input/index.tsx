@@ -8,8 +8,10 @@ type StyledFileInputProps = {
   value?: string
   placeholder?: string
   error?: string
-  subtitle?: string
+  subtitle?: React.ReactNode | string
   required?: boolean
+  bucketName?: string
+  fileNamePrefix?: string
   fileSelectorProps?: FileSelectorProps
   onValueChange: (value: string) => void
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
@@ -66,6 +68,8 @@ export function StyledFileInput({
   error,
   subtitle,
   required = false,
+  bucketName = 'resumes',
+  fileNamePrefix = 'resume',
   fileSelectorProps = {},
   onValueChange,
   additionalStyle = {},
@@ -158,11 +162,11 @@ export function StyledFileInput({
             }
 
             const fileExt = file.name.split('.').pop()
-            const filePath = `${user.id}/resume.${fileExt}`
+            const filePath = `${user.id}/${fileNamePrefix}.${fileExt}`
 
             // Upload the file payload directly to storage
             const { error: uploadError } = await supabase.storage
-              .from('resumes')
+              .from(bucketName)
               .upload(filePath, file, { upsert: true })
 
             if (uploadError) throw uploadError
@@ -179,7 +183,7 @@ export function StyledFileInput({
           }
         }}
       />
-      {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
+      {subtitle && (typeof subtitle === 'string' ? <Text style={formFieldStyles.helperText}>{subtitle}</Text> : subtitle)}
       {!!(localError || error) && <Text style={formFieldStyles.errorText}>{localError || error}</Text>}
     </View>
   )

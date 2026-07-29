@@ -393,7 +393,18 @@ export function NativeNavigation() {
               headerBackTitle: 'Cancel',
             }}
           />
-          <Stack.Screen name="user-detail" component={UserDetailScreenWithBackground} options={{ title: 'User' }} />
+          <Stack.Screen name="user-detail" 
+          component={UserDetailScreenWithBackground} 
+          options={{
+              headerTitleAlign: 'center',
+              headerShown: true,
+              headerTitle: 'User',
+              headerTransparent: Platform.OS === 'ios',
+              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
+              headerBackButtonDisplayMode: 'minimal',
+            }
+            } 
+          />
           <Stack.Screen 
             name="admin" 
             component={AdminDashboardScreenWithBackground}

@@ -12,7 +12,7 @@ type StyledSegmentedProps = {
   value?: string
   options: SegmentedOption[]
   error?: string
-  subtitle?: string
+  subtitle?: React.ReactNode | string
   required?: boolean
   onValueChange: (value: string) => void
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
@@ -85,7 +85,7 @@ export function StyledSegmented({
           )
         })}
       </View>
-      {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
+      {subtitle && (typeof subtitle === 'string' ? <Text style={formFieldStyles.helperText}>{subtitle}</Text> : subtitle)}
       {error && <Text style={formFieldStyles.errorText}>{error}</Text>}
     </View>
   )

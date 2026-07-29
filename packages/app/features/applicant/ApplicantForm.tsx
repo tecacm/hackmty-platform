@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, ReactNode, createElement } from 'react'
-import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native'
+import { View, Text, StyleSheet, useWindowDimensions, Platform, Linking, Pressable } from 'react-native'
 import { useForm, Controller } from 'react-hook-form'
 import { TextLink } from 'solito/link'
 import { StyledInput } from 'app/components/styled-input'
@@ -13,7 +13,7 @@ import { PillButton } from 'app/components/pill-button'
 import { getApplicantFieldsForRole, type ApplicantField } from './applicant-field-config'
 import applicationFieldsConfig from 'app/data/application-fields.json'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
-import { formFieldColors } from 'app/components/form-field-styles'
+import { formFieldColors, formFieldStyles } from 'app/components/form-field-styles'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 
 type ApplicantFormProps = {
@@ -107,30 +107,37 @@ const createMLHLink = (text: string, href: string) =>
   )
 
 // Helper function to build React components from composite label definitions
-const buildCompositeLabel = (labelDef: any, systemLinks: Record<string, { text: any; href: string }> = {}): ReactNode => {
+const buildCompositeLabel = (labelDef: any, systemLinks: Record<string, { text: any; href: string }> = {}, baseStyle?: any): ReactNode => {
   if (!labelDef) return ''
   if (typeof labelDef === 'string') return labelDef
+  if (typeof labelDef === 'object' && labelDef !== null && labelDef.en) {
+    if (typeof labelDef.en === 'string') return labelDef.en
+    labelDef = labelDef.en
+  }
   if (!labelDef.parts) return ''
-  
-  const titleColor = formFieldColors.titleText
   
   const parts = labelDef.parts.map((part: any) => {
     if (part.type === 'text') return part.content
     if (part.type === 'space') return ' '
-    if (part.type === 'link' && part.linkRef) {
-      const linkDef = systemLinks[part.linkRef] || (applicationFieldsConfig.links as any)[part.linkRef]
-      if (!linkDef) return part.linkRef
-      const linkText = typeof linkDef.text === 'object' && linkDef.text !== null
-        ? (linkDef.text.en || linkDef.text)
-        : linkDef.text
-      return createMLHLink(linkText, linkDef.href)
+    if (part.type === 'link') {
+      let href = part.href
+      let linkText = part.text
+      if (part.linkRef) {
+        const linkDef = systemLinks[part.linkRef] || (applicationFieldsConfig.links as any)[part.linkRef]
+        if (linkDef) {
+          href = href || linkDef.href
+          linkText = linkText || (typeof linkDef.text === 'object' ? (linkDef.text.en || linkDef.text) : linkDef.text)
+        }
+      }
+      if (!href) return linkText || part.linkRef || ''
+      return createMLHLink(linkText || href, href)
     }
     return null
   }).filter(Boolean)
   
   return createElement(
     Text,
-    { style: { color: titleColor } },
+    { style: baseStyle },
     ...parts
   )
 }
@@ -241,7 +248,17 @@ export function ApplicantForm({
     if (!field.dependsOn) return true
     if (!roleFieldNames.has(field.dependsOn.field)) return true
     const dependentValue = (currentValues as Record<string, unknown>)[field.dependsOn.field]
-    return dependentValue === field.dependsOn.value
+    if (dependentValue === undefined || dependentValue === null || dependentValue === '') return false
+
+    const op = field.dependsOn.operator || '=='
+    const targetVal = field.dependsOn.value
+
+    if (op === '<') return Number(dependentValue) < Number(targetVal)
+    if (op === '<=') return Number(dependentValue) <= Number(targetVal)
+    if (op === '>') return Number(dependentValue) > Number(targetVal)
+    if (op === '>=') return Number(dependentValue) >= Number(targetVal)
+    if (op === '!=' || op === '!==') return String(dependentValue) !== String(targetVal)
+    return String(dependentValue) === String(targetVal)
   })
 
   const sectionMap = new Map<string, { key: string; id: string; label: string; order: number; fields: typeof fields }>()
@@ -379,9 +396,19 @@ export function ApplicantForm({
               if (row.type === 'divider') {
                 const f: any = row.field
                 if (f.fieldType === 'paragraph') {
+                  const contentNode = typeof f.content === 'object' && f.content !== null
+                    ? buildCompositeLabel(f.content, systemLinks, styles.paragraphText)
+                    : typeof f.label === 'object' && f.label !== null
+                    ? buildCompositeLabel(f.label, systemLinks, styles.paragraphText)
+                    : f.content || f.label
+
                   return (
                     <View key={`${sectionKey}-${rowIndex}-paragraph`} style={styles.paragraphRow}>
-                      <Text style={styles.paragraphText}>{f.content}</Text>
+                      {typeof contentNode === 'string' ? (
+                        <Text style={styles.paragraphText}>{contentNode}</Text>
+                      ) : (
+                        contentNode
+                      )}
                     </View>
                   )
                 }
@@ -401,8 +428,12 @@ export function ApplicantForm({
 
                     const ff: any = field
                     const resolvedLabel = typeof ff.label === 'object' && ff.label !== null
-                      ? buildCompositeLabel(ff.label, systemLinks)
+                      ? buildCompositeLabel(ff.label, systemLinks, { color: formFieldColors.titleText })
                       : ff.label
+
+                    const resolvedSubtitle = typeof ff.subtitle === 'object' && ff.subtitle !== null
+                      ? buildCompositeLabel(ff.subtitle, systemLinks, formFieldStyles.helperText)
+                      : ff.subtitle
 
                     const displayLabelString = typeof ff.label === 'string' ? ff.label : (ff.validationLabel ?? 'This field')
 
@@ -419,7 +450,7 @@ export function ApplicantForm({
                                 <FormCheckbox
                                   variant="form"
                                   label={resolvedLabel}
-                                  subtitle={ff.subtitle}
+                                  subtitle={resolvedSubtitle}
                                   required={!!ff.required}
                                   value={checked}
                                   onValueChange={(v) => onChange(v)}
@@ -442,7 +473,7 @@ export function ApplicantForm({
                                   options={ff.options || []}
                                   multiple={!!ff.multiple}
                                   layout={ff.layout || 'vertical'}
-                                  subtitle={ff.subtitle}
+                                  subtitle={resolvedSubtitle}
                                   value={radioValue}
                                   onChange={(next: any) => onChange(next)}
                                   required={!!ff.required}
@@ -462,7 +493,7 @@ export function ApplicantForm({
                                   value={controlledValue}
                                   placeholder={ff.placeholder}
                                   options={ff.options}
-                                  subtitle={ff.subtitle}
+                                  subtitle={resolvedSubtitle}
                                   required={ff.required}
                                   onValueChange={(nextValue: any) => onChange(nextValue)}
                                   additionalStyle={styles.inputShadow}
@@ -476,7 +507,7 @@ export function ApplicantForm({
                                 <StyledAutocomplete
                                   label={resolvedLabel}
                                   placeholder={ff.placeholder}
-                                  subtitle={ff.subtitle}
+                                  subtitle={resolvedSubtitle}
                                   required={ff.required}
                                   textContentType={ff.textContentType as any}
                                   additionalStyle={styles.inputShadow}
@@ -494,7 +525,7 @@ export function ApplicantForm({
                                   label={resolvedLabel}
                                   value={controlledValue}
                                   options={ff.options}
-                                  subtitle={ff.subtitle}
+                                  subtitle={resolvedSubtitle}
                                   required={ff.required}
                                   onValueChange={(nextValue: any) => onChange(nextValue)}
                                   additionalStyle={styles.inputShadow}
@@ -504,18 +535,24 @@ export function ApplicantForm({
                             }
 
                             if (ff.fieldType === 'file') {
+                              const bucketName = (ff as any).bucketName || (ff as any).ui_metadata?.bucketName || 'resumes'
+                              const fileNamePrefix = (ff as any).fileNamePrefix || (ff as any).ui_metadata?.fileNamePrefix || ff.name
                               return (
-                                <StyledFileInput
-                                  label={resolvedLabel}
-                                  value={controlledValue}
-                                  placeholder={ff.placeholder}
-                                  subtitle={ff.subtitle}
-                                  required={ff.required}
-                                  fileSelectorProps={ff.fileSelectorProps}
-                                  onValueChange={(nextValue: any) => onChange(nextValue)}
-                                  additionalStyle={styles.inputShadow}
-                                  error={(errors as any)[ff.name]?.message}
-                                />
+                                <View style={{ width: '100%' }}>
+                                  <StyledFileInput
+                                    label={resolvedLabel}
+                                    value={controlledValue}
+                                    placeholder={ff.placeholder}
+                                    subtitle={resolvedSubtitle}
+                                    required={ff.required}
+                                    bucketName={bucketName}
+                                    fileNamePrefix={fileNamePrefix}
+                                    fileSelectorProps={ff.fileSelectorProps}
+                                    onValueChange={(nextValue: any) => onChange(nextValue)}
+                                    additionalStyle={styles.inputShadow}
+                                    error={(errors as any)[ff.name]?.message}
+                                  />
+                                </View>
                               )
                             }
 
@@ -523,7 +560,7 @@ export function ApplicantForm({
                               <StyledInput
                                 label={resolvedLabel}
                                 placeholder={ff.placeholder}
-                                subtitle={ff.subtitle}
+                                subtitle={resolvedSubtitle}
                                 required={ff.required}
                                 textContentType={ff.textContentType as any}
                                 height={ff.height}
@@ -696,5 +733,31 @@ const styles = StyleSheet.create({
   submitButton: {
     flex: 1,
     maxWidth: 200,
+  },
+  downloadBanner: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    gap: 10,
+  },
+  downloadBannerText: {
+    color: formFieldColors.titleText,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  downloadBtn: {
+    backgroundColor: '#4f46e5',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  downloadBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 })

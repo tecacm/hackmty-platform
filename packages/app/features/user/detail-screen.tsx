@@ -18,6 +18,8 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { notifyApplicantOnStatusChanged, notifyTeamOnChangesRequested } from 'app/services/notification-service'
 import { useParams, useSearchParams } from 'solito/navigation'
 import { PillButton } from 'app/components/pill-button'
+import { DocumentPreview } from 'app/components/document-preview'
+import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { sanitizeString } from 'app/utils/sanitization'
 
 interface Application {
@@ -37,6 +39,7 @@ interface Application {
 }
 
 export function UserDetailScreen() {
+  const insets = useSafeArea()
   const params = useParams()
   const searchParams = useSearchParams()
   const userId = params?.userId || params?.id
@@ -61,6 +64,8 @@ export function UserDetailScreen() {
   const [updatingApp, setUpdatingApp] = useState(false)
   const [resumeUrl, setResumeUrl] = useState<string | null>(null)
   const [loadingResume, setLoadingResume] = useState(false)
+  const [permissionSlipUrl, setPermissionSlipUrl] = useState<string | null>(null)
+  const [guardianIdUrl, setGuardianIdUrl] = useState<string | null>(null)
 
   // Layout sizing
   const { width } = useWindowDimensions()
@@ -216,11 +221,26 @@ export function UserDetailScreen() {
         updatedFeedback = updatedFeedback.map(f => !f.resolved_at ? { ...f, resolved_at: new Date().toISOString() } : f)
       }
 
+      const updatedAnswers = app.answers ? { ...app.answers } : {}
+      if (status === 'accepted' || status === 'rejected') {
+        const guardianIdPath = app.answers?.guardianId
+        if (guardianIdPath) {
+          if (isSupabaseConfigured) {
+            await supabase.storage
+              .from('guardian-ids')
+              .remove([guardianIdPath])
+              .catch(e => console.warn('Failed to delete guardian ID from storage:', e))
+          }
+          delete updatedAnswers.guardianId
+        }
+      }
+
       if (isSupabaseConfigured) {
         const { error: updateErr } = await supabase
           .from('applications')
           .update({
             status,
+            answers: updatedAnswers,
             admin_feedback: updatedFeedback,
             updated_at: new Date().toISOString()
           })
@@ -242,10 +262,13 @@ export function UserDetailScreen() {
       // Update local state array
       setUserApps(prev => prev.map(a => {
         if (a.id === app.id) {
-          return { ...a, status, admin_feedback: updatedFeedback }
+          return { ...a, status, answers: updatedAnswers, admin_feedback: updatedFeedback }
         }
         return a
       }))
+      if (status === 'accepted' || status === 'rejected') {
+        setGuardianIdUrl(null)
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to update status.')
     } finally {
@@ -374,6 +397,50 @@ export function UserDetailScreen() {
     fetchResumeUrl()
   }, [app])
 
+  // Fetch secure signed URLs for minor permission slip and guardian ID
+  useEffect(() => {
+    const fetchMinorUrls = async () => {
+      setPermissionSlipUrl(null)
+      setGuardianIdUrl(null)
+      if (!app?.answers) return
+
+      const slipPath = app.answers.permissionSlip
+      const idPath = app.answers.guardianId
+
+      if (slipPath) {
+        if (slipPath.startsWith('http://') || slipPath.startsWith('https://')) {
+          setPermissionSlipUrl(slipPath)
+        } else if (isSupabaseConfigured) {
+          try {
+            const { data } = await supabase.storage.from('permission-slips').createSignedUrl(slipPath, 900)
+            setPermissionSlipUrl(data?.signedUrl || supabase.storage.from('permission-slips').getPublicUrl(slipPath).data.publicUrl)
+          } catch {
+            setPermissionSlipUrl(supabase.storage.from('permission-slips').getPublicUrl(slipPath).data.publicUrl)
+          }
+        } else {
+          setPermissionSlipUrl(slipPath)
+        }
+      }
+
+      if (idPath) {
+        if (idPath.startsWith('http://') || idPath.startsWith('https://')) {
+          setGuardianIdUrl(idPath)
+        } else if (isSupabaseConfigured) {
+          try {
+            const { data } = await supabase.storage.from('guardian-ids').createSignedUrl(idPath, 900)
+            setGuardianIdUrl(data?.signedUrl || supabase.storage.from('guardian-ids').getPublicUrl(idPath).data.publicUrl)
+          } catch {
+            setGuardianIdUrl(supabase.storage.from('guardian-ids').getPublicUrl(idPath).data.publicUrl)
+          }
+        } else {
+          setGuardianIdUrl(idPath)
+        }
+      }
+    }
+
+    fetchMinorUrls()
+  }, [app])
+
   if (!isReady) {
     return (
       <View style={[styles.container]} />
@@ -442,26 +509,31 @@ export function UserDetailScreen() {
 
   return (
     <>
-        <View style={styles.contentWrapper}>
+        <View style={[styles.contentWrapper, {
+          paddingTop: Platform.OS === 'web' ? 24 : Math.max(insets.top + 32, 52),
+          paddingBottom: Platform.OS === 'web' ? 40 : Math.max(insets.bottom + 20, 36),
+          paddingLeft: Platform.OS === 'web' ? 0 : Math.max(insets.left, 16),
+          paddingRight: Platform.OS === 'web' ? 0 : Math.max(insets.right, 16),
+        }]}>
           {Platform.OS === 'web' ? (
             <View style={styles.detailHeaderActionsRow}>
               <Pressable onPress={() => navigateTo('/admin')} style={styles.backBtn}>
                 <Text style={styles.backBtnText}>← Back to Admin Dashboard</Text>
               </Pressable>
               <PillButton
-                title="↻ Refresh Data"
+                title="↻ Refresh"
                 onPress={fetchApplicationDetails}
                 isLoading={loading}
                 additionalStyle={styles.detailRefreshBtn}
               />
             </View>
           ) : (
-            <View style={{ width: '100%', alignItems: 'flex-end', marginBottom: 12 }}>
+            <View style={styles.mobileRefreshContainer}>
               <PillButton
-                title="Refresh"
+                title="↻ Refresh"
                 onPress={fetchApplicationDetails}
                 isLoading={loading}
-                additionalStyle={{ width: 100, height: 36 }}
+                additionalStyle={styles.detailRefreshBtn}
               />
             </View>
           )}
@@ -651,45 +723,44 @@ export function UserDetailScreen() {
 
               </View>
 
-              {/* Right Panel: Embedded PDF Resume Viewer */}
+              {/* Right Panel: Embedded PDF Resume Viewer & Minor Verification */}
               <View style={styles.detailPanelRight}>
-                <View style={styles.resumeViewerCard}>
-                  <Text style={styles.resumeCardTitle}>Candidate Resume / CV</Text>
-                  {loadingResume ? (
-                    <View style={styles.noResumeContainer}>
-                      <ActivityIndicator size="large" color="#c2b75f" />
-                      <Text style={[styles.noResumeText, { marginTop: 12 }]}>Generating secure access link...</Text>
-                    </View>
-                  ) : resumeUrl ? (
-                    <View style={styles.resumeFrameContainer}>
-                      {Platform.OS === 'web' ? (
-                        <iframe
-                          src={resumeUrl}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            minHeight: 650,
-                            border: 'none',
-                            borderRadius: 12,
-                          }}
-                        />
-                      ) : (
-                        <View style={styles.nativeResumePlaceholder}>
-                          <Text style={styles.nativeResumeText}>Inline PDF embedding is supported on Web browsers.</Text>
-                          <PillButton
-                            title="Open Resume PDF ↗"
-                            onPress={() => Linking.openURL(resumeUrl)}
-                            additionalStyle={{ width: 220, height: 48, marginTop: 16 }}
-                          />
-                        </View>
-                      )}
-                    </View>
-                  ) : (
-                    <View style={styles.noResumeContainer}>
-                      <Text style={styles.noResumeText}>No resume PDF file uploaded by the applicant.</Text>
-                    </View>
-                  )}
-                </View>
+
+                {/* Minor Verification Documents Card (If applicant is under 18 or uploaded docs) */}
+                {(parseInt(app.answers?.age || '0', 10) < 18 || permissionSlipUrl || guardianIdUrl || app.answers?.permissionSlip) && (
+                  <View style={styles.minorDocCard}>
+                    <Text style={styles.resumeCardTitle}>👶 Minor Verification Documents</Text>
+                    <Text style={styles.minorCardSubtitle}>
+                      Verify the guardian ID against the signed permission slip. Guardian ID will be automatically purged upon approval/rejection.
+                    </Text>
+
+                    <DocumentPreview
+                      title="Signed Permission Slip"
+                      url={permissionSlipUrl}
+                      emptyMessage="No permission slip uploaded."
+                      height={360}
+                    />
+
+                    <DocumentPreview
+                      title="Guardian Official ID Photo"
+                      url={guardianIdUrl}
+                      emptyMessage={
+                        app.status === 'accepted' || app.status === 'rejected'
+                          ? '🔒 Guardian ID purged post-review for privacy compliance.'
+                          : 'No guardian ID uploaded.'
+                      }
+                      height={260}
+                    />
+                  </View>
+                )}
+
+                <DocumentPreview
+                  title="Candidate Resume / CV"
+                  url={resumeUrl}
+                  loading={loadingResume}
+                  emptyMessage="No resume PDF file uploaded by the applicant."
+                  height={500}
+                />
               </View>
 
             </View>
@@ -870,8 +941,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   contentWrapper: {
-    width: '90%',
+    width: '100%',
     maxWidth: 1200,
+    alignSelf: 'center',
     alignItems: 'flex-start',
   },
   backBtn: {
@@ -1024,9 +1096,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionBtn: {
-    flex: 1,
-    minWidth: 120,
+    paddingHorizontal: 20,
     height: 44,
+    minWidth: 140,
+    width: 'auto',
+    flexGrow: 1,
   },
   fieldsCard: {
     backgroundColor: '#ffffff',
@@ -1091,14 +1165,70 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     paddingVertical: 8,
   },
-  resumeViewerCard: {
+  minorDocCard: {
     backgroundColor: '#ffffff',
     borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(90, 0, 97, 0.12)',
     padding: 24,
-    height: '100%',
-    minHeight: 700,
+    marginBottom: 20,
+    width: '100%',
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.06)',
+      },
+    }),
+  },
+  minorCardSubtitle: {
+    color: '#666666',
+    fontSize: 13,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  minorDocSection: {
+    marginBottom: 14,
+    backgroundColor: 'rgba(90, 0, 97, 0.03)',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(90, 0, 97, 0.08)',
+  },
+  minorDocSectionTitle: {
+    color: '#22002c',
+    fontWeight: '700',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  minorDocEmptyText: {
+    color: '#9ca3af',
+    fontSize: 13,
+  },
+  minorDocBtn: {
+    height: 44,
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  resumeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  resumeHeaderBtn: {
+    height: 36,
+    paddingHorizontal: 16,
+    width: 'auto',
+  },
+  resumeViewerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(90, 0, 97, 0.12)',
+    padding: 20,
+    height: 'auto',
+    minHeight: 400,
     ...Platform.select({
       web: {
         boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.06)',
@@ -1111,7 +1241,6 @@ const styles = StyleSheet.create({
     color: '#5a0061',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 16,
   },
   resumeFrameContainer: {
     flex: 1,
@@ -1122,7 +1251,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'stretch',
-    minHeight: 650,
+    minHeight: 480,
   },
   nativeResumePlaceholder: {
     flex: 1,
@@ -1273,12 +1402,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
+    marginTop: 8,
+    marginBottom: 20,
+    gap: 12,
+  },
+  mobileRefreshContainer: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginTop: 8,
     marginBottom: 16,
-    gap: 16,
   },
   detailRefreshBtn: {
-    width: 140,
-    height: 38,
+    width: 'auto',
+    minWidth: 130,
+    paddingHorizontal: 18,
+    height: 40,
   },
   historyCard: {
     backgroundColor: '#ffffff',
@@ -1327,6 +1465,19 @@ const styles = StyleSheet.create({
   },
   historyPendingText: {
     color: '#d32f2f',
+    fontWeight: '700',
+  },
+  minorBadge: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#93c5fd',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  minorBadgeText: {
+    color: '#1d4ed8',
+    fontSize: 12,
     fontWeight: '700',
   },
 })

@@ -25,7 +25,7 @@ export function FormRadio({
   onChange?: (v: string | string[]) => void
   required?: boolean
   variant?: 'default' | 'form'
-  subtitle?: string
+  subtitle?: string | React.ReactNode
   error?: string
   additionalStyle?: any
 }) {
@@ -113,7 +113,7 @@ export function FormRadio({
         })}
       </View>
 
-      {subtitle ? <Text style={styles.subtitleText}>{subtitle}</Text> : null}
+      {subtitle ? (typeof subtitle === 'string' ? <Text style={styles.subtitleText}>{subtitle}</Text> : subtitle) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   )

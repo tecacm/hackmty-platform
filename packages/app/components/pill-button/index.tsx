@@ -8,6 +8,8 @@ interface PillButtonProps {
   isLoading?: boolean
   disabled?: boolean
   additionalStyle?: any
+  textStyle?: any
+  fontSize?: number
 }
 
 export function PillButton({
@@ -17,6 +19,8 @@ export function PillButton({
   isLoading = false,
   disabled = false,
   additionalStyle = {},
+  textStyle = {},
+  fontSize,
 }: PillButtonProps) {
   const [hovered, setHovered] = useState(false)
   const isDisabled = disabled || isLoading
@@ -97,7 +101,7 @@ export function PillButton({
       {isLoading ? (
         <ActivityIndicator size="small" color={textColor} />
       ) : (
-        <Text style={[styles.text, { color: textColor }]}>{title}</Text>
+        <Text style={[styles.text, { color: textColor }, fontSize ? { fontSize } : null, textStyle]}>{title}</Text>
       )}
     </Pressable>
   )
@@ -108,6 +112,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 56,
     borderRadius: 28,
+    paddingHorizontal: 16,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
