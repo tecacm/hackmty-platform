@@ -505,6 +505,14 @@ export function AdminDashboardScreen() {
         .from('applications')
         .select('user_id, application_type_id, status, answers')
 
+      // auth.users.email is deliberately not exposed to browser clients. The
+      // SECURITY DEFINER RPC exposes only email addresses to admins/organizers.
+      const { data: directoryEmails, error: directoryEmailsError } = await supabase
+        .rpc('get_admin_directory_emails')
+      if (directoryEmailsError) console.warn('Could not load auth emails:', directoryEmailsError.message)
+      const emailMap: Record<string, string> = {}
+      directoryEmails?.forEach((entry: any) => { if (entry.user_id && entry.email) emailMap[entry.user_id] = entry.email })
+
       const rolesMap: Record<string, string[]> = {}
       rolesData?.forEach(r => {
         if (!r.user_id) return
@@ -512,19 +520,18 @@ export function AdminDashboardScreen() {
         rolesMap[r.user_id]!.push(r.role)
       })
 
-      const appsMap: Record<string, Array<{ type: string; status: string }>> = {}
+      const appsMap: Record<string, Array<{ type: string; status: string; answers: Record<string, any> }>> = {}
       appsData?.forEach(a => {
         if (!a.user_id) return
         if (!appsMap[a.user_id]) appsMap[a.user_id] = []
-        appsMap[a.user_id]!.push({ type: a.application_type_id, status: a.status })
+        appsMap[a.user_id]!.push({ type: a.application_type_id, status: a.status, answers: a.answers || {} })
       })
 
       const formattedUsers = (profiles || []).map(p => {
         const uRoles = rolesMap[p.id] || ['user']
         const uApps = appsMap[p.id] || []
-        // Resolve email from application answers if profile email is null
-        const hackerApp = uApps.find(a => a.type === 'hacker')
-        const email = p.email || (hackerApp ? 'Registered Applicant' : 'No email recorded')
+        const emailFromApplication = uApps.map((app) => app.answers?.email).find((email) => typeof email === 'string' && email)
+        const email = emailMap[p.id] || emailFromApplication || 'No email recorded'
 
         return {
           ...p,

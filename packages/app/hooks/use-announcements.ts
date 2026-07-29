@@ -102,6 +102,16 @@ export function useAnnouncements() {
       const { data: { session } } = await supabase.auth.getSession()
       const currentUserId = session?.user?.id
 
+      // Profiles are private outside a user's team. This RPC returns only the
+      // author avatar paths for announcements the viewer is allowed to read.
+      const { data: visibleAuthors, error: authorsError } = await supabase
+        .rpc('get_visible_announcement_authors')
+      if (authorsError) console.warn('Could not load announcement author avatars:', authorsError.message)
+      const authorAvatarPaths = new Map<string, string>()
+      visibleAuthors?.forEach((author: any) => {
+        if (author.author_id && author.avatar_url) authorAvatarPaths.set(author.author_id, author.avatar_url)
+      })
+
       let currentUserAvatarUrl: string | null = null
       if (currentUserId) {
         try {
@@ -124,6 +134,10 @@ export function useAnnouncements() {
           resolvedAvatar = supabase.storage
             .from('avatars')
             .getPublicUrl(item.profiles.avatar_url).data.publicUrl
+        }
+        if (!resolvedAvatar && item.author_id && authorAvatarPaths.has(item.author_id)) {
+          const path = authorAvatarPaths.get(item.author_id)!
+          resolvedAvatar = path.startsWith('http') ? path : supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl
         }
         if (!resolvedAvatar && item.author_id === currentUserId && currentUserAvatarUrl) {
           resolvedAvatar = currentUserAvatarUrl
