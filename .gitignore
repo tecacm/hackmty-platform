@@ -86,3 +86,6 @@ build/**
 
 # Local context docs
 CONTEXT.md
+
+/supabase/
+*.sql
