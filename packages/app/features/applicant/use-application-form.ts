@@ -26,7 +26,7 @@ export type UseApplicationFormResult = {
   isClosed: boolean
 }
 
-export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): UseApplicationFormResult {
+export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inviteCode?: string | null): UseApplicationFormResult {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [fields, setFields] = useState<ApplicantField[]>([])
@@ -72,6 +72,52 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       if (!isCurrent()) return
       if (authError || !user) {
         throw new Error('User is not authenticated. Please log in first.')
+      }
+
+      // 2. Fetch role close_at and is_public flag
+      let deadlineClosed = false
+      let isPublic = true
+      const { data: typeData } = await supabase
+        .from('application_types')
+        .select('close_at, is_public')
+        .eq('id', role)
+        .maybeSingle()
+
+      if (!isCurrent()) return
+      if (typeData) {
+        if (typeData.close_at) {
+          deadlineClosed = new Date(typeData.close_at).getTime() < Date.now()
+        }
+        if (typeof typeData.is_public === 'boolean') {
+          isPublic = typeData.is_public
+        }
+      }
+
+      // 3. Verify invite code for hidden/restricted application types (e.g. sponsor, judge)
+      if (!isPublic) {
+        const cleanInvite = inviteCode?.trim()
+        if (!cleanInvite) {
+          throw new Error(`🔒 Restricted Role: A secret invite link or code is required to apply for ${role.toUpperCase()}. Please contact organizers for access.`)
+        }
+
+        const { data: inviteData, error: inviteErr } = await supabase
+          .from('application_invite_codes')
+          .select('*')
+          .eq('code', cleanInvite)
+          .maybeSingle()
+
+        if (!isCurrent()) return
+        if (inviteErr || !inviteData) {
+          throw new Error('🔒 Invalid Secret Link: The invite code or link provided is invalid.')
+        } else if (!inviteData.is_active) {
+          throw new Error('🔒 Inactive Invite Link: This secret invite link has been deactivated.')
+        } else if (inviteData.application_type_id !== role) {
+          throw new Error(`🔒 Role Mismatch: This secret code is for ${inviteData.application_type_id.toUpperCase()} applications, not ${role.toUpperCase()}.`)
+        } else if (inviteData.expires_at && new Date(inviteData.expires_at).getTime() < Date.now()) {
+          throw new Error('🔒 Expired Invite Link: This secret invite link has expired.')
+        } else if (inviteData.max_uses !== null && inviteData.use_count >= inviteData.max_uses) {
+          throw new Error('🔒 Usage Limit Reached: This secret invite link has reached its maximum uses.')
+        }
       }
 
       // 2. Fetch application type fields ordered by display_order
@@ -311,19 +357,6 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       if (!isCurrent()) return
       if (appError) throw appError
 
-      // Fetch role close_at
-      let deadlineClosed = false
-      const { data: typeData } = await supabase
-        .from('application_types')
-        .select('close_at')
-        .eq('id', role)
-        .maybeSingle()
-
-      if (!isCurrent()) return
-      if (typeData?.close_at) {
-        deadlineClosed = new Date(typeData.close_at).getTime() < Date.now()
-      }
-
       // Extract active feedback from JSONB array
       const getActiveFeedback = (feedbackVal: any): string | null => {
         if (!feedbackVal) return null
@@ -363,7 +396,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       setError(err.message || 'Failed to load form configuration')
       setIsLoading(false)
     }
-  }, [role, lang])
+  }, [role, lang, inviteCode])
 
   useEffect(() => {
     loadData()
@@ -495,6 +528,22 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         )
 
       if (saveError) throw saveError
+
+      // Increment invite code usage count if an invite code was used
+      if (inviteCode?.trim() && isSupabaseConfigured) {
+        try {
+          const cleanInvite = inviteCode.trim()
+          const { data: inv } = await supabase.from('application_invite_codes').select('use_count').eq('code', cleanInvite).maybeSingle()
+          if (inv) {
+            await supabase.from('application_invite_codes').update({
+              use_count: (inv.use_count || 0) + 1,
+              last_used_at: new Date().toISOString()
+            }).eq('code', cleanInvite)
+          }
+        } catch (err) {
+          console.warn('Failed to increment invite code usage count:', err)
+        }
+      }
 
       // 2. Mirror core values to the user profiles table
       const getStr = (val: any) => typeof val === 'string' ? val : null

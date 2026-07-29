@@ -53,6 +53,8 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
 
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
 
+  const inviteFromParams = params?.get('invite') || params?.get('code')
+
   const {
     isLoading: isConfigLoading,
     error: configError,
@@ -67,7 +69,7 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
     onConfirmAttendance,
     systemLinks,
     isClosed
-  } = useApplicationForm(applicantRole, 'en')
+  } = useApplicationForm(applicantRole, 'en', inviteFromParams)
 
   const isLoading = isConfigLoading || permissionsLoading
 

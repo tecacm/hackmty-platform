@@ -170,12 +170,12 @@ export function RoleApplicationScreen() {
       setIsRolesLoading(true)
       
       if (!isSupabaseConfigured) {
-        const staticTypes = getApplicationTypes()
+        const staticTypes = getApplicationTypes().filter((t: any) => t.is_public !== false)
         const items = staticTypes.map(t => ({
           id: t.id,
           label: t.label,
           fieldCount: getApplicantFieldsForRole(t.id).length,
-          closeAt: t.close_at || null
+          closeAt: (t as any).close_at || null
         }))
         setRolesList(items)
         setIsRolesLoading(false)
@@ -191,7 +191,7 @@ export function RoleApplicationScreen() {
 
         const { data: types, error: typesError } = await supabase
           .from('application_types')
-          .select('id, label, close_at')
+          .select('id, label, close_at, is_public')
         
         if (typesError) throw typesError
 
@@ -212,12 +212,14 @@ export function RoleApplicationScreen() {
           return val
         }
 
-        const items = (types || []).map(t => ({
-          id: t.id,
-          label: getVal(t.label),
-          fieldCount: countsMap[t.id] || 0,
-          closeAt: t.close_at || null
-        }))
+        const items = (types || [])
+          .filter((t: any) => t.is_public !== false)
+          .map(t => ({
+            id: t.id,
+            label: getVal(t.label),
+            fieldCount: countsMap[t.id] || 0,
+            closeAt: t.close_at || null
+          }))
         setRolesList(items)
 
         // Query user's applications to show status (draft/submitted)

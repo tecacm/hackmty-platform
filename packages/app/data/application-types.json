@@ -3,21 +3,25 @@
     {
       "id": "hacker",
       "label": "Hacker",
+      "is_public": true,
       "fields": ["firstName", "lastName", "email", "phone", "age", "paragraph_permission_slip_banner", "permissionSlip", "guardianId", "gender", "divider_personal_info", "studyingOrWorking", "workPlace", "country", "city", "university", "major", "year", "levelOfStudy", "tshirt", "diet", "codeOfConduct", "consentFoodAllergies", "firstHackathon", "excited", "projects", "github", "linkedin", "devpost", "personalSite", "resume", "privacyPolicy", "mlhEmails"]
     },
     {
       "id": "volunteer",
       "label": "Volunteer",
+      "is_public": true,
       "fields": ["firstName", "lastName", "email", "phone", "age", "paragraph_permission_slip_banner", "permissionSlip", "guardianId", "gender", "divider_personal_info", "studyingOrWorking", "workPlace", "country", "city", "university", "major", "year", "levelOfStudy", "tshirt", "diet", "codeOfConduct", "consentFoodAllergies", "firstHackathon", "participatedRoles", "daysToAttend", "nightShifts", "englishConfidence", "privacyPolicy", "mlhEmails", "anythingElseWeShouldKnow", "friends", "excited", "discover"]
     },
     {
       "id": "mentor",
       "label": "Mentor",
+      "is_public": true,
       "fields": ["firstName", "lastName", "email", "phone", "age", "paragraph_permission_slip_banner", "permissionSlip", "guardianId", "gender", "divider_personal_info", "studyingOrWorking", "workPlace", "country", "city", "university", "major", "year", "levelOfStudy", "diet", "codeOfConduct", "consentFoodAllergies", "firstHackathon", "participatedRoles", "privacyPolicy", "mlhEmails", "anythingElseWeShouldKnow"]
     },
     {
       "id": "sponsor",
       "label": "Sponsor",
+      "is_public": false,
       "fields": [
         "firstName",
         "lastName",
@@ -25,10 +29,28 @@
         "phone",
         "age",
         "gender",
-        { "name": "workPlace",  "section": "SPONSOR_INFO" },
+        { "name": "workPlace", "section": "SPONSOR_INFO" },
         { "name": "jobPosition", "section": "SPONSOR_INFO" },
         { "name": "daysToAttend", "section": "SPONSOR_INFO" },
         { "name": "levelOfStudy", "section": "SPONSOR_INFO" },
+        "codeOfConduct",
+        "privacyPolicy",
+        "mlhEmails"
+      ]
+    },
+    {
+      "id": "judge",
+      "label": "Judge",
+      "is_public": false,
+      "fields": [
+        "firstName",
+        "lastName",
+        "email",
+        "phone",
+        "age",
+        "gender",
+        "studyingOrWorking",
+        "workPlace",
         "codeOfConduct",
         "privacyPolicy",
         "mlhEmails"

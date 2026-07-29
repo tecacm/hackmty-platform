@@ -52,8 +52,84 @@ export function AdminDashboardScreen() {
   // Filters and sorting
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<string>('all')
+  const [dbTypes, setDbTypes] = useState<Array<{ id: string; label: string }>>([])
   const [selectedCountries, setSelectedCountries] = useState<string[]>([])
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
+
+  // Secret Links Management Modal State
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteCodesList, setInviteCodesList] = useState<any[]>([])
+  const [isInviteLoading, setIsInviteLoading] = useState(false)
+  const [newInviteRole, setNewInviteRole] = useState('sponsor')
+  const [newInviteLabel, setNewInviteLabel] = useState('')
+  const [newInviteMaxUses, setNewInviteMaxUses] = useState('')
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null)
+
+  const fetchInviteCodes = async () => {
+    if (!isSupabaseConfigured) return
+    setIsInviteLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('application_invite_codes')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setInviteCodesList(data || [])
+    } catch (err: any) {
+      console.warn('Failed to fetch invite codes:', err)
+    } finally {
+      setIsInviteLoading(false)
+    }
+  }
+
+  const handleCreateInviteCode = async () => {
+    if (!isSupabaseConfigured) return
+    const prefix = newInviteRole === 'sponsor' ? 'sp' : newInviteRole === 'judge' ? 'jdg' : 'inv'
+    const randomSlug = Math.random().toString(36).substring(2, 8)
+    const code = `${prefix}-${randomSlug}`
+    const maxUses = newInviteMaxUses.trim() ? parseInt(newInviteMaxUses.trim(), 10) : null
+
+    try {
+      const { error } = await supabase
+        .from('application_invite_codes')
+        .insert({
+          code,
+          application_type_id: newInviteRole,
+          label: newInviteLabel.trim() || `${newInviteRole.toUpperCase()} Secret Link`,
+          is_active: true,
+          max_uses: isNaN(maxUses as any) ? null : maxUses
+        })
+      if (error) throw error
+      setNewInviteLabel('')
+      setNewInviteMaxUses('')
+      fetchInviteCodes()
+    } catch (err: any) {
+      alert('Failed to generate invite link: ' + err.message)
+    }
+  }
+
+  const toggleInviteActive = async (id: string, currentActive: boolean) => {
+    if (!isSupabaseConfigured) return
+    try {
+      await supabase
+        .from('application_invite_codes')
+        .update({ is_active: !currentActive })
+        .eq('id', id)
+      fetchInviteCodes()
+    } catch (err: any) {
+      alert('Failed to update status: ' + err.message)
+    }
+  }
+
+  const copyInviteLink = (code: string, role: string, id: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://experience.hackmty.com'
+    const fullUrl = `${origin}/application?role=${role}&invite=${code}`
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(fullUrl)
+    }
+    setCopiedCodeId(id)
+    setTimeout(() => setCopiedCodeId(null), 2000)
+  }
   const [excludeInput, setExcludeInput] = useState<string>('')
   const [excludeTags, setExcludeTags] = useState<string[]>([])
   
@@ -129,6 +205,22 @@ export function AdminDashboardScreen() {
 
       if (fetchErr) throw fetchErr
 
+      const { data: typesData } = await supabase
+        .from('application_types')
+        .select('id, label')
+
+      if (typesData) {
+        setDbTypes(typesData.map((t: any) => {
+          let lbl = t.id
+          if (typeof t.label === 'object' && t.label !== null) {
+            lbl = t.label.en || t.id
+          } else if (typeof t.label === 'string') {
+            lbl = t.label
+          }
+          return { id: t.id, label: lbl }
+        }))
+      }
+
       const { data: teamsData, error: teamsErr } = await supabase
         .from('teams')
         .select('id, name')
@@ -178,6 +270,26 @@ export function AdminDashboardScreen() {
       fetchApplications()
     }
   }, [hasViewOthersPermission])
+
+  // Get available application types dynamically from DB and loaded applications
+  const dynamicTypeOptions = useMemo(() => {
+    const optionsMap = new Map<string, string>()
+    optionsMap.set('all', 'ALL TYPES')
+
+    // Add DB application types
+    dbTypes.forEach(t => {
+      optionsMap.set(t.id, t.label.toUpperCase())
+    })
+
+    // Add any types present in existing apps
+    apps.forEach(app => {
+      if (app.application_type_id && !optionsMap.has(app.application_type_id)) {
+        optionsMap.set(app.application_type_id, app.application_type_id.toUpperCase())
+      }
+    })
+
+    return Array.from(optionsMap.entries()).map(([id, label]) => ({ id, label }))
+  }, [dbTypes, apps])
 
   // Get available countries dynamically
   const uniqueCountries = useMemo(() => {
@@ -460,15 +572,28 @@ export function AdminDashboardScreen() {
                 <Text style={styles.title}>Application Review Portal</Text>
                 <Text style={styles.subtitle}>Review, filter, and manage attendee applications.</Text>
               </View>
-              <PillButton
-                title="↻ Refresh"
-                onPress={fetchApplications}
-                isLoading={loading}
-                additionalStyle={styles.refreshBtn}
-              />
+              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                <PillButton
+                  title="🔑 Secret Links"
+                  onPress={() => { setShowInviteModal(true); fetchInviteCodes(); }}
+                  additionalStyle={{ width: 'auto', minWidth: 130, height: 40 }}
+                />
+                <PillButton
+                  title="↻ Refresh"
+                  onPress={fetchApplications}
+                  isLoading={loading}
+                  additionalStyle={styles.refreshBtn}
+                />
+              </View>
             </View>
           ) : (
-            <View style={{ width: '100%', alignItems: 'flex-end', marginBottom: 12 }}>
+            <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginBottom: 12 }}>
+              <PillButton
+                title="🔑 Links"
+                onPress={() => { setShowInviteModal(true); fetchInviteCodes(); }}
+                additionalStyle={{ width: 90, height: 36 }}
+                fontSize={12}
+              />
               <PillButton
                 title="↻ Refresh"
                 onPress={fetchApplications}
@@ -530,11 +655,15 @@ export function AdminDashboardScreen() {
 
               <View style={styles.dropdownContainer}>
                 <Pressable
-                  onPress={() => setSelectedType(selectedType === 'all' ? 'hacker' : selectedType === 'hacker' ? 'judge' : selectedType === 'judge' ? 'sponsor' : 'all')}
+                  onPress={() => {
+                    const typeIds = dynamicTypeOptions.map(t => t.id)
+                    const nextIdx = (typeIds.indexOf(selectedType) + 1) % typeIds.length
+                    setSelectedType(typeIds[nextIdx] || 'all')
+                  }}
                   style={styles.dropdownBtn}
                 >
                   <Text style={styles.dropdownBtnText}>
-                    Type: {selectedType.toUpperCase()}
+                    Type: {(dynamicTypeOptions.find(t => t.id === selectedType)?.label || selectedType).toUpperCase()}
                   </Text>
                 </Pressable>
               </View>
@@ -675,6 +804,123 @@ export function AdminDashboardScreen() {
             </View>
           )}
         </View>
+
+      {/* Secret Invite Links Modal */}
+      <Modal visible={showInviteModal} transparent animationType="fade" onRequestClose={() => setShowInviteModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#ffffff', borderRadius: 24, padding: 24, maxWidth: 640, width: '100%', maxHeight: '85%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: '#28002d' }}>🔑 Secret Invite Links</Text>
+                <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>Manage secret URLs for restricted roles (Sponsors, Judges, etc.)</Text>
+              </View>
+              <Pressable onPress={() => setShowInviteModal(false)} style={{ padding: 8 }}>
+                <Text style={{ fontSize: 20, color: '#888', fontWeight: 'bold' }}>✕</Text>
+              </Pressable>
+            </View>
+
+            {/* Quick Generator Box */}
+            <View style={{ backgroundColor: '#f9f5fa', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', gap: 12 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#5a0061' }}>+ Generate New Secret Link</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                <View style={{ flex: 1, minWidth: 120 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#666', marginBottom: 4 }}>ROLE</Text>
+                  <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff' }}>
+                    <Pressable
+                      onPress={() => setNewInviteRole(newInviteRole === 'sponsor' ? 'judge' : newInviteRole === 'judge' ? 'mentor' : 'sponsor')}
+                      style={{ padding: 10 }}
+                    >
+                      <Text style={{ fontWeight: '700', fontSize: 13, color: '#333' }}>{newInviteRole.toUpperCase()} ▾</Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View style={{ flex: 2, minWidth: 160 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#666', marginBottom: 4 }}>LABEL / NOTE (OPTIONAL)</Text>
+                  <TextInput
+                    value={newInviteLabel}
+                    onChangeText={setNewInviteLabel}
+                    placeholder="e.g. Microsoft Sponsor Link"
+                    placeholderTextColor="#999"
+                    style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, fontSize: 13, backgroundColor: '#fff' }}
+                  />
+                </View>
+
+                <View style={{ width: 90 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#666', marginBottom: 4 }}>MAX USES</Text>
+                  <TextInput
+                    value={newInviteMaxUses}
+                    onChangeText={setNewInviteMaxUses}
+                    placeholder="∞"
+                    placeholderTextColor="#999"
+                    keyboardType="numeric"
+                    style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, fontSize: 13, backgroundColor: '#fff', textAlign: 'center' }}
+                  />
+                </View>
+              </View>
+
+              <PillButton
+                title="Generate Secret Link"
+                onPress={handleCreateInviteCode}
+                additionalStyle={{ height: 38, width: '100%', marginTop: 4 }}
+              />
+            </View>
+
+            {/* List of Active Codes */}
+            <ScrollView style={{ flex: 1 }}>
+              {isInviteLoading ? (
+                <ActivityIndicator size="small" color="#5a0061" style={{ marginVertical: 20 }} />
+              ) : inviteCodesList.length === 0 ? (
+                <Text style={{ color: '#888', textAlign: 'center', marginVertical: 20 }}>No secret invite links generated yet.</Text>
+              ) : (
+                <View style={{ gap: 12 }}>
+                  {inviteCodesList.map(inv => {
+                    const isCopied = copiedCodeId === inv.id
+                    return (
+                      <View key={inv.id} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#eee', gap: 8 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={{ backgroundColor: '#f0e6f2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                              <Text style={{ fontSize: 11, fontWeight: '800', color: '#5a0061' }}>{inv.application_type_id.toUpperCase()}</Text>
+                            </View>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#222' }}>{inv.label || inv.code}</Text>
+                          </View>
+                          <Pressable onPress={() => toggleInviteActive(inv.id, inv.is_active)}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: inv.is_active ? '#16a34a' : '#dc2626' }}>
+                              {inv.is_active ? '● Active' : '○ Deactivated'}
+                            </Text>
+                          </Pressable>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9f9f9', padding: 8, borderRadius: 8 }}>
+                          <Text style={{ fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', color: '#444', flex: 1, marginRight: 8 }} numberOfLines={1}>
+                            .../application?role={inv.application_type_id}&invite={inv.code}
+                          </Text>
+                          <PillButton
+                            title={isCopied ? '✓ Copied' : 'Copy Link'}
+                            onPress={() => copyInviteLink(inv.code, inv.application_type_id, inv.id)}
+                            additionalStyle={{ height: 30, paddingHorizontal: 12, width: 'auto' }}
+                            fontSize={12}
+                          />
+                        </View>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 11, color: '#888' }}>
+                            Uses: {inv.use_count} / {inv.max_uses !== null ? inv.max_uses : 'Unlimited'}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: '#888' }}>
+                            Created: {new Date(inv.created_at).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      </View>
+                    )
+                  })}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </>
   )
 }
