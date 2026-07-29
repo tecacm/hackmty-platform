@@ -729,7 +729,7 @@ export function UserDetailScreen() {
                 {/* Minor Verification Documents Card (If applicant is under 18 or uploaded docs) */}
                 {(parseInt(app.answers?.age || '0', 10) < 18 || permissionSlipUrl || guardianIdUrl || app.answers?.permissionSlip) && (
                   <View style={styles.minorDocCard}>
-                    <Text style={styles.resumeCardTitle}>👶 Minor Verification Documents</Text>
+                    <Text style={styles.resumeCardTitle}>Minor Verification Documents</Text>
                     <Text style={styles.minorCardSubtitle}>
                       Verify the guardian ID against the signed permission slip. Guardian ID will be automatically purged upon approval/rejection.
                     </Text>

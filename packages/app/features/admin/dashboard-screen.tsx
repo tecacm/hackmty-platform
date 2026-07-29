@@ -1,17 +1,26 @@
-import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
-  StyleSheet,
   View,
   Text,
-  Platform,
-  ActivityIndicator,
-  Pressable,
-  useWindowDimensions,
-  TextInput,
+  StyleSheet,
   ScrollView,
-  Modal
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  Modal,
+  Platform,
+  useWindowDimensions,
 } from 'react-native'
-import { PillButton } from 'app/components/pill-button'
+import { PillButton } from '../../components/pill-button'
+import { AdminTabBar } from './components/AdminTabBar'
+import { SubmissionsTab } from './components/SubmissionsTab'
+import { UserDirectoryTab } from './components/UserDirectoryTab'
+import { RolesAccessTab } from './components/RolesAccessTab'
+import { FormBuilderTab } from './components/FormBuilderTab'
+import { UserEditModal } from './components/UserEditModal'
+import { CreateRoleModal } from './components/CreateRoleModal'
+import { AddFieldModal } from './components/AddFieldModal'
+import { SecretInviteModal } from './components/SecretInviteModal'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
@@ -36,6 +45,14 @@ interface Application {
   } | null
 }
 
+const previewText = (value: any): string => {
+  if (typeof value === 'string') return value
+  if (!value || typeof value !== 'object') return ''
+  const translated = value.en || Object.values(value)[0]
+  if (typeof translated === 'string') return translated
+  return translated?.parts?.map((part: any) => part.content || '').join('') || ''
+}
+
 export function AdminDashboardScreen() {
   const { navigateTo } = useSmartNavigate()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
@@ -48,6 +65,521 @@ export function AdminDashboardScreen() {
   useEffect(() => {
     setIsReady(true)
   }, [])
+
+  // Pagination State
+  const [appPage, setAppPage] = useState(1)
+  const [appPageSize, setAppPageSize] = useState(20)
+  const [userPage, setUserPage] = useState(1)
+  const [userPageSize, setUserPageSize] = useState(20)
+
+  // User Directory State
+  const [usersList, setUsersList] = useState<any[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [userSearchQuery, setUserSearchQuery] = useState('')
+  const [userRoleFilter, setUserRoleFilter] = useState('all')
+
+  // User Edit Modal State
+  const [editingUser, setEditingUser] = useState<any | null>(null)
+  const [editFirstName, setEditFirstName] = useState('')
+  const [editLastName, setEditLastName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editUniversity, setEditUniversity] = useState('')
+  const [editMajor, setEditMajor] = useState('')
+  const [editRoles, setEditRoles] = useState<string[]>(['user'])
+  const [isSavingUser, setIsSavingUser] = useState(false)
+  const [resetEmailSentUser, setResetEmailSentUser] = useState<string | null>(null)
+
+  const toggleEditRole = (role: string) => {
+    setEditRoles(prev => {
+      if (prev.includes(role)) {
+        const updated = prev.filter(r => r !== role)
+        return updated.length > 0 ? updated : ['user']
+      } else {
+        return [...prev, role]
+      }
+    })
+  }
+  // Primary Admin Tab State
+  const [adminTab, setAdminTab] = useState<'applications' | 'users' | 'roles' | 'forms'>('applications')
+
+  // Roles & Access Management State
+  const [rolesList, setRolesList] = useState<any[]>([])
+  const [rolesLoading, setRolesLoading] = useState(false)
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false)
+  const [newRoleId, setNewRoleId] = useState('')
+  const [newRoleLabel, setNewRoleLabel] = useState('')
+  const [newRoleDesc, setNewRoleDesc] = useState('')
+  const [newRolePublic, setNewRolePublic] = useState(true)
+  const [newRoleCloseAt, setNewRoleCloseAt] = useState('')
+  const [isCreatingRole, setIsCreatingRole] = useState(false)
+
+  // Form Builder & Fields State
+  const [selectedFormRole, setSelectedFormRole] = useState('hacker')
+  const [formFieldsList, setFormFieldsList] = useState<any[]>([])
+  const [formSectionsList, setFormSectionsList] = useState<any[]>([])
+  const [allFormFields, setAllFormFields] = useState<any[]>([])
+  const [formBuilderLoading, setFormBuilderLoading] = useState(false)
+  const [formDraftActions, setFormDraftActions] = useState<any[]>([])
+  const [formDraftSaving, setFormDraftSaving] = useState(false)
+  const [showAddFieldModal, setShowAddFieldModal] = useState(false)
+  const [newFieldId, setNewFieldId] = useState('')
+  const [newFieldLabelTranslations, setNewFieldLabelTranslations] = useState<Array<{ key: string; value: string }>>([{ key: 'en', value: '' }])
+  const [newFieldSubtitleTranslations, setNewFieldSubtitleTranslations] = useState<Array<{ key: string; value: string }>>([{ key: 'en', value: '' }])
+  const [newFieldSubtitleRich, setNewFieldSubtitleRich] = useState(false)
+  const [newFieldConditionField, setNewFieldConditionField] = useState('')
+  const [newFieldConditionOperator, setNewFieldConditionOperator] = useState('==')
+  const [newFieldConditionValue, setNewFieldConditionValue] = useState('')
+  const [newFieldUiMetadata, setNewFieldUiMetadata] = useState('{}')
+  const [newFieldOptions, setNewFieldOptions] = useState<Array<{ value: string; translations: Array<{ key: string; value: string }> }>>([])
+  const [newFieldType, setNewFieldType] = useState('text')
+  const [newFieldRequired, setNewFieldRequired] = useState(false)
+  const [newFieldSection, setNewFieldSection] = useState('')
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null)
+  const [isAddingField, setIsAddingField] = useState(false)
+
+  const fetchRolesList = async () => {
+    if (!isSupabaseConfigured) return
+    setRolesLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('application_types')
+        .select('*')
+        .order('id')
+
+      if (error) throw error
+      setRolesList(data || [])
+    } catch (err: any) {
+      console.warn('Failed to fetch roles list:', err)
+    } finally {
+      setRolesLoading(false)
+    }
+  }
+
+  const handleToggleRoleVisibility = async (roleId: string, currentPublic: boolean) => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { error } = await supabase
+        .from('application_types')
+        .update({ is_public: !currentPublic })
+        .eq('id', roleId)
+
+      if (error) throw error
+      fetchRolesList()
+    } catch (err: any) {
+      alert('Failed to update role visibility: ' + err.message)
+    }
+  }
+
+  const handleUpdateRoleDeadline = async (roleId: string, closeAt: string | null) => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { error } = await supabase
+        .from('application_types')
+        .update({ close_at: closeAt })
+        .eq('id', roleId)
+
+      if (error) throw error
+      fetchRolesList()
+    } catch (err: any) {
+      alert('Failed to update role deadline: ' + err.message)
+    }
+  }
+
+  const handleCreateRole = async () => {
+    if (!newRoleId.trim() || !newRoleLabel.trim() || !isSupabaseConfigured) return
+    setIsCreatingRole(true)
+    try {
+      const cleanId = newRoleId.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_')
+      const { error } = await supabase
+        .from('application_types')
+        .insert({
+          id: cleanId,
+          label: newRoleLabel.trim(),
+          description: newRoleDesc.trim(),
+          is_public: newRolePublic,
+          close_at: newRoleCloseAt.trim() || null
+        })
+
+      if (error) throw error
+      setShowCreateRoleModal(false)
+      setNewRoleId('')
+      setNewRoleLabel('')
+      setNewRoleDesc('')
+      setNewRoleCloseAt('')
+      fetchRolesList()
+    } catch (err: any) {
+      alert('Failed to create role: ' + err.message)
+    } finally {
+      setIsCreatingRole(false)
+    }
+  }
+
+  const fetchFormSchema = async (roleId: string) => {
+    if (!isSupabaseConfigured) return
+    setFormBuilderLoading(true)
+    try {
+      // application_type_fields has a composite key: (application_type_id, field_id).
+      // Keep the field definition in this query so the preview cannot get out of
+      // sync with the relationship rows (and never request a nonexistent `id`).
+      const { data: relData, error: relError } = await supabase
+        .from('application_type_fields')
+        .select(`
+          application_type_id,
+          field_id,
+          display_order,
+          section_override_id,
+          form_fields (
+            id,
+            label,
+            field_type,
+            text_content_type,
+            is_required,
+            placeholder,
+            subtitle,
+            options,
+            conditional_logic,
+            ui_metadata,
+            default_section_id
+          )
+        `)
+        .eq('application_type_id', roleId)
+        .order('display_order')
+
+      if (relError) throw relError
+
+      const { data: fieldsData, error: fieldsErr } = await supabase
+        .from('form_fields')
+        .select('*')
+
+      if (fieldsErr) throw fieldsErr
+
+      const { data: sectionsData } = await supabase
+        .from('form_sections')
+        .select('*')
+        .order('display_order')
+
+      const mappedFields: any[] = (relData || []).map((rel, idx) => {
+        const fieldDef = Array.isArray(rel.form_fields)
+          ? rel.form_fields[0] || {}
+          : rel.form_fields || {}
+        const labelRaw = fieldDef.label
+        const labelStr = typeof labelRaw === 'object' && labelRaw !== null
+          ? (typeof labelRaw.en === 'string' ? labelRaw.en : String(Object.values(labelRaw)[0] ?? rel.field_id))
+          : String(labelRaw ?? rel.field_id)
+        return {
+          relId: `${rel.application_type_id}|${rel.field_id}`,
+          fieldId: rel.field_id,
+          displayOrder: rel.display_order ?? idx,
+          sectionId: rel.section_override_id || fieldDef.default_section_id || 'general',
+          label: labelStr,
+          type: fieldDef.field_type || 'text',
+          fieldTypeFull: fieldDef.field_type || 'text',
+          textContentType: fieldDef.text_content_type || null,
+          required: !!fieldDef.is_required,
+          placeholder: fieldDef.placeholder,
+          subtitle: fieldDef.subtitle,
+          options: fieldDef.options,
+          conditionalLogic: fieldDef.conditional_logic,
+          uiMetadata: fieldDef.ui_metadata,
+        }
+      })
+
+      setFormFieldsList(mappedFields)
+      setFormSectionsList((sectionsData || []).sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0)))
+      setAllFormFields(fieldsData || [])
+      setFormDraftActions([])
+    } catch (err: any) {
+      console.warn('Failed to fetch form schema:', err)
+    } finally {
+      setFormBuilderLoading(false)
+    }
+  }
+
+  const resetFieldEditor = () => {
+    setEditingFieldId(null)
+    setNewFieldId('')
+    setNewFieldLabelTranslations([{ key: 'en', value: '' }])
+    setNewFieldSubtitleTranslations([{ key: 'en', value: '' }])
+    setNewFieldSubtitleRich(false)
+    setNewFieldConditionField('')
+    setNewFieldConditionOperator('==')
+    setNewFieldConditionValue('')
+    setNewFieldUiMetadata('{}')
+    setNewFieldOptions([])
+    setNewFieldType('text')
+    setNewFieldRequired(false)
+    setNewFieldSection('')
+  }
+
+  const handleOpenFieldEditor = (fieldId: string) => {
+    const field = allFormFields.find((item) => item.id === fieldId)
+    if (!field) return
+    const translations = (value: any) => Object.entries(value || {}).map(([key, translated]) => ({
+      key,
+      value: typeof translated === 'string' ? translated : (translated as any)?.parts?.map((part: any) => part.content || '').join('') || '',
+    })).filter((translation) => translation.value) || [{ key: 'en', value: '' }]
+    const fieldTranslations = translations(field.label)
+    const subtitleTranslations = translations(field.subtitle)
+    if (!fieldTranslations.length) fieldTranslations.push({ key: 'en', value: '' })
+    if (!subtitleTranslations.length) subtitleTranslations.push({ key: 'en', value: '' })
+    setEditingFieldId(field.id)
+    setNewFieldId(field.id)
+    setNewFieldLabelTranslations(fieldTranslations)
+    setNewFieldSubtitleTranslations(subtitleTranslations)
+    setNewFieldSubtitleRich(!!field.subtitle?.en?.parts || !!field.subtitle?.es?.parts)
+    setNewFieldConditionField(field.conditional_logic?.field || '')
+    setNewFieldConditionOperator(field.conditional_logic?.operator || '==')
+    setNewFieldConditionValue(field.conditional_logic?.value === undefined ? '' : String(field.conditional_logic.value))
+    setNewFieldUiMetadata(JSON.stringify(field.ui_metadata || {}, null, 2))
+    setNewFieldOptions((field.options || []).map((option: any) => ({
+      value: option.value || '',
+      translations: translations(option.label),
+    })))
+    setNewFieldType(field.field_type || 'text')
+    setNewFieldRequired(!!field.is_required)
+    setNewFieldSection(field.default_section_id || '')
+    setShowAddFieldModal(true)
+  }
+
+  const handleAddFieldToRole = async () => {
+    if (!newFieldId.trim() || !newFieldLabelTranslations.some((translation) => translation.key.trim() && translation.value.trim()) || !isSupabaseConfigured) return
+    setIsAddingField(true)
+    try {
+      const cleanFieldId = newFieldId.trim().replace(/[^a-zA-Z0-9_]/g, '')
+      const localized = (translations: Array<{ key: string; value: string }>) => Object.fromEntries(translations.filter((translation) => translation.key.trim() && translation.value.trim()).map((translation) => [translation.key.trim(), translation.value.trim()]))
+      const richLocalized = (translations: Array<{ key: string; value: string }>) => {
+        const rich = (content: string) => ({ type: 'composite', parts: [{ type: 'text', content }] })
+        return Object.fromEntries(translations.filter((translation) => translation.key.trim() && translation.value.trim()).map((translation) => [translation.key.trim(), rich(translation.value.trim())]))
+      }
+      const options = newFieldOptions
+        .filter((option) => option.value.trim() && option.translations.some((translation) => translation.key.trim() && translation.value.trim()))
+        .map((option) => ({ value: option.value.trim(), label: localized(option.translations) }))
+      let uiMetadata: Record<string, any>
+      try {
+        uiMetadata = newFieldUiMetadata.trim() ? JSON.parse(newFieldUiMetadata) : {}
+      } catch {
+        throw new Error('Advanced properties must be valid JSON.')
+      }
+      const conditionalLogic = newFieldConditionField.trim()
+        ? { field: newFieldConditionField.trim(), operator: newFieldConditionOperator, value: /^-?\d+(\.\d+)?$/.test(newFieldConditionValue.trim()) ? Number(newFieldConditionValue) : newFieldConditionValue.trim() }
+        : null
+
+      const fieldPatch = { id: cleanFieldId, label: localized(newFieldLabelTranslations), field_type: newFieldType, is_required: newFieldRequired, default_section_id: newFieldSection || null, subtitle: newFieldSubtitleTranslations.some((translation) => translation.value.trim()) ? (newFieldSubtitleRich ? richLocalized(newFieldSubtitleTranslations) : localized(newFieldSubtitleTranslations)) : null, options: ['select', 'multiselect', 'radio', 'segmented'].includes(newFieldType) ? options : null, conditional_logic: conditionalLogic, ui_metadata: uiMetadata }
+      setAllFormFields((previous) => [...previous.filter((field) => field.id !== cleanFieldId), fieldPatch])
+      if (editingFieldId) {
+        setFormFieldsList((previous) => previous.map((field) => field.fieldId === cleanFieldId ? { ...field, label: previewText(fieldPatch.label), type: fieldPatch.field_type, required: fieldPatch.is_required, sectionId: fieldPatch.default_section_id || 'general', subtitle: fieldPatch.subtitle, options: fieldPatch.options } : field))
+      } else {
+        setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${cleanFieldId}`, fieldId: cleanFieldId, displayOrder: previous.length + 1, sectionId: fieldPatch.default_section_id || 'general', label: previewText(fieldPatch.label), type: fieldPatch.field_type, required: fieldPatch.is_required, subtitle: fieldPatch.subtitle, options: fieldPatch.options }])
+      }
+      setFormDraftActions((previous) => [...previous.filter((action) => action.type !== 'field' || action.field.id !== cleanFieldId), { type: 'field', field: fieldPatch }, ...(editingFieldId ? [] : [{ type: 'attach', fieldId: cleanFieldId, sectionOverrideId: null }])])
+
+      setShowAddFieldModal(false)
+      resetFieldEditor()
+    } catch (err: any) {
+      alert('Failed to add field: ' + err.message)
+    } finally {
+      setIsAddingField(false)
+    }
+  }
+
+  const handleRemoveFieldFromRole = async (relId: string) => {
+    if (!isSupabaseConfigured) return
+    // relId is encoded as "applicationTypeId|fieldId"
+    const sepIdx = relId.indexOf('|')
+    const appTypeId = relId.slice(0, sepIdx)
+    const fieldId = relId.slice(sepIdx + 1)
+    setFormFieldsList((previous) => previous.filter((field) => field.relId !== relId))
+    setFormDraftActions((previous) => [...previous, { type: 'remove', applicationTypeId: appTypeId, fieldId }])
+  }
+
+  const handleReorderField = async (relId: string, direction: 'up' | 'down') => {
+    if (!isSupabaseConfigured) return
+    const sorted = [...formFieldsList].sort((a, b) => a.displayOrder - b.displayOrder)
+    const idx = sorted.findIndex(f => f.relId === relId)
+    if (idx < 0) return
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= sorted.length) return
+    const current = sorted[idx]!
+    const swap = sorted[swapIdx]!
+    const aOrder = current.displayOrder
+    const bOrder = swap.displayOrder
+    // optimistic update
+    setFormFieldsList(prev => prev.map(f => {
+      if (f.relId === current.relId) return { ...f, displayOrder: bOrder }
+      if (f.relId === swap.relId) return { ...f, displayOrder: aOrder }
+      return f
+    }))
+    setFormDraftActions((previous) => [...previous, { type: 'reorder' }])
+    // composite PK updates
+    const parseRelId = (r: string) => { const i = r.indexOf('|'); return { atId: r.slice(0, i), fId: r.slice(i + 1) } }
+    const c = parseRelId(current.relId)
+    const s = parseRelId(swap.relId)
+  }
+
+  const handleAttachExistingField = async (fieldId: string, sectionOverrideId: string | null) => {
+    if (!isSupabaseConfigured) return
+    const field = allFormFields.find((item) => item.id === fieldId)
+    if (!field) return
+    setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${fieldId}`, fieldId, displayOrder: previous.length + 1, sectionId: sectionOverrideId || field.default_section_id || 'general', label: previewText(field.label), type: field.field_type, required: !!field.is_required, subtitle: field.subtitle, options: field.options }])
+    setFormDraftActions((previous) => [...previous, { type: 'attach', fieldId, sectionOverrideId }])
+  }
+
+  const handleAddSection = async (sectionId: string, sectionLabel: Record<string, string>) => {
+    if (!isSupabaseConfigured) return
+    try {
+      setFormSectionsList((previous) => [...previous.filter((section) => section.id !== sectionId), { id: sectionId, label: sectionLabel, display_order: previous.length }])
+      setFormDraftActions((previous) => [...previous, { type: 'section', section: { id: sectionId, label: sectionLabel } }])
+    } catch (err: any) {
+      console.warn('Add section failed:', err)
+      // Optimistically add to local list
+      setFormSectionsList(prev => [...prev, { id: sectionId, label: sectionLabel }])
+    }
+  }
+
+  const discardFormDraft = () => fetchFormSchema(selectedFormRole)
+  const applyFormDraft = async () => {
+    if (!isSupabaseConfigured || !formDraftActions.length) return
+    setFormDraftSaving(true)
+    try {
+      for (const action of formDraftActions.filter((item) => item.type === 'section')) { const { error } = await supabase.from('form_sections').upsert(action.section); if (error) throw error }
+      for (const action of formDraftActions.filter((item) => item.type === 'field')) { const { error } = await supabase.from('form_fields').upsert(action.field); if (error) throw error }
+      for (const action of formDraftActions.filter((item) => item.type === 'remove')) { const { error } = await supabase.from('application_type_fields').delete().eq('application_type_id', action.applicationTypeId).eq('field_id', action.fieldId); if (error) throw error }
+      for (const action of formDraftActions.filter((item) => item.type === 'attach')) { const field = formFieldsList.find((item) => item.fieldId === action.fieldId); const { error } = await supabase.from('application_type_fields').upsert({ application_type_id: selectedFormRole, field_id: action.fieldId, display_order: field?.displayOrder || formFieldsList.length, section_override_id: action.sectionOverrideId }, { onConflict: 'application_type_id,field_id' }); if (error) throw error }
+      for (const field of formFieldsList) { const { error } = await supabase.from('application_type_fields').update({ display_order: field.displayOrder }).eq('application_type_id', selectedFormRole).eq('field_id', field.fieldId); if (error) throw error }
+      fetchFormSchema(selectedFormRole)
+    } catch (err: any) { alert('Failed to apply form changes: ' + err.message) } finally { setFormDraftSaving(false) }
+  }
+
+  const fetchUsersDirectory = async () => {
+    if (!isSupabaseConfigured) return
+    setUsersLoading(true)
+    try {
+      const { data: profiles, error: profErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (profErr) throw profErr
+
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role, event_year')
+
+      const { data: appsData } = await supabase
+        .from('applications')
+        .select('user_id, application_type_id, status, answers')
+
+      const rolesMap: Record<string, string[]> = {}
+      rolesData?.forEach(r => {
+        if (!r.user_id) return
+        if (!rolesMap[r.user_id]) rolesMap[r.user_id] = []
+        rolesMap[r.user_id]!.push(r.role)
+      })
+
+      const appsMap: Record<string, Array<{ type: string; status: string }>> = {}
+      appsData?.forEach(a => {
+        if (!a.user_id) return
+        if (!appsMap[a.user_id]) appsMap[a.user_id] = []
+        appsMap[a.user_id]!.push({ type: a.application_type_id, status: a.status })
+      })
+
+      const formattedUsers = (profiles || []).map(p => {
+        const uRoles = rolesMap[p.id] || ['user']
+        const uApps = appsMap[p.id] || []
+        // Resolve email from application answers if profile email is null
+        const hackerApp = uApps.find(a => a.type === 'hacker')
+        const email = p.email || (hackerApp ? 'Registered Applicant' : 'No email recorded')
+
+        return {
+          ...p,
+          email,
+          roles: uRoles,
+          primaryRole: uRoles[0] || 'user',
+          applications: uApps,
+        }
+      })
+
+      setUsersList(formattedUsers)
+    } catch (err: any) {
+      console.warn('Failed to fetch users directory:', err)
+    } finally {
+      setUsersLoading(false)
+    }
+  }
+
+  const handleOpenEditUser = (user: any) => {
+    setEditingUser(user)
+    setEditFirstName(user.first_name || '')
+    setEditLastName(user.last_name || '')
+    setEditEmail(user.email || '')
+    setEditPhone(user.phone || '')
+    setEditUniversity(user.university || '')
+    setEditMajor(user.major || '')
+    setEditRoles(Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : ['user'])
+  }
+
+  const handleSaveUserChanges = async () => {
+    if (!editingUser || !isSupabaseConfigured) return
+    setIsSavingUser(true)
+    try {
+      // 1. Update Profile fields
+      const { error: profErr } = await supabase
+        .from('profiles')
+        .update({
+          first_name: editFirstName.trim(),
+          last_name: editLastName.trim(),
+          phone: editPhone.trim(),
+          university: editUniversity.trim(),
+          major: editMajor.trim(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingUser.id)
+
+      if (profErr) throw profErr
+
+      // 2. Update User Roles (Multi-role support)
+      const currentYear = new Date().getFullYear().toString()
+      await supabase.from('user_roles').delete().eq('user_id', editingUser.id)
+
+      const roleInserts = editRoles.map(r => ({
+        user_id: editingUser.id,
+        role: r,
+        event_year: currentYear
+      }))
+
+      const { error: roleErr } = await supabase
+        .from('user_roles')
+        .insert(roleInserts)
+
+      if (roleErr) throw roleErr
+
+      setEditingUser(null)
+      fetchUsersDirectory()
+    } catch (err: any) {
+      alert('Failed to save user changes: ' + err.message)
+    } finally {
+      setIsSavingUser(false)
+    }
+  }
+
+  const handleSendPasswordReset = async (email: string, userId: string) => {
+    if (!isSupabaseConfigured || !email || email === 'No email recorded') {
+      alert('A valid email address is required to send a password reset.')
+      return
+    }
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://experience.hackmty.com'
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${origin}/reset-password`,
+      })
+      if (error) throw error
+      setResetEmailSentUser(userId)
+      setTimeout(() => setResetEmailSentUser(null), 3000)
+    } catch (err: any) {
+      alert('Failed to send password reset email: ' + err.message)
+    }
+  }
 
   // Filters and sorting
   const [searchQuery, setSearchQuery] = useState('')
@@ -63,6 +595,8 @@ export function AdminDashboardScreen() {
   const [newInviteRole, setNewInviteRole] = useState('sponsor')
   const [newInviteLabel, setNewInviteLabel] = useState('')
   const [newInviteMaxUses, setNewInviteMaxUses] = useState('')
+  const [newInviteExpiresAt, setNewInviteExpiresAt] = useState('')
+  const [isCreatingInvite, setIsCreatingInvite] = useState(false)
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null)
 
   const fetchInviteCodes = async () => {
@@ -84,6 +618,7 @@ export function AdminDashboardScreen() {
 
   const handleCreateInviteCode = async () => {
     if (!isSupabaseConfigured) return
+    setIsCreatingInvite(true)
     const prefix = newInviteRole === 'sponsor' ? 'sp' : newInviteRole === 'judge' ? 'jdg' : 'inv'
     const randomSlug = Math.random().toString(36).substring(2, 8)
     const code = `${prefix}-${randomSlug}`
@@ -105,10 +640,12 @@ export function AdminDashboardScreen() {
       fetchInviteCodes()
     } catch (err: any) {
       alert('Failed to generate invite link: ' + err.message)
+    } finally {
+      setIsCreatingInvite(false)
     }
   }
 
-  const toggleInviteActive = async (id: string, currentActive: boolean) => {
+  const handleToggleInviteActive = async (id: string, currentActive: boolean) => {
     if (!isSupabaseConfigured) return
     try {
       await supabase
@@ -121,6 +658,16 @@ export function AdminDashboardScreen() {
     }
   }
 
+  const handleDeleteInvite = async (id: string) => {
+    if (!isSupabaseConfigured) return
+    try {
+      await supabase.from('application_invite_codes').delete().eq('id', id)
+      fetchInviteCodes()
+    } catch (err: any) {
+      alert('Failed to delete invite code: ' + err.message)
+    }
+  }
+
   const copyInviteLink = (code: string, role: string, id: string) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://experience.hackmty.com'
     const fullUrl = `${origin}/application?role=${role}&invite=${code}`
@@ -130,11 +677,30 @@ export function AdminDashboardScreen() {
     setCopiedCodeId(id)
     setTimeout(() => setCopiedCodeId(null), 2000)
   }
+  const [includeInput, setIncludeInput] = useState<string>('')
+  const [includeTags, setIncludeTags] = useState<string[]>([])
+
+  const addIncludeTag = (text?: string) => {
+    const target = typeof text === 'string' ? text : includeInput
+    const trimmed = target.trim()
+    if (!trimmed) return
+    const cleanTag = trimmed.endsWith(',') ? trimmed.slice(0, -1).trim() : trimmed
+    if (cleanTag && !includeTags.includes(cleanTag)) {
+      setIncludeTags(prev => [...prev, cleanTag])
+    }
+    setIncludeInput('')
+  }
+
+  const removeIncludeTag = (tagToRemove: string) => {
+    setIncludeTags(prev => prev.filter(t => t !== tagToRemove))
+  }
+
   const [excludeInput, setExcludeInput] = useState<string>('')
   const [excludeTags, setExcludeTags] = useState<string[]>([])
   
-  const addExcludeTag = (text: string) => {
-    const trimmed = text.trim()
+  const addExcludeTag = (text?: string) => {
+    const target = typeof text === 'string' ? text : excludeInput
+    const trimmed = target.trim()
     if (!trimmed) return
     const cleanTag = trimmed.endsWith(',') ? trimmed.slice(0, -1).trim() : trimmed
     if (cleanTag && !excludeTags.includes(cleanTag)) {
@@ -291,6 +857,35 @@ export function AdminDashboardScreen() {
     return Array.from(optionsMap.entries()).map(([id, label]) => ({ id, label }))
   }, [dbTypes, apps])
 
+  // Filter users directory list
+  const filteredUsers = useMemo(() => {
+    return usersList.filter(user => {
+      const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase()
+      const email = (user.email || '').toLowerCase()
+      const id = (user.id || '').toLowerCase()
+      const university = (user.university || '').toLowerCase()
+
+      const matchesSearch = 
+        fullName.includes(userSearchQuery.toLowerCase()) ||
+        email.includes(userSearchQuery.toLowerCase()) ||
+        id.includes(userSearchQuery.toLowerCase()) ||
+        university.includes(userSearchQuery.toLowerCase())
+
+      const matchesRole = userRoleFilter === 'all' || user.roles.includes(userRoleFilter)
+
+      return matchesSearch && matchesRole
+    })
+  }, [usersList, userSearchQuery, userRoleFilter])
+
+  // Reset pages when search query or filters change
+  useEffect(() => {
+    setAppPage(1)
+  }, [searchQuery, selectedType, selectedCountries, selectedStatus, excludeTags])
+
+  useEffect(() => {
+    setUserPage(1)
+  }, [userSearchQuery, userRoleFilter])
+
   // Get available countries dynamically
   const uniqueCountries = useMemo(() => {
     const countries = new Set<string>()
@@ -354,17 +949,14 @@ export function AdminDashboardScreen() {
             if (prefix === 'university' || prefix === 'uni' || prefix === 'school') {
               matchesThisTag = university.toLowerCase().includes(val)
             } else if (prefix === 'city') {
-              const city = app.answers?.city || ''
               matchesThisTag = city.toLowerCase().includes(val)
             } else {
-              const city = app.answers?.city || ''
               matchesThisTag = university.toLowerCase().includes(queryStr) || city.toLowerCase().includes(queryStr)
             }
           } else {
-            const city = app.answers?.city || ''
             matchesThisTag = university.toLowerCase().includes(queryStr) || city.toLowerCase().includes(queryStr)
           }
-          
+
           if (matchesThisTag) {
             matchesExclude = false
             break
@@ -372,9 +964,36 @@ export function AdminDashboardScreen() {
         }
       }
 
-      return matchesSearch && matchesType && matchesCountry && matchesStatus && matchesExclude
+      // 6. Include Tags
+      let matchesInclude = true
+      if (includeTags.length > 0) {
+        for (const tag of includeTags) {
+          const queryStr = tag.toLowerCase().trim()
+          const fullContentStr = `${fullName} ${email} ${university} ${city} ${JSON.stringify(app.answers || {})}`.toLowerCase()
+          if (!fullContentStr.includes(queryStr)) {
+            matchesInclude = false
+            break
+          }
+        }
+      }
+
+      return matchesSearch && matchesType && matchesCountry && matchesStatus && matchesExclude && matchesInclude
     })
-  }, [apps, searchQuery, selectedType, selectedCountries, selectedStatus, excludeTags])
+  }, [apps, searchQuery, selectedType, selectedCountries, selectedStatus, includeTags, excludeTags])
+
+  // Paginated applications computation
+  const totalAppPages = Math.ceil(filteredApps.length / appPageSize) || 1
+  const displayedApps = useMemo(() => {
+    const start = (appPage - 1) * appPageSize
+    return filteredApps.slice(start, start + appPageSize)
+  }, [filteredApps, appPage, appPageSize])
+
+  // Paginated users computation
+  const totalUserPages = Math.ceil(filteredUsers.length / userPageSize) || 1
+  const displayedUsers = useMemo(() => {
+    const start = (userPage - 1) * userPageSize
+    return filteredUsers.slice(start, start + userPageSize)
+  }, [filteredUsers, userPage, userPageSize])
 
   // Statistics summaries
   const stats = useMemo(() => {
@@ -521,6 +1140,63 @@ export function AdminDashboardScreen() {
     )
   }
 
+  const renderPaginationBar = (
+    currentPage: number,
+    totalPages: number,
+    pageSize: number,
+    totalItems: number,
+    onPageChange: (page: number) => void,
+    onPageSizeChange: (size: number) => void
+  ) => {
+    const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1
+    const endItem = Math.min(currentPage * pageSize, totalItems)
+
+    return (
+      <View style={styles.paginationCard}>
+        <Text style={styles.paginationInfoText}>
+          Showing {startItem}–{endItem} of {totalItems} entries
+        </Text>
+
+        <View style={styles.paginationControlsRow}>
+          <View style={styles.pageSizeSelector}>
+            <Text style={styles.pageSizeLabel}>Rows:</Text>
+            {[10, 20, 50, 100].map(sz => (
+              <Pressable
+                key={sz}
+                onPress={() => { onPageSizeChange(sz); onPageChange(1); }}
+                style={[styles.pageSizeOption, pageSize === sz && styles.pageSizeOptionActive]}
+              >
+                <Text style={[styles.pageSizeOptionText, pageSize === sz && styles.pageSizeOptionTextActive]}>
+                  {sz}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.pageButtonsRow}>
+            <PillButton
+              title="← Prev"
+              onPress={() => onPageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage <= 1}
+              additionalStyle={[styles.pageBtn, currentPage <= 1 && styles.pageBtnDisabled]}
+              fontSize={12}
+            />
+            <Text style={styles.pageIndicatorText}>
+              Page {currentPage} of {totalPages}
+            </Text>
+            <PillButton
+              title="Next →"
+              onPress={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage >= totalPages}
+              additionalStyle={[styles.pageBtn, currentPage >= totalPages && styles.pageBtnDisabled]}
+              fontSize={12}
+            />
+          </View>
+        </View>
+      </View>
+    )
+  }
+
   if (permissionsLoading) {
     return (
       <View style={{flex: 1, height: screenHeight || '100%', justifyContent: 'center', alignItems: 'center' }}>
@@ -574,7 +1250,7 @@ export function AdminDashboardScreen() {
               </View>
               <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                 <PillButton
-                  title="🔑 Secret Links"
+                  title="Secret Links"
                   onPress={() => { setShowInviteModal(true); fetchInviteCodes(); }}
                   additionalStyle={{ width: 'auto', minWidth: 130, height: 40 }}
                 />
@@ -589,7 +1265,7 @@ export function AdminDashboardScreen() {
           ) : (
             <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginBottom: 12 }}>
               <PillButton
-                title="🔑 Links"
+                title="Links"
                 onPress={() => { setShowInviteModal(true); fetchInviteCodes(); }}
                 additionalStyle={{ width: 90, height: 36 }}
                 fontSize={12}
@@ -603,324 +1279,212 @@ export function AdminDashboardScreen() {
             </View>
           )}
 
-          {/* Stats Overview */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <Text style={styles.statCount}>{stats.total}</Text>
-              <Text style={styles.statLabel}>Total</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={[styles.statCount, { color: '#3b82f6' }]}>{stats.submitted}</Text>
-              <Text style={styles.statLabel}>Submitted</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={[styles.statCount, { color: '#10b981' }]}>{stats.accepted}</Text>
-              <Text style={styles.statLabel}>Accepted</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={[styles.statCount, { color: '#f59e0b' }]}>{stats.changes}</Text>
-              <Text style={styles.statLabel}>Changes Req</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={[styles.statCount, { color: '#ef4444' }]}>{stats.rejected}</Text>
-              <Text style={styles.statLabel}>Rejected</Text>
-            </View>
-          </View>
+          {/* Admin Main Portal Tab Bar */}
+          <AdminTabBar
+            adminTab={adminTab}
+            setAdminTab={setAdminTab}
+            appsCount={apps.length}
+            usersCount={usersList.length ? usersList.length : '...'}
+            onTabChange={(tab) => {
+              if (tab === 'users') fetchUsersDirectory()
+              if (tab === 'roles') { fetchRolesList(); fetchInviteCodes(); }
+              if (tab === 'forms') { fetchRolesList(); fetchFormSchema(selectedFormRole); }
+            }}
+          />
 
-          {/* Filter Toolbar */}
-          <View style={styles.toolbarCard}>
-            <View style={styles.searchRow}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by name, email, university, or city..."
-                placeholderTextColor="rgba(34, 0, 44, 0.4)"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-
-              <TextInput
-                style={[styles.searchInput, { flex: 1.5, minWidth: 200 }]}
-                placeholder="Exclude (e.g. city:Mexico City or university:Tec)..."
-                placeholderTextColor="rgba(34, 0, 44, 0.4)"
-                value={excludeInput}
-                onChangeText={(text) => {
-                  if (text.endsWith(',')) {
-                    addExcludeTag(text)
-                  } else {
-                    setExcludeInput(text)
-                  }
-                }}
-                onSubmitEditing={() => addExcludeTag(excludeInput)}
-              />
-
-              <View style={styles.dropdownContainer}>
-                <Pressable
-                  onPress={() => {
-                    const typeIds = dynamicTypeOptions.map(t => t.id)
-                    const nextIdx = (typeIds.indexOf(selectedType) + 1) % typeIds.length
-                    setSelectedType(typeIds[nextIdx] || 'all')
-                  }}
-                  style={styles.dropdownBtn}
-                >
-                  <Text style={styles.dropdownBtnText}>
-                    Type: {(dynamicTypeOptions.find(t => t.id === selectedType)?.label || selectedType).toUpperCase()}
-                  </Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.dropdownContainer}>
-                <Pressable
-                  onPress={() => {
-                    const statuses = ['all', 'submitted', 'changes_requested', 'accepted', 'rejected', 'confirmed', 'draft']
-                    const nextIdx = (statuses.indexOf(selectedStatus) + 1) % statuses.length
-                    setSelectedStatus(statuses[nextIdx] || 'all')
-                  }}
-                  style={styles.dropdownBtn}
-                >
-                  <Text style={styles.dropdownBtnText}>
-                    Status: {selectedStatus.toUpperCase().replace('_', ' ')}
-                  </Text>
-                </Pressable>
-              </View>
-
-              <Pressable
-                onPress={() => setGroupByTeams(!groupByTeams)}
-                style={[styles.groupToggleBtn, groupByTeams && styles.groupToggleBtnActive]}
-              >
-                <Text style={styles.groupToggleBtnText}>
-                  {groupByTeams ? 'Grouped by Team' : 'Flat List'}
-                </Text>
-              </Pressable>
-            </View>
-
-            {excludeTags.length > 0 && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, width: '100%' }}>
-                {excludeTags.map(tag => (
-                  <View
-                    key={tag}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: 'rgba(194, 183, 95, 0.15)',
-                      borderWidth: 1,
-                      borderColor: 'rgba(194, 183, 95, 0.4)',
-                      borderRadius: 8,
-                      paddingVertical: 4,
-                      paddingHorizontal: 8,
-                    }}
-                  >
-                    <Text style={{ color: '#c2b75f', fontSize: 12, fontWeight: 'bold' }}>{tag}</Text>
-                    <Pressable onPress={() => removeExcludeTag(tag)}>
-                      <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: 'bold', marginLeft: 8 }}>✕</Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Country Multi-Select Filter */}
-            {uniqueCountries.length > 0 && (
-              <View style={styles.countriesFilterSection}>
-                <Text style={styles.countriesFilterLabel}>Filter by Country:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.countriesScroll}>
-                  {uniqueCountries.map(country => {
-                    const isSelected = selectedCountries.includes(country)
-                    return (
-                      <Pressable
-                        key={country}
-                        onPress={() => toggleCountry(country)}
-                        style={[styles.countryChip, isSelected && styles.countryChipActive]}
-                      >
-                        <Text style={[styles.countryChipText, isSelected && styles.countryChipTextActive]}>
-                          {country}
-                        </Text>
-                      </Pressable>
-                    )
-                  })}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Expand / Collapse All Controls */}
-            {groupByTeams && (
-              <View style={styles.expandAllRow}>
-                <Pressable onPress={expandAllTeams} style={styles.smallActionBtn}>
-                  <Text style={styles.smallActionBtnText}>Expand All Teams</Text>
-                </Pressable>
-                <Pressable onPress={collapseAllTeams} style={styles.smallActionBtn}>
-                  <Text style={styles.smallActionBtnText}>Collapse All Teams</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-
-          {/* Main Applications Section */}
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#c2b75f" />
-              <Text style={styles.loadingText}>Fetching applications from Supabase...</Text>
-            </View>
-          ) : error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>⚠️ {error}</Text>
-            </View>
-          ) : filteredApps.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No applications found matching the selected filters.</Text>
-            </View>
-          ) : groupByTeams ? (
-            // Group by Team View (Collapsible)
-            <View style={{ width: '100%', gap: 20 }}>
-              {groupedData.map((group, groupIdx) => {
-                const isTeamExpanded = !!expandedTeams[group.teamName]
-                return (
-                  <View key={groupIdx} style={styles.teamSection}>
-                    <Pressable
-                      onPress={() => toggleTeamExpand(group.teamName)}
-                      style={styles.teamHeaderRow}
-                    >
-                      <Text style={styles.teamSectionTitle}>
-                        {isTeamExpanded ? '▼ ' : '▶ '}{group.teamName}
-                      </Text>
-                      <View style={styles.teamCountBadge}>
-                        <Text style={styles.teamCountBadgeText}>
-                          {group.applications.length} {group.applications.length === 1 ? 'Applicant' : 'Applicants'}
-                        </Text>
-                      </View>
-                    </Pressable>
-                    {isTeamExpanded && (
-                      <View style={styles.teamAppsContainer}>
-                        {group.applications.map(renderApplicationRow)}
-                      </View>
-                    )}
-                  </View>
-                )
-              })}
-            </View>
+          {adminTab === 'roles' ? (
+            <RolesAccessTab
+              rolesLoading={rolesLoading}
+              rolesList={rolesList}
+              fetchRolesList={fetchRolesList}
+              fetchInviteCodes={fetchInviteCodes}
+              setShowCreateRoleModal={setShowCreateRoleModal}
+              handleToggleRoleVisibility={handleToggleRoleVisibility}
+              setNewInviteRole={setNewInviteRole}
+              setShowInviteModal={setShowInviteModal}
+              handleUpdateRoleDeadline={handleUpdateRoleDeadline}
+              inviteCodesList={inviteCodesList}
+              copiedCodeId={copiedCodeId}
+              copyInviteLink={copyInviteLink}
+              styles={styles}
+            />
+          ) : adminTab === 'forms' ? (
+            <FormBuilderTab
+              selectedFormRole={selectedFormRole}
+              setSelectedFormRole={setSelectedFormRole}
+              fetchFormSchema={fetchFormSchema}
+              setShowAddFieldModal={setShowAddFieldModal}
+              formBuilderLoading={formBuilderLoading}
+              formFieldsList={formFieldsList}
+              formSectionsList={formSectionsList}
+              allFormFields={allFormFields}
+              handleRemoveFieldFromRole={handleRemoveFieldFromRole}
+              handleReorderField={handleReorderField}
+              handleAttachExistingField={handleAttachExistingField}
+              handleEditField={handleOpenFieldEditor}
+              formDraftCount={formDraftActions.length}
+              applyFormDraft={applyFormDraft}
+              discardFormDraft={discardFormDraft}
+              formDraftSaving={formDraftSaving}
+              handleAddSection={handleAddSection}
+              rolesList={rolesList}
+              styles={styles}
+            />
+          ) : adminTab === 'users' ? (
+            <UserDirectoryTab
+              userSearchQuery={userSearchQuery}
+              setUserSearchQuery={setUserSearchQuery}
+              userRoleFilter={userRoleFilter}
+              setUserRoleFilter={setUserRoleFilter}
+              fetchUsersDirectory={fetchUsersDirectory}
+              usersLoading={usersLoading}
+              filteredUsers={filteredUsers}
+              displayedUsers={displayedUsers}
+              resetEmailSentUser={resetEmailSentUser}
+              handleOpenEditUser={handleOpenEditUser}
+              handleSendPasswordReset={handleSendPasswordReset}
+              renderPaginationBar={renderPaginationBar}
+              userPage={userPage}
+              totalUserPages={totalUserPages}
+              userPageSize={userPageSize}
+              setUserPage={setUserPage}
+              setUserPageSize={setUserPageSize}
+              styles={styles}
+            />
           ) : (
-            // Flat List View
-            <View style={{ width: '100%', gap: 12 }}>
-              {filteredApps.map(renderApplicationRow)}
-            </View>
+            <SubmissionsTab
+              stats={{ ...stats, inReview: stats.changes || 0 }}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              includeInput={includeInput}
+              setIncludeInput={setIncludeInput}
+              includeTags={includeTags}
+              addIncludeTag={addIncludeTag}
+              removeIncludeTag={removeIncludeTag}
+              excludeInput={excludeInput}
+              setExcludeInput={setExcludeInput}
+              excludeTags={excludeTags}
+              addExcludeTag={addExcludeTag}
+              removeExcludeTag={removeExcludeTag}
+              selectedType={selectedType}
+              setSelectedType={setSelectedType}
+              dynamicTypeOptions={dynamicTypeOptions.map((t: any) => typeof t === 'string' ? t : t.id)}
+              selectedStatus={selectedStatus}
+              setSelectedStatus={setSelectedStatus}
+              groupByTeams={groupByTeams}
+              setGroupByTeams={setGroupByTeams}
+              loading={loading}
+              error={error}
+              filteredApps={filteredApps}
+              displayedApps={displayedApps}
+              groupedData={groupedData as unknown as Record<string, any[]>}
+              expandedTeams={expandedTeams}
+              toggleTeamExpand={toggleTeamExpand}
+              renderApplicationRow={renderApplicationRow}
+              renderPaginationBar={renderPaginationBar}
+              appPage={appPage}
+              totalAppPages={totalAppPages}
+              appPageSize={appPageSize}
+              setAppPage={setAppPage}
+              setAppPageSize={setAppPageSize}
+              styles={styles}
+            />
           )}
-        </View>
+    </View>
+
+      {/* User Edit & Role Switcher Modal */}
+      <UserEditModal
+        visible={!!editingUser}
+        onClose={() => setEditingUser(null)}
+        editingUser={editingUser}
+        editFirstName={editFirstName}
+        setEditFirstName={setEditFirstName}
+        editLastName={editLastName}
+        setEditLastName={setEditLastName}
+        editEmail={editEmail}
+        setEditEmail={setEditEmail}
+        editRoles={editRoles}
+        toggleEditRole={toggleEditRole}
+        handleSaveUserChanges={handleSaveUserChanges}
+        isSavingUser={isSavingUser}
+        allAvailableSystemRoles={['user', 'admin', 'organizer', 'volunteer', 'mentor', 'judge', 'sponsor']}
+      />
+
+      {/* Create New Role Modal */}
+      <CreateRoleModal
+        visible={showCreateRoleModal}
+        onClose={() => setShowCreateRoleModal(false)}
+        newRoleId={newRoleId}
+        setNewRoleId={setNewRoleId}
+        newRoleLabel={newRoleLabel}
+        setNewRoleLabel={setNewRoleLabel}
+        newRoleDesc={newRoleDesc}
+        setNewRoleDesc={setNewRoleDesc}
+        newRolePublic={newRolePublic}
+        setNewRolePublic={setNewRolePublic}
+        newRoleCloseAt={newRoleCloseAt}
+        setNewRoleCloseAt={setNewRoleCloseAt}
+        handleCreateRole={handleCreateRole}
+        isCreatingRole={isCreatingRole}
+      />
+
+      {/* Add Question Field Modal */}
+      <AddFieldModal
+        visible={showAddFieldModal}
+        onClose={() => { setShowAddFieldModal(false); resetFieldEditor() }}
+        selectedFormRole={selectedFormRole}
+        newFieldKey={newFieldId}
+        setNewFieldKey={setNewFieldId}
+        newFieldLabelTranslations={newFieldLabelTranslations}
+        setNewFieldLabelTranslations={setNewFieldLabelTranslations}
+        newFieldSubtitleTranslations={newFieldSubtitleTranslations}
+        setNewFieldSubtitleTranslations={setNewFieldSubtitleTranslations}
+        newFieldSubtitleRich={newFieldSubtitleRich}
+        setNewFieldSubtitleRich={setNewFieldSubtitleRich}
+        newFieldConditionField={newFieldConditionField}
+        setNewFieldConditionField={setNewFieldConditionField}
+        newFieldConditionOperator={newFieldConditionOperator}
+        setNewFieldConditionOperator={setNewFieldConditionOperator}
+        newFieldConditionValue={newFieldConditionValue}
+        setNewFieldConditionValue={setNewFieldConditionValue}
+        newFieldUiMetadata={newFieldUiMetadata}
+        setNewFieldUiMetadata={setNewFieldUiMetadata}
+        newFieldOptions={newFieldOptions}
+        setNewFieldOptions={setNewFieldOptions}
+        newFieldType={newFieldType}
+        setNewFieldType={setNewFieldType}
+        newFieldRequired={newFieldRequired}
+        setNewFieldRequired={setNewFieldRequired}
+        newFieldSection={newFieldSection}
+        setNewFieldSection={setNewFieldSection}
+        formSectionsList={formSectionsList}
+        allFormFields={allFormFields}
+        editingFieldId={editingFieldId}
+        handleAddFieldToRole={handleAddFieldToRole}
+        isAddingField={isAddingField}
+      />
 
       {/* Secret Invite Links Modal */}
-      <Modal visible={showInviteModal} transparent animationType="fade" onRequestClose={() => setShowInviteModal(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: '#ffffff', borderRadius: 24, padding: 24, maxWidth: 640, width: '100%', maxHeight: '85%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <View>
-                <Text style={{ fontSize: 20, fontWeight: '800', color: '#28002d' }}>🔑 Secret Invite Links</Text>
-                <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>Manage secret URLs for restricted roles (Sponsors, Judges, etc.)</Text>
-              </View>
-              <Pressable onPress={() => setShowInviteModal(false)} style={{ padding: 8 }}>
-                <Text style={{ fontSize: 20, color: '#888', fontWeight: 'bold' }}>✕</Text>
-              </Pressable>
-            </View>
-
-            {/* Quick Generator Box */}
-            <View style={{ backgroundColor: '#f9f5fa', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', gap: 12 }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#5a0061' }}>+ Generate New Secret Link</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                <View style={{ flex: 1, minWidth: 120 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#666', marginBottom: 4 }}>ROLE</Text>
-                  <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff' }}>
-                    <Pressable
-                      onPress={() => setNewInviteRole(newInviteRole === 'sponsor' ? 'judge' : newInviteRole === 'judge' ? 'mentor' : 'sponsor')}
-                      style={{ padding: 10 }}
-                    >
-                      <Text style={{ fontWeight: '700', fontSize: 13, color: '#333' }}>{newInviteRole.toUpperCase()} ▾</Text>
-                    </Pressable>
-                  </View>
-                </View>
-
-                <View style={{ flex: 2, minWidth: 160 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#666', marginBottom: 4 }}>LABEL / NOTE (OPTIONAL)</Text>
-                  <TextInput
-                    value={newInviteLabel}
-                    onChangeText={setNewInviteLabel}
-                    placeholder="e.g. Microsoft Sponsor Link"
-                    placeholderTextColor="#999"
-                    style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, fontSize: 13, backgroundColor: '#fff' }}
-                  />
-                </View>
-
-                <View style={{ width: 90 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#666', marginBottom: 4 }}>MAX USES</Text>
-                  <TextInput
-                    value={newInviteMaxUses}
-                    onChangeText={setNewInviteMaxUses}
-                    placeholder="∞"
-                    placeholderTextColor="#999"
-                    keyboardType="numeric"
-                    style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, fontSize: 13, backgroundColor: '#fff', textAlign: 'center' }}
-                  />
-                </View>
-              </View>
-
-              <PillButton
-                title="Generate Secret Link"
-                onPress={handleCreateInviteCode}
-                additionalStyle={{ height: 38, width: '100%', marginTop: 4 }}
-              />
-            </View>
-
-            {/* List of Active Codes */}
-            <ScrollView style={{ flex: 1 }}>
-              {isInviteLoading ? (
-                <ActivityIndicator size="small" color="#5a0061" style={{ marginVertical: 20 }} />
-              ) : inviteCodesList.length === 0 ? (
-                <Text style={{ color: '#888', textAlign: 'center', marginVertical: 20 }}>No secret invite links generated yet.</Text>
-              ) : (
-                <View style={{ gap: 12 }}>
-                  {inviteCodesList.map(inv => {
-                    const isCopied = copiedCodeId === inv.id
-                    return (
-                      <View key={inv.id} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#eee', gap: 8 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <View style={{ backgroundColor: '#f0e6f2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                              <Text style={{ fontSize: 11, fontWeight: '800', color: '#5a0061' }}>{inv.application_type_id.toUpperCase()}</Text>
-                            </View>
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#222' }}>{inv.label || inv.code}</Text>
-                          </View>
-                          <Pressable onPress={() => toggleInviteActive(inv.id, inv.is_active)}>
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: inv.is_active ? '#16a34a' : '#dc2626' }}>
-                              {inv.is_active ? '● Active' : '○ Deactivated'}
-                            </Text>
-                          </Pressable>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9f9f9', padding: 8, borderRadius: 8 }}>
-                          <Text style={{ fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', color: '#444', flex: 1, marginRight: 8 }} numberOfLines={1}>
-                            .../application?role={inv.application_type_id}&invite={inv.code}
-                          </Text>
-                          <PillButton
-                            title={isCopied ? '✓ Copied' : 'Copy Link'}
-                            onPress={() => copyInviteLink(inv.code, inv.application_type_id, inv.id)}
-                            additionalStyle={{ height: 30, paddingHorizontal: 12, width: 'auto' }}
-                            fontSize={12}
-                          />
-                        </View>
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                          <Text style={{ fontSize: 11, color: '#888' }}>
-                            Uses: {inv.use_count} / {inv.max_uses !== null ? inv.max_uses : 'Unlimited'}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: '#888' }}>
-                            Created: {new Date(inv.created_at).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      </View>
-                    )
-                  })}
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <SecretInviteModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        newInviteRole={newInviteRole}
+        setNewInviteRole={setNewInviteRole}
+        newInviteLabel={newInviteLabel}
+        setNewInviteLabel={setNewInviteLabel}
+        newInviteMaxUses={newInviteMaxUses}
+        setNewInviteMaxUses={setNewInviteMaxUses}
+        newInviteExpiresAt={newInviteExpiresAt}
+        setNewInviteExpiresAt={setNewInviteExpiresAt}
+        handleCreateInviteCode={handleCreateInviteCode}
+        isCreatingInvite={isCreatingInvite}
+        inviteCodesLoading={isInviteLoading}
+        inviteCodesList={inviteCodesList}
+        copiedCodeId={copiedCodeId}
+        copyInviteLink={copyInviteLink}
+        handleToggleInviteActive={handleToggleInviteActive}
+        handleDeleteInvite={handleDeleteInvite}
+      />
     </>
   )
 }
@@ -1059,9 +1623,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   contentWrapper: {
-    width: '90%',
-    maxWidth: 1200,
-    alignItems: 'center',
+    width: '100%',
+    maxWidth: 1080,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
   },
   title: {
     fontSize: 32,
@@ -1089,28 +1654,28 @@ const styles = StyleSheet.create({
     minWidth: 140,
     maxWidth: 220,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(90, 0, 97, 0.12)',
+    borderColor: '#e2e8f0',
     paddingVertical: 18,
     paddingHorizontal: 16,
     alignItems: 'center',
     ...Platform.select({
       web: {
-        boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.06)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
       },
     }),
   },
   statCount: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#22002c',
+    color: '#0f172a',
     marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#666666',
-    fontWeight: '600',
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -1119,13 +1684,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(90, 0, 97, 0.12)',
-    padding: 16,
-    marginBottom: 24,
+    borderColor: '#e2e8f0',
+    padding: 18,
+    marginBottom: 20,
     gap: 12,
     ...Platform.select({
       web: {
-        boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.06)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
       },
     }),
   },
@@ -1549,5 +2114,77 @@ const styles = StyleSheet.create({
   refreshBtn: {
     width: 120,
     height: 40,
+  },
+  paginationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(90, 0, 97, 0.12)',
+    width: '100%',
+    marginTop: 16,
+  },
+  paginationInfoText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555555',
+  },
+  paginationControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flexWrap: 'wrap',
+  },
+  pageSizeSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pageSizeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#777777',
+    marginRight: 2,
+  },
+  pageSizeOption: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#f3f4f6',
+  },
+  pageSizeOptionActive: {
+    backgroundColor: '#5a0061',
+  },
+  pageSizeOptionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4b5563',
+  },
+  pageSizeOptionTextActive: {
+    color: '#ffffff',
+  },
+  pageButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pageIndicatorText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#22002c',
+  },
+  pageBtn: {
+    height: 34,
+    paddingHorizontal: 12,
+    width: 'auto',
+  },
+  pageBtnDisabled: {
+    opacity: 0.4,
   },
 })

@@ -97,7 +97,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       if (!isPublic) {
         const cleanInvite = inviteCode?.trim()
         if (!cleanInvite) {
-          throw new Error(`🔒 Restricted Role: A secret invite link or code is required to apply for ${role.toUpperCase()}. Please contact organizers for access.`)
+          throw new Error(`Restricted Role: A secret invite link or code is required to apply for ${role.toUpperCase()}. Please contact organizers for access.`)
         }
 
         const { data: inviteData, error: inviteErr } = await supabase
@@ -108,15 +108,15 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
 
         if (!isCurrent()) return
         if (inviteErr || !inviteData) {
-          throw new Error('🔒 Invalid Secret Link: The invite code or link provided is invalid.')
+          throw new Error('Invalid Secret Link: The invite code or link provided is invalid.')
         } else if (!inviteData.is_active) {
-          throw new Error('🔒 Inactive Invite Link: This secret invite link has been deactivated.')
+          throw new Error('Inactive Invite Link: This secret invite link has been deactivated.')
         } else if (inviteData.application_type_id !== role) {
-          throw new Error(`🔒 Role Mismatch: This secret code is for ${inviteData.application_type_id.toUpperCase()} applications, not ${role.toUpperCase()}.`)
+          throw new Error(`Role Mismatch: This secret code is for ${inviteData.application_type_id.toUpperCase()} applications, not ${role.toUpperCase()}.`)
         } else if (inviteData.expires_at && new Date(inviteData.expires_at).getTime() < Date.now()) {
-          throw new Error('🔒 Expired Invite Link: This secret invite link has expired.')
+          throw new Error('Expired Invite Link: This secret invite link has expired.')
         } else if (inviteData.max_uses !== null && inviteData.use_count >= inviteData.max_uses) {
-          throw new Error('🔒 Usage Limit Reached: This secret invite link has reached its maximum uses.')
+          throw new Error('Usage Limit Reached: This secret invite link has reached its maximum uses.')
         }
       }
 

@@ -103,7 +103,7 @@ export function DocumentPreview({
       ) : (
         <View style={styles.pdfFallbackContainer}>
           <View style={styles.pdfIconBanner}>
-            <Text style={styles.pdfIconText}>📄 PDF Document</Text>
+            <Text style={styles.pdfIconText}>PDF Document</Text>
             <Text style={styles.pdfSubtext}>Tap below to view or download PDF on device</Text>
           </View>
 
