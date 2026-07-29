@@ -4,6 +4,9 @@ import { View, Text, ActivityIndicator, Platform, Pressable, TextInput } from 'r
 interface RolesAccessTabProps {
   rolesLoading: boolean
   rolesList: any[]
+  permissionsList: any[]
+  rolePermissionsMap: Record<string, string[]>
+  handleUpdateRolePermissions: (role: string, permissionIds: string[]) => void
   fetchRolesList: () => void
   fetchInviteCodes: () => void
   setShowCreateRoleModal: (val: boolean) => void
@@ -30,13 +33,14 @@ const toDatetimeLocal = (iso: string | null): string => {
   catch { return '' }
 }
 
-function RoleCard({ role, handleToggleRoleVisibility, setNewInviteRole, setShowInviteModal, fetchInviteCodes, handleUpdateRoleDeadline }: { role: any; handleToggleRoleVisibility: (id: string, pub: boolean) => void; setNewInviteRole: (r: string) => void; setShowInviteModal: (v: boolean) => void; fetchInviteCodes: () => void; handleUpdateRoleDeadline: (id: string, closeAt: string | null) => void }) {
+function RoleCard({ role, handleToggleRoleVisibility, setNewInviteRole, setShowInviteModal, fetchInviteCodes, handleUpdateRoleDeadline, permissionsList, rolePermissions, handleUpdateRolePermissions }: { role: any; handleToggleRoleVisibility: (id: string, pub: boolean) => void; setNewInviteRole: (r: string) => void; setShowInviteModal: (v: boolean) => void; fetchInviteCodes: () => void; handleUpdateRoleDeadline: (id: string, closeAt: string | null) => void; permissionsList: any[]; rolePermissions: string[]; handleUpdateRolePermissions: (role: string, permissions: string[]) => void }) {
   const isPublic = role.is_public !== false
   const labelStr = formatText(role.label, (role.id || 'ROLE').toUpperCase())
   const descStr  = formatText(role.description, 'No description provided.')
   const [editing, setEditing] = React.useState(false)
   const [dateValue, setDateValue] = React.useState(toDatetimeLocal(role.close_at))
   const [saving, setSaving] = React.useState(false)
+  const [editingPermissions, setEditingPermissions] = React.useState(false)
 
   React.useEffect(() => {
     if (!editing) setDateValue(toDatetimeLocal(role.close_at))
@@ -82,6 +86,10 @@ function RoleCard({ role, handleToggleRoleVisibility, setNewInviteRole, setShowI
       </View>
 
       <View style={{ borderTopWidth: 1, borderColor: 'rgba(90,0,97,0.08)', backgroundColor: '#fafafa', padding: 16, gap: 10 }}>
+        <View style={{ gap: 8, paddingBottom: 12, borderBottomWidth: 1, borderColor: 'rgba(90,0,97,0.08)' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={{ fontSize: 11, fontWeight: '800', color: '#64748b', letterSpacing: 0.4 }}>PERMISSIONS</Text><Pressable onPress={() => setEditingPermissions(!editingPermissions)}><Text style={{ fontSize: 12, fontWeight: '800', color: '#5a0061' }}>{editingPermissions ? 'Done' : 'Edit permissions'}</Text></Pressable></View>
+          {editingPermissions ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>{permissionsList.map((permission) => { const selected = rolePermissions.includes(permission.id); return <Pressable key={permission.id} onPress={() => handleUpdateRolePermissions(role.id, selected ? rolePermissions.filter((id) => id !== permission.id) : [...rolePermissions, permission.id])} style={{ paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7, borderWidth: 1, borderColor: selected ? '#5a0061' : '#cbd5e1', backgroundColor: selected ? 'rgba(90,0,97,0.1)' : '#fff' }}><Text style={{ fontSize: 11, fontWeight: '700', color: selected ? '#5a0061' : '#475569' }}>{selected ? '✓ ' : ''}{permission.id}</Text></Pressable> })}</View> : <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{rolePermissions.length ? rolePermissions.map((permission) => <View key={permission} style={{ backgroundColor: 'rgba(90,0,97,0.08)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 }}><Text style={{ fontSize: 11, fontWeight: '700', color: '#5a0061' }}>{permission}</Text></View>) : <Text style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No permissions assigned</Text>}</View>}
+        </View>
         {!editing && (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -124,7 +132,7 @@ function RoleCard({ role, handleToggleRoleVisibility, setNewInviteRole, setShowI
   )
 }
 
-export function RolesAccessTab({ rolesLoading, rolesList, fetchRolesList, fetchInviteCodes, setShowCreateRoleModal, handleToggleRoleVisibility, setNewInviteRole, setShowInviteModal, handleUpdateRoleDeadline, inviteCodesList, copiedCodeId, copyInviteLink, styles }: RolesAccessTabProps) {
+export function RolesAccessTab({ rolesLoading, rolesList, permissionsList, rolePermissionsMap, handleUpdateRolePermissions, fetchRolesList, fetchInviteCodes, setShowCreateRoleModal, handleToggleRoleVisibility, setNewInviteRole, setShowInviteModal, handleUpdateRoleDeadline, inviteCodesList, copiedCodeId, copyInviteLink, styles }: RolesAccessTabProps) {
   return (
     <View style={{ width: '100%', gap: 20 }}>
       <View style={{ backgroundColor: '#ffffff', borderRadius: 18, padding: 20, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
@@ -150,7 +158,7 @@ export function RolesAccessTab({ rolesLoading, rolesList, fetchRolesList, fetchI
       ) : (
         <View style={{ gap: 14 }}>
           {rolesList.map(role => (
-            <RoleCard key={role.id} role={role} handleToggleRoleVisibility={handleToggleRoleVisibility} setNewInviteRole={setNewInviteRole} setShowInviteModal={setShowInviteModal} fetchInviteCodes={fetchInviteCodes} handleUpdateRoleDeadline={handleUpdateRoleDeadline} />
+            <RoleCard key={role.id} role={role} handleToggleRoleVisibility={handleToggleRoleVisibility} setNewInviteRole={setNewInviteRole} setShowInviteModal={setShowInviteModal} fetchInviteCodes={fetchInviteCodes} handleUpdateRoleDeadline={handleUpdateRoleDeadline} permissionsList={permissionsList} rolePermissions={rolePermissionsMap[role.id] || []} handleUpdateRolePermissions={handleUpdateRolePermissions} />
           ))}
         </View>
       )}

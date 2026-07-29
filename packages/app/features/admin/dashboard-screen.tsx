@@ -106,6 +106,8 @@ export function AdminDashboardScreen() {
   // Roles & Access Management State
   const [rolesList, setRolesList] = useState<any[]>([])
   const [rolesLoading, setRolesLoading] = useState(false)
+  const [permissionsList, setPermissionsList] = useState<any[]>([])
+  const [rolePermissionsMap, setRolePermissionsMap] = useState<Record<string, string[]>>({})
   const [showCreateRoleModal, setShowCreateRoleModal] = useState(false)
   const [newRoleId, setNewRoleId] = useState('')
   const [newRoleLabel, setNewRoleLabel] = useState('')
@@ -153,6 +155,39 @@ export function AdminDashboardScreen() {
       console.warn('Failed to fetch roles list:', err)
     } finally {
       setRolesLoading(false)
+    }
+  }
+
+  const fetchRolePermissions = async () => {
+    if (!isSupabaseConfigured) return
+    try {
+      const [{ data: permissions, error: permissionsError }, { data: mappings, error: mappingsError }] = await Promise.all([
+        supabase.from('permissions').select('id, feature, action, description').order('feature').order('action'),
+        supabase.from('role_permissions').select('role, permission_id'),
+      ])
+      if (permissionsError) throw permissionsError
+      if (mappingsError) throw mappingsError
+      const map: Record<string, string[]> = {}
+      mappings?.forEach((mapping) => { (map[mapping.role] ||= []).push(mapping.permission_id) })
+      setPermissionsList(permissions || [])
+      setRolePermissionsMap(map)
+    } catch (err) { console.warn('Failed to fetch role permissions:', err) }
+  }
+
+  const handleUpdateRolePermissions = async (role: string, permissionIds: string[]) => {
+    if (!isSupabaseConfigured) return
+    const previous = rolePermissionsMap[role] || []
+    setRolePermissionsMap((map) => ({ ...map, [role]: permissionIds }))
+    try {
+      const { error: deleteError } = await supabase.from('role_permissions').delete().eq('role', role)
+      if (deleteError) throw deleteError
+      if (permissionIds.length) {
+        const { error: insertError } = await supabase.from('role_permissions').insert(permissionIds.map((permission_id) => ({ role, permission_id })))
+        if (insertError) throw insertError
+      }
+    } catch (err: any) {
+      setRolePermissionsMap((map) => ({ ...map, [role]: previous }))
+      alert('Failed to update permissions: ' + err.message)
     }
   }
 
@@ -1287,7 +1322,7 @@ export function AdminDashboardScreen() {
             usersCount={usersList.length ? usersList.length : '...'}
             onTabChange={(tab) => {
               if (tab === 'users') fetchUsersDirectory()
-              if (tab === 'roles') { fetchRolesList(); fetchInviteCodes(); }
+              if (tab === 'roles') { fetchRolesList(); fetchRolePermissions(); fetchInviteCodes(); }
               if (tab === 'forms') { fetchRolesList(); fetchFormSchema(selectedFormRole); }
             }}
           />
@@ -1296,6 +1331,9 @@ export function AdminDashboardScreen() {
             <RolesAccessTab
               rolesLoading={rolesLoading}
               rolesList={rolesList}
+              permissionsList={permissionsList}
+              rolePermissionsMap={rolePermissionsMap}
+              handleUpdateRolePermissions={handleUpdateRolePermissions}
               fetchRolesList={fetchRolesList}
               fetchInviteCodes={fetchInviteCodes}
               setShowCreateRoleModal={setShowCreateRoleModal}
