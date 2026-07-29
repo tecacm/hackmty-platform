@@ -1,0 +1,16 @@
+{
+  "name": "HackMTY",
+  "short_name": "HackMTY",
+  "description": "HackMTY Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F021B",
+  "theme_color": "#0F021B",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import { formFieldColors, formFieldStyles } from '../form-field-styles'
 type StyledInputProps = Omit<TextInputProps, 'style'> & {
   label: string
   error?: string
-  subtitle?: string
+  subtitle?: React.ReactNode | string
   required?: boolean
   textContentType?: TextInputProps['textContentType']
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
@@ -54,7 +54,7 @@ export function StyledInput({ label, textContentType, additionalStyle = {}, erro
       )}
       </View>
       </View>
-      {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
+      {subtitle && (typeof subtitle === 'string' ? <Text style={formFieldStyles.helperText}>{subtitle}</Text> : subtitle)}
       {error && <Text style={formFieldStyles.errorText}>{error}</Text>}
     </View>
   )

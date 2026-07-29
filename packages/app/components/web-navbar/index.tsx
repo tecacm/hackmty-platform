@@ -9,6 +9,10 @@ import { usePathname } from 'next/navigation'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
 import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
 import { SolitoImage } from 'solito/image'
+import { PersonSilhouette } from 'app/components/person-silhouette'
+
+// Module-level in-memory cache to prevent flashing on component mount / route changes
+let globalProfileCache: { avatarUrl: string | null; initials: string } | null = null
 
 export function WebNavbar() {
   if (Platform.OS !== 'web') return null
@@ -16,27 +20,53 @@ export function WebNavbar() {
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { hasPermission } = useUserPermissions()
   const pathname = usePathname()
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [initials, setInitials] = useState('👤')
+
+  const showApplicationTab = hasPermission('applications', 'view')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => globalProfileCache?.avatarUrl ?? null)
+  const [initials, setInitials] = useState<string>(() => globalProfileCache?.initials ?? '')
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<any>(null)
 
   useEffect(() => {
+    // Synchronously check localStorage if global cache is empty
+    if (!globalProfileCache && typeof window !== 'undefined') {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && key.startsWith('user_profile_')) {
+            const cached = localStorage.getItem(key)
+            if (cached) {
+              const parsed = JSON.parse(cached)
+              if (parsed.avatarUrl || parsed.initials) {
+                const init = parsed.initials && parsed.initials !== '👤' ? parsed.initials : ''
+                globalProfileCache = { avatarUrl: parsed.avatarUrl || null, initials: init }
+                setAvatarUrl(parsed.avatarUrl || null)
+                setInitials(init)
+                break
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
     async function loadUserProfile() {
       if (!isSupabaseConfigured) return
 
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user
         if (!user) return
 
-        // Load from local cache first to avoid load latency
         const cacheKey = `user_profile_${user.id}`
         if (typeof window !== 'undefined') {
           const cached = localStorage.getItem(cacheKey)
           if (cached) {
             try {
               const parsed = JSON.parse(cached)
-              if (parsed.initials) setInitials(parsed.initials)
+              const init = parsed.initials && parsed.initials !== '👤' ? parsed.initials : ''
+              globalProfileCache = { avatarUrl: parsed.avatarUrl || null, initials: init }
+              setInitials(init)
               if (parsed.avatarUrl) setAvatarUrl(parsed.avatarUrl)
             } catch (e) {}
           }
@@ -48,43 +78,68 @@ export function WebNavbar() {
           .eq('id', user.id)
           .maybeSingle()
 
-        if (profile) {
-          let currentInitials = '👤'
-          if (profile.first_name || profile.last_name) {
-            const first = (profile.first_name || '').charAt(0).toUpperCase()
-            const last = (profile.last_name || '').charAt(0).toUpperCase()
-            currentInitials = `${first}${last}` || '👤'
-            setInitials(currentInitials)
-          }
+        if (!profile) return
 
-          let currentAvatarUrl: string | null = null
-          if (profile.avatar_url) {
-            const { data } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(profile.avatar_url)
-            if (data?.publicUrl) {
-              currentAvatarUrl = data.publicUrl
-              setAvatarUrl(currentAvatarUrl)
-            }
-          }
+        const first = (profile.first_name || '').charAt(0).toUpperCase()
+        const last = (profile.last_name || '').charAt(0).toUpperCase()
+        const resolvedInitials = `${first}${last}`.trim()
+        
+        let resolvedAvatar: string | null = null
+        if (profile.avatar_url) {
+          resolvedAvatar = supabase.storage.from('avatars').getPublicUrl(profile.avatar_url).data.publicUrl
+        }
 
-          // Persist to cache
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(cacheKey, JSON.stringify({
-              initials: currentInitials,
-              avatarUrl: currentAvatarUrl,
-            }))
-          }
+        globalProfileCache = { avatarUrl: resolvedAvatar, initials: resolvedInitials }
+        setInitials(resolvedInitials)
+        setAvatarUrl(resolvedAvatar)
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            initials: resolvedInitials,
+            avatarUrl: resolvedAvatar
+          }))
         }
       } catch (err) {
-        console.warn('Failed to load user profile in WebNavbar:', err)
+        console.error('Failed to load user profile in WebNavbar:', err)
       }
     }
 
     loadUserProfile()
 
-    // Handle clicks outside to close dropdown on Web
-    const handleClickOutside = (event: MouseEvent) => {
+    // Listen for auth changes to clear or refresh navbar avatar immediately
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        globalProfileCache = null
+        setAvatarUrl(null)
+        setInitials('')
+      } else {
+        loadUserProfile()
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  const handleSignOut = async () => {
+    try {
+      globalProfileCache = null
+      setAvatarUrl(null)
+      setInitials('')
+      await supabase.auth.signOut()
+      if (typeof window !== 'undefined') {
+        localStorage.clear()
+      }
+      replaceTo('/login')
+    } catch (err) {
+      console.error('Failed to sign out:', err)
+    }
+  }
+
+  // Click outside listener for dropdown
+  useEffect(() => {
+    function handleClickOutside(event: any) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false)
       }
@@ -94,14 +149,6 @@ export function WebNavbar() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
-
-  const handleSignOut = async () => {
-    setIsOpen(false)
-    if (isSupabaseConfigured) {
-      await supabase.auth.signOut()
-    }
-    replaceTo('/login')
-  }
 
   return (
     <View style={styles.navbarContainer}>
@@ -134,53 +181,85 @@ export function WebNavbar() {
             />    
           </Pressable>
         </View>
+
         {/* Center: Main Links */}
         <View pointerEvents="box-none" style={styles.linksOverlay}>
           <View style={styles.linksContainer}>
-          <Pressable
-            onPress={() => navigateTo('/home')}
-            style={({ hovered }) => [
-              styles.navLink,
-              pathname === '/home' && styles.navLinkActive,
-            ]}
-          >
-            {({ hovered }) => (
-              <Text
-                style={[
-                  styles.navLinkText,
-                  hovered && styles.navLinkTextHover,
-                  pathname === '/home' && styles.navLinkTextActive,
+            {/* 1st Link: Feed / Announcements */}
+            {hasPermission('announcements', 'view') && (
+              <Pressable
+                onPress={() => navigateTo('/home')}
+                style={({ hovered }) => [
+                  styles.navLink,
+                  (pathname === '/home' || pathname === '/announcements') && styles.navLinkActive,
                 ]}
               >
-                Application
-              </Text>
+                {({ hovered }) => (
+                  <Text
+                    style={[
+                      styles.navLinkText,
+                      hovered && styles.navLinkTextHover,
+                      (pathname === '/home' || pathname === '/announcements') && styles.navLinkTextActive,
+                    ]}
+                  >
+                    Feed
+                  </Text>
+                )}
+              </Pressable>
             )}
-          </Pressable>
-          <Pressable
-            onPress={() => navigateTo('/profile')}
-            style={({ hovered }) => [
-              styles.navLink,
-              pathname === '/profile' && styles.navLinkActive,
-            ]}
-          >
-            {({ hovered }) => (
-              <Text
-                style={[
-                  styles.navLinkText,
-                  hovered && styles.navLinkTextHover,
-                  pathname === '/profile' && styles.navLinkTextActive,
+
+            {/* 2nd Link: Application */}
+            {showApplicationTab && (
+              <Pressable
+                onPress={() => navigateTo('/applications')}
+                style={({ hovered }) => [
+                  styles.navLink,
+                  (pathname === '/applications' || pathname === '/application') && styles.navLinkActive,
                 ]}
               >
-                Profile
-              </Text>
+                {({ hovered }) => (
+                  <Text
+                    style={[
+                      styles.navLinkText,
+                      hovered && styles.navLinkTextHover,
+                      (pathname === '/applications' || pathname === '/application') && styles.navLinkTextActive,
+                    ]}
+                  >
+                    Application
+                  </Text>
+                )}
+              </Pressable>
             )}
-          </Pressable>
-          {hasPermission('teams', 'create') && (
+
+            {/* 3rd Link: My Team */}
+            {hasPermission('teams', 'create') && (
+              <Pressable
+                onPress={() => navigateTo('/teams')}
+                style={({ hovered }) => [
+                  styles.navLink,
+                  pathname === '/teams' && styles.navLinkActive,
+                ]}
+              >
+                {({ hovered }) => (
+                  <Text
+                    style={[
+                      styles.navLinkText,
+                      hovered && styles.navLinkTextHover,
+                      pathname === '/teams' && styles.navLinkTextActive,
+                    ]}
+                  >
+                    My Team
+                  </Text>
+                )}
+              </Pressable>
+            )}
+
+            {/* 4th Link: Profile */}
             <Pressable
-              onPress={() => navigateTo('/teams')}
+              onPress={() => navigateTo('/profile')}
               style={({ hovered }) => [
                 styles.navLink,
-                pathname === '/teams' && styles.navLinkActive,
+                pathname === '/profile' && styles.navLinkActive,
               ]}
             >
               {({ hovered }) => (
@@ -188,35 +267,36 @@ export function WebNavbar() {
                   style={[
                     styles.navLinkText,
                     hovered && styles.navLinkTextHover,
-                    pathname === '/teams' && styles.navLinkTextActive,
+                    pathname === '/profile' && styles.navLinkTextActive,
                   ]}
                 >
-                  My Team
+                  Profile
                 </Text>
               )}
             </Pressable>
-          )}
-          {hasPermission('applications', 'modify') && (
-            <Pressable
-              onPress={() => navigateTo('/admin')}
-              style={({ hovered }) => [
-                styles.navLink,
-                pathname === '/admin' && styles.navLinkActive,
-              ]}
-            >
-              {({ hovered }) => (
-                <Text
-                  style={[
-                    styles.navLinkText,
-                    hovered && styles.navLinkTextHover,
-                    pathname === '/admin' && styles.navLinkTextActive,
-                  ]}
-                >
-                  Admin
-                </Text>
-              )}
-            </Pressable>
-          )}
+
+            {/* 5th Link: Admin */}
+            {hasPermission('applications', 'view_others') && (
+              <Pressable
+                onPress={() => navigateTo('/admin')}
+                style={({ hovered }) => [
+                  styles.navLink,
+                  pathname === '/admin' && styles.navLinkActive,
+                ]}
+              >
+                {({ hovered }) => (
+                  <Text
+                    style={[
+                      styles.navLinkText,
+                      hovered && styles.navLinkTextHover,
+                      pathname === '/admin' && styles.navLinkTextActive,
+                    ]}
+                  >
+                    Admin
+                  </Text>
+                )}
+              </Pressable>
+            )}
           </View>
         </View>
 
@@ -227,7 +307,11 @@ export function WebNavbar() {
               <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
             ) : (
               <View style={styles.avatarFallback}>
-                <Text style={styles.avatarFallbackText}>{initials}</Text>
+                {initials && initials !== '👤' ? (
+                  <Text style={styles.avatarFallbackText}>{initials}</Text>
+                ) : (
+                  <PersonSilhouette size={32} color="#ffffff" />
+                )}
               </View>
             )}
           </Pressable>

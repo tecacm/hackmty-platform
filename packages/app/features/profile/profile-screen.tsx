@@ -1,22 +1,20 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+const { useEffect, useState } = React
 import {
-  Dimensions,
   Text,
   View,
-  useWindowDimensions,
   ActivityIndicator,
   StyleSheet,
   Platform,
   Image,
   Pressable,
   Alert,
+  Modal,
+  Linking,
 } from 'react-native'
-import { SolitoImage } from 'solito/image'
-import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
-import { WebNavbar } from 'app/components/web-navbar'
+
 import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
 import { StyledAutocomplete } from 'app/components/styled-autocomplete'
@@ -27,7 +25,9 @@ import { formFieldColors } from 'app/components/form-field-styles'
 import { dataReferences } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
-import numbersbg from 'app/assets/images/numbers-bg.webp'
+import { PersonSilhouette } from 'app/components/person-silhouette'
+
+import { sanitizeName, sanitizeString, sanitizeUrl } from 'app/utils/sanitization'
 
 // Static fallback option arrays for selects
 const defaultGenderOptions = [
@@ -65,17 +65,100 @@ const defaultDietOptions = [
   { label: 'Gluten-Free', value: 'gluten_free' },
 ]
 
-export function ProfileScreen() {
+function InfoTile({
+  label,
+  value,
+  isLink,
+  onPress,
+}: {
+  label: string
+  value?: string | null
+  isLink?: boolean
+  onPress?: () => void
+}) {
+  const content = (
+    <View style={styles.infoTile}>
+      <Text style={styles.infoTileLabel}>{label}</Text>
+      <Text
+        style={[
+          styles.infoTileValue,
+          !value && styles.infoTileEmpty,
+          isLink && value ? styles.infoTileLink : undefined,
+        ]}
+        numberOfLines={2}
+      >
+        {value || 'Not specified'}
+      </Text>
+    </View>
+  )
+
+  if (isLink && value && onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="link"
+        accessibilityLabel={`Open ${label}: ${value}`}
+        style={({ pressed }) => [pressed && { opacity: 0.75 }]}
+      >
+        {content}
+      </Pressable>
+    )
+  }
+
+  return content
+}
+
+import { AppIcon } from 'app/components/app-icon'
+import { GlassButton } from 'app/components/glass-button'
+import { useProfileNavHeader } from './use-profile-nav-header'
+
+export function ProfileScreen({ navigation }: { navigation?: any }) {
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { role: userRole } = useUserPermissions()
-  const insets = useSafeArea()
-  const { width } = useWindowDimensions()
-  const [height, setHeight] = useState(0)
-  const [isHydrated, setIsHydrated] = useState(false)
+
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; isError: boolean } | null>(null)
+
+  const handleToggleEdit = React.useCallback(() => {
+    setFeedbackMessage(null)
+    setIsEditing(prev => !prev)
+  }, [])
+
+  useProfileNavHeader(navigation, isEditing, handleToggleEdit)
+
+  const handleAvatarPress = () => {
+    if (isEditing) {
+      openImagePicker()
+    } else {
+      setIsAvatarModalOpen(true)
+    }
+  }
+
+  const handleOpenUrl = React.useCallback((rawUrl?: string | null) => {
+    if (!rawUrl) return
+    let formattedUrl = rawUrl.trim()
+    if (!formattedUrl) return
+
+    if (!/^https?:\/\//i.test(formattedUrl)) {
+      formattedUrl = `https://${formattedUrl}`
+    }
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        window.open(formattedUrl, '_blank', 'noopener,noreferrer')
+      } else {
+        Linking.openURL(formattedUrl)
+      }
+    } else {
+      Linking.openURL(formattedUrl).catch(() => {
+        Alert.alert('Cannot Open Link', `Unable to open URL: ${formattedUrl}`)
+      })
+    }
+  }, [])
 
   // Profile data state
   const [userId, setUserId] = useState<string | null>(null)
@@ -104,24 +187,6 @@ export function ProfileScreen() {
   const [levelOfStudyOpts, setLevelOfStudyOpts] = useState(defaultLevelOfStudyOptions)
   const [tshirtOpts, setTshirtOpts] = useState(defaultTshirtOptions)
   const [dietOpts, setDietOpts] = useState(defaultDietOptions)
-
-  useEffect(() => {
-    setIsHydrated(true)
-  }, [])
-
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const update = () => setHeight(window.innerHeight)
-      update()
-      window.addEventListener('resize', update)
-      return () => window.removeEventListener('resize', update)
-    } else {
-      const update = () => setHeight(Dimensions.get('screen').height)
-      update()
-      const sub = Dimensions.addEventListener('change', update)
-      return () => sub?.remove()
-    }
-  }, [])
 
   // Load User & Profile values
   useEffect(() => {
@@ -251,10 +316,11 @@ export function ProfileScreen() {
         if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
           const cacheKey = `user_profile_${userId}`
           const cached = localStorage.getItem(cacheKey)
-          let initials = '👤'
+          let initials = ''
           if (cached) {
             try {
-              initials = JSON.parse(cached).initials || '👤'
+              const parsedInitials = JSON.parse(cached).initials
+              if (parsedInitials && parsedInitials !== '👤') initials = parsedInitials
             } catch (e) {}
           }
           localStorage.setItem(cacheKey, JSON.stringify({
@@ -346,24 +412,39 @@ export function ProfileScreen() {
       setIsSaving(true)
       setFeedbackMessage(null)
 
+      const cleanFirstName = sanitizeName(firstName)
+      const cleanLastName = sanitizeName(lastName)
+      const cleanPhone = sanitizeString(phone)
+      const cleanGender = sanitizeString(gender)
+      const cleanUniversity = sanitizeName(university)
+      const cleanMajor = sanitizeName(major)
+      const cleanGradYear = sanitizeString(gradYear)
+      const cleanLevelOfStudy = sanitizeString(levelOfStudy)
+      const cleanTshirtSize = sanitizeString(tshirtSize)
+      const cleanDietary = sanitizeString(dietary)
+      const cleanGithub = sanitizeUrl(github)
+      const cleanDevpost = sanitizeUrl(devpost)
+      const cleanLinkedin = sanitizeUrl(linkedin)
+      const cleanPersonalSite = sanitizeUrl(personalSite)
+
       const { error: saveError } = await supabase
         .from('profiles')
         .upsert({
           id: userId,
-          first_name: firstName,
-          last_name: lastName,
-          phone,
-          gender,
-          university,
-          major,
-          graduation_year: gradYear,
-          level_of_study: levelOfStudy,
-          tshirt_size: tshirtSize,
-          dietary_restrictions: dietary,
-          github,
-          devpost,
-          linkedin,
-          personal_site: personalSite,
+          first_name: cleanFirstName,
+          last_name: cleanLastName,
+          phone: cleanPhone,
+          gender: cleanGender,
+          university: cleanUniversity,
+          major: cleanMajor,
+          graduation_year: cleanGradYear,
+          level_of_study: cleanLevelOfStudy,
+          tshirt_size: cleanTshirtSize,
+          dietary_restrictions: cleanDietary,
+          github: cleanGithub,
+          devpost: cleanDevpost,
+          linkedin: cleanLinkedin,
+          personal_site: cleanPersonalSite,
         })
 
       if (saveError) throw saveError
@@ -380,6 +461,7 @@ export function ProfileScreen() {
       }
 
       setFeedbackMessage({ text: 'Profile changes saved successfully!', isError: false })
+      setIsEditing(false)
     } catch (err: any) {
       console.error('Failed to save profile changes:', err)
       setFeedbackMessage({ text: err.message || 'Failed to save changes.', isError: true })
@@ -461,89 +543,171 @@ export function ProfileScreen() {
     value: y.value,
   }))
 
-  const backgroundProps: any = {
-    src: numbersbg,
-    width: isHydrated && width > 0 ? width : 1920,
-    height: isHydrated && height > 0 ? height : 1080,
-    contentFit: 'cover',
-    resizeMode: 'cover',
-    transition: 0,
-    alt: 'Abstract numbers background',
+  const getOptionLabel = (options: { label: string; value: string }[], val: string) => {
+    if (!val) return null
+    const found = options.find((o) => o.value === val)
+    return found ? found.label : val
   }
 
-  const background = <SolitoImage {...backgroundProps} />
+  const fullName = [firstName, lastName].filter(Boolean).join(' ') || 'Your Name'
+  const formattedRole = userRole
+    ? userRole.charAt(0).toUpperCase() + userRole.slice(1).toLowerCase()
+    : 'Hacker'
 
   return (
-    <>
-      <WebNavbar />
-      <ParallaxScrollView
-        background={background}
-        style={{ backgroundColor: '#5a0061cc' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : insets.top,
-          paddingBottom: insets.bottom + 40,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
-        <View style={styles.formContainer}>
-          {isLoading ? (
-            <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
-              <ActivityIndicator size="large" color="#ffffff" />
-              <Text style={{ color: '#ffffff', fontSize: 16 }}>Loading profile details...</Text>
-            </View>
-          ) : (
-            <View style={styles.innerCard}>
-              <Text style={styles.titleText}>My Profile</Text>
-
-              {/* Avatar Photo Section */}
-              <View style={styles.avatarSection}>
-                <Pressable onPress={openImagePicker} style={styles.avatarCircle}>
-                  {avatarDisplayUrl ? (
-                    <Image source={{ uri: avatarDisplayUrl }} style={styles.avatarImage} />
-                  ) : (
-                    <View style={styles.avatarFallback}>
-                      <Text style={styles.avatarFallbackText}>👤</Text>
-                    </View>
-                  )}
-                  {isUploading && (
-                    <View style={styles.uploadOverlay}>
-                      <ActivityIndicator size="small" color="#ffffff" />
-                    </View>
-                  )}
-                </Pressable>
-                <Pressable onPress={openImagePicker} disabled={isUploading}>
-                  <Text style={styles.uploadBtnText}>
-                    {isUploading ? 'Uploading...' : 'Change Profile Photo'}
-                  </Text>
-                </Pressable>
+    <View style={styles.container}>
+      {isLoading ? (
+        <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
+          <ActivityIndicator size="large" color="#ffffff" />
+          <Text style={{ color: '#ffffff', fontSize: 16 }}>Loading profile details...</Text>
+        </View>
+      ) : (
+        <>
+          {/* Floating Header (Outside the white card) */}
+          <View style={styles.floatingHeader}>
+            {/* Avatar Circle floating outside container without gold ring */}
+            <Pressable
+              onPress={handleAvatarPress}
+              accessibilityRole="button"
+              accessibilityLabel={isEditing ? 'Change profile photo' : 'View enlarged profile photo'}
+              style={({ pressed }) => [
+                styles.avatarWrapper,
+                pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+              ]}
+              disabled={isUploading}
+            >
+              <View style={styles.avatarCircle}>
+                {avatarDisplayUrl ? (
+                  <Image source={{ uri: avatarDisplayUrl }} style={styles.avatarImage} />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <PersonSilhouette size={110} />
+                  </View>
+                )}
+                {isUploading && (
+                  <View style={styles.uploadOverlay}>
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  </View>
+                )}
               </View>
 
-              {/* Account Role Section */}
-              <View style={styles.roleCardContainer}>
-                <View style={styles.roleHeaderRow}>
-                  <Text style={styles.roleLabel}>Account Type:</Text>
-                  <View style={styles.roleBadge}>
-                    <Text style={styles.roleBadgeText}>{userRole.toUpperCase()}</Text>
+              {/* Camera edit button is ONLY available when in Edit Mode */}
+              {isEditing && (
+                <View style={styles.editPhotoButton}>
+                  <AppIcon name="camera.fill" color="#ffffff" size={16} />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Floating White Name */}
+            <Text style={styles.floatingName}>{fullName}</Text>
+
+            {/* Role label directly under the name without a pill box */}
+            <Text style={styles.floatingRole}>{formattedRole}</Text>
+
+            {/* Quick Action Slot */}
+            <View style={styles.quickActionsContainer}>
+              <GlassButton
+                glassEffectStyle="clear"
+                colorScheme="dark"
+                accessibilityRole="button"
+                accessibilityLabel="Show My QR Code"
+                style={styles.quickActionButton}
+                onPress={() => {
+                  Alert.alert('My QR', 'QR Code check-in and info sharing features coming soon!')
+                }}
+              >
+                <AppIcon name="qrcode" color="#ffffff" size={16} />
+                <Text style={styles.quickActionText}>My QR</Text>
+              </GlassButton>
+            </View>
+          </View>
+
+          {/* Profile Content Card - Material Container */}
+          <View style={styles.innerCard}>
+            {/* Card Header Row */}
+            <View style={styles.cardHeaderRow}>
+              <View>
+                <Text style={styles.cardTitle}>Profile Information</Text>
+                <Text style={styles.cardSubtitle}>
+                  {isEditing ? 'Editing your personal information' : 'Personal & account details'}
+                </Text>
+              </View>
+
+              {Platform.OS === 'web' && (
+                <GlassButton
+                  glassEffectStyle="clear"
+                  colorScheme="dark"
+                  accessibilityRole="button"
+                  accessibilityLabel={isEditing ? 'Cancel editing profile' : 'Edit profile information'}
+                  style={[
+                    styles.toggleEditBtn,
+                    isEditing && styles.toggleEditBtnCancel,
+                  ]}
+                  onPress={handleToggleEdit}
+                >
+                  <Text style={[styles.toggleEditBtnText, isEditing && styles.toggleEditBtnTextCancel]}>
+                    {isEditing ? 'Cancel' : 'Edit Profile'}
+                  </Text>
+                </GlassButton>
+              )}
+            </View>
+
+            {feedbackMessage && (
+              <View
+                style={[
+                  styles.feedbackBox,
+                  feedbackMessage.isError ? styles.errorBox : styles.successBox,
+                ]}
+              >
+                <Text style={styles.feedbackText}>{feedbackMessage.text}</Text>
+              </View>
+            )}
+
+            {!isEditing ? (
+              /* VIEW MODE (Nice minimized style) */
+              <View style={styles.viewModeContainer}>
+                <View style={styles.infoSection}>
+                  <Text style={styles.sectionHeading}>PERSONAL DETAILS</Text>
+                  <View style={styles.infoGrid}>
+                    <InfoTile label="First Name" value={firstName} />
+                    <InfoTile label="Last Name" value={lastName} />
+                    <InfoTile label="Email Address" value={email} />
+                    <InfoTile label="Phone Number" value={phone} />
+                    <InfoTile label="Gender" value={getOptionLabel(genderOpts, gender)} />
+                  </View>
+                </View>
+
+                <View style={styles.infoSection}>
+                  <Text style={styles.sectionHeading}>ACADEMIC INFORMATION</Text>
+                  <View style={styles.infoGrid}>
+                    <InfoTile label="University" value={university} />
+                    <InfoTile label="Major" value={major} />
+                    <InfoTile label="Graduation Year" value={getOptionLabel(gradYearOptions, gradYear)} />
+                    <InfoTile label="Level of Study" value={getOptionLabel(levelOfStudyOpts, levelOfStudy)} />
+                  </View>
+                </View>
+
+                <View style={styles.infoSection}>
+                  <Text style={styles.sectionHeading}>EVENT PREFERENCES</Text>
+                  <View style={styles.infoGrid}>
+                    <InfoTile label="T-Shirt Size" value={getOptionLabel(tshirtOpts, tshirtSize)} />
+                    <InfoTile label="Dietary Restrictions" value={getOptionLabel(dietOpts, dietary)} />
+                  </View>
+                </View>
+
+                <View style={styles.infoSection}>
+                  <Text style={styles.sectionHeading}>LINKS & SOCIALS</Text>
+                  <View style={styles.infoGrid}>
+                    <InfoTile label="GitHub" value={github} isLink onPress={() => handleOpenUrl(github)} />
+                    <InfoTile label="Devpost" value={devpost} isLink onPress={() => handleOpenUrl(devpost)} />
+                    <InfoTile label="LinkedIn" value={linkedin} isLink onPress={() => handleOpenUrl(linkedin)} />
+                    <InfoTile label="Personal Website" value={personalSite} isLink onPress={() => handleOpenUrl(personalSite)} />
                   </View>
                 </View>
               </View>
-
-              {feedbackMessage && (
-                <View
-                  style={[
-                    styles.feedbackBox,
-                    feedbackMessage.isError ? styles.errorBox : styles.successBox,
-                  ]}
-                >
-                  <Text style={styles.feedbackText}>{feedbackMessage.text}</Text>
-                </View>
-              )}
-
-              {/* Grid Form Fields */}
+            ) : (
+              /* EDIT MODE (Form input fields) */
               <View style={styles.gridContainer}>
                 <StyledInput
                   label="First Name"
@@ -658,27 +822,37 @@ export function ProfileScreen() {
                   value={personalSite}
                   onChangeText={setPersonalSite}
                 />
-              </View>
 
-              {/* Action Buttons */}
-              <View style={styles.actionRow}>
-                <PillButton
-                  title={isSaving ? 'Saving Changes...' : 'Save Profile'}
-                  onPress={isSaving ? () => {} : handleSaveProfile}
-                  additionalStyle={{ flex: 1, opacity: isSaving ? 0.6 : 1 }}
-                />
-
-                {Platform.OS !== 'web' && (
+                {/* Edit Form Actions */}
+                <View style={styles.editActionRow}>
                   <PillButton
-                    variant="outline-primary"
-                    title="Sign Out"
-                    onPress={handleSignOut}
-                    additionalStyle={{ leftMargin: 10, flex: 1 }}
+                    title={isSaving ? 'Saving Changes...' : 'Save Profile'}
+                    onPress={isSaving ? () => {} : handleSaveProfile}
+                    additionalStyle={{ flex: 1, opacity: isSaving ? 0.6 : 1 }}
                   />
-                )}
+                  <PillButton
+                    variant="outline-secondary"
+                    title="Cancel"
+                    onPress={() => setIsEditing(false)}
+                    additionalStyle={{ flex: 1 }}
+                  />
+                </View>
               </View>
+            )}
 
-              {/* Danger Zone */}
+            {/* Mobile Sign Out */}
+            {Platform.OS !== 'web' && (
+              <View style={styles.mobileSignOutRow}>
+                <PillButton
+                  variant="outline-primary"
+                  title="Sign Out"
+                  onPress={handleSignOut}
+                />
+              </View>
+            )}
+
+            {/* Danger Zone - Only visible in Edit Mode */}
+            {isEditing && (
               <View style={styles.dangerZone}>
                 <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
                 <Text style={styles.dangerZoneDescription}>
@@ -691,60 +865,77 @@ export function ProfileScreen() {
                   onPress={confirmDeleteAccount}
                 />
               </View>
-            </View>
-          )}
-        </View>
-      </ParallaxScrollView>
-    </>
+            )}
+          </View>
+
+          {/* Larger Avatar Lightbox Modal when clicking pfp while not editing */}
+          <Modal
+            visible={isAvatarModalOpen}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setIsAvatarModalOpen(false)}
+          >
+            <Pressable
+              style={styles.modalBackdrop}
+              onPress={() => setIsAvatarModalOpen(false)}
+            >
+              <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+                <View style={styles.modalAvatarCircle}>
+                  {avatarDisplayUrl ? (
+                    <Image source={{ uri: avatarDisplayUrl }} style={styles.modalAvatarImage} />
+                  ) : (
+                    <View style={styles.modalAvatarFallback}>
+                      <PersonSilhouette size={200} />
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.modalNameText}>{fullName}</Text>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.closeModalBtn,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => setIsAvatarModalOpen(false)}
+                >
+                  <Text style={styles.closeModalBtnText}>Close</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Modal>
+        </>
+      )}
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  formContainer: {
+  container: {
     width: '90%',
-    maxWidth: 1000,
-    overflow: 'visible',
+    maxWidth: 900,
+    alignItems: 'center',
   },
-  innerCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 30,
-    ...Platform.select({
-      native: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 2,
-      },
-      web: {
-        boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.12)',
-      },
-    }),
-  },
-  titleText: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: formFieldColors.theme,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  avatarSection: {
+  floatingHeader: {
     alignItems: 'center',
     marginBottom: 24,
-    gap: 10,
+    width: '100%',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 12,
   },
   avatarCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: '#c2b75f',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#e2e2e2',
+    backgroundColor: '#ffffff22',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
   avatarImage: {
     width: '100%',
@@ -752,22 +943,159 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   avatarFallback: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    backgroundColor: '#ffffff33',
+  },
+  editPhotoButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: formFieldColors.theme,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarFallbackText: {
-    fontSize: 48,
+  editPhotoIcon: {
+    fontSize: 14,
+  },
+  floatingName: {
+    color: '#ffffff',
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 4,
+    letterSpacing: 0.3,
+  },
+  floatingRole: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 16,
+    letterSpacing: 0.5,
+  },
+  quickActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 4,
+  },
+  quickActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minHeight: 44,
+    borderRadius: 22,
+    alignSelf: 'center',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(8px)',
+        cursor: 'pointer',
+      } as any,
+    }),
+  },
+  quickActionIcon: {
+    fontSize: 16,
+  },
+  quickActionText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  innerCard: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 28,
+    ...Platform.select({
+      native: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.12)',
+      },
+    }),
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: formFieldColors.theme,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#666666',
+    marginTop: 2,
+  },
+  toggleEditBtn: {
+    backgroundColor: 'rgba(75, 22, 135, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(75, 22, 135, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 22,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      } as any,
+    }),
+  },
+  toggleEditBtnCancel: {
+    ...Platform.select({
+      android: {
+        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+        borderColor: 'rgba(0, 0, 0, 0.15)',
+      },
+      web: {
+        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+        borderColor: 'rgba(0, 0, 0, 0.15)',
+      },
+    }),
+  },
+  toggleEditBtnText: {
+    color: formFieldColors.theme,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  toggleEditBtnTextCancel: {
+    color: '#666666',
   },
   uploadOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  uploadBtnText: {
-    color: formFieldColors.theme,
-    fontSize: 14,
-    fontWeight: '700',
   },
   feedbackBox: {
     padding: 12,
@@ -790,37 +1118,63 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000000',
   },
+  viewModeContainer: {
+    gap: 24,
+  },
+  infoSection: {
+    gap: 12,
+  },
+  sectionHeading: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#888888',
+    letterSpacing: 1.2,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  infoTile: {
+    flex: 1,
+    minWidth: 220,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  infoTileLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6c757d',
+    marginBottom: 4,
+  },
+  infoTileValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#212529',
+  },
+  infoTileEmpty: {
+    color: '#adb5bd',
+    fontWeight: '500',
+    fontStyle: 'italic',
+  },
+  infoTileLink: {
+    color: formFieldColors.theme,
+  },
   gridContainer: {
     flexDirection: 'column',
     width: '100%',
-    gap: 4,
-    marginBottom: 24,
+    gap: 12,
   },
-  actionRow: {
+  editActionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 12,
     marginTop: 12,
   },
-  signOutButton: {
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ff6b6b',
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    paddingHorizontal: 24,
-    marginLeft: 12,
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-      } as any
-    })
-  },
-  signOutButtonText: {
-    color: '#ff6b6b',
-    fontSize: 16,
-    fontWeight: '700',
+  mobileSignOutRow: {
+    marginTop: 24,
   },
   dangerZone: {
     marginTop: 32,
@@ -841,89 +1195,78 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
-  deleteBtn: {
-    height: 48,
-    borderRadius: 24,
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(8px)',
+        cursor: 'pointer',
+      } as any,
+    }),
+  },
+  modalContent: {
+    backgroundColor: 'rgba(35, 10, 50, 0.95)',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    gap: 16,
     borderWidth: 1,
-    borderColor: '#d32f2f',
-    backgroundColor: 'rgba(211, 47, 47, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    maxWidth: 400,
+    width: '90%',
+    ...Platform.select({
+      web: {
+        cursor: 'default',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+      } as any,
+    }),
+  },
+  modalAvatarCircle: {
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    overflow: 'hidden',
+    backgroundColor: '#ffffff22',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalAvatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  modalAvatarFallback: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff33',
+  },
+  modalNameText: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  closeModalBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     ...Platform.select({
       web: {
         cursor: 'pointer',
-      } as any
-    })
+      } as any,
+    }),
   },
-  deleteBtnText: {
-    color: '#d32f2f',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  roleCardContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 16,
-    padding: 16,
-    width: '100%',
-    alignItems: 'center',
-    gap: 12,
-    marginVertical: 8,
-  },
-  roleHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  roleLabel: {
-    color: '#a3a3a3',
+  closeModalBtnText: {
+    color: '#ffffff',
     fontSize: 14,
-    fontWeight: '600',
-  },
-  roleBadge: {
-    backgroundColor: '#ffd7001c',
-    borderWidth: 1,
-    borderColor: '#ffd700',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  roleBadgeText: {
-    color: '#ffd700',
-    fontSize: 12,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  permissionsContainer: {
-    width: '100%',
-    alignItems: 'center',
-    gap: 8,
-  },
-  permissionsTitle: {
-    color: '#a3a3a3',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  pillsWrapper: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  permissionPill: {
-    backgroundColor: 'rgba(194, 183, 95, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(194, 183, 95, 0.3)',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  permissionPillText: {
-    color: '#c2b75f',
-    fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '700',
   },
 })

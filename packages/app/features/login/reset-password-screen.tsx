@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   authError: {
-    color: '#ffb4b4',
+    color: '#ff6554',
     textAlign: 'center',
     fontWeight: '600',
     fontFamily: 'Montserrat',

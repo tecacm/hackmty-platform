@@ -5,7 +5,7 @@ export const formFieldColors = {
   text: '#000000',
   muted: '#747474',
   subtext: '#5e5e5e',
-  error: '#ff6b6b',
+  error: '#ff6554',
   surface: '#e2e2e2',
   transparent: '#ffffff00',
   accent: '#c2b75f',

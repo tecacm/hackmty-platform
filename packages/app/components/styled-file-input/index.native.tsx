@@ -9,8 +9,10 @@ type StyledFileInputProps = {
   value?: string
   placeholder?: string
   error?: string
-  subtitle?: string
+  subtitle?: React.ReactNode | string
   required?: boolean
+  bucketName?: string
+  fileNamePrefix?: string
   fileSelectorProps?: FileSelectorProps
   onValueChange: (value: string) => void
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
@@ -29,10 +31,10 @@ function getFileExtension(fileName: string) {
   return fileName.split('.').pop()?.toLowerCase() ?? ''
 }
 
-function matchesAcceptedFileType(asset: DocumentPicker.DocumentPickerAsset, acceptedMimeTypes: string[], acceptedExtensions: string[]) {
-  const extension = getFileExtension(asset.name)
-  const mimeMatches = acceptedMimeTypes.length > 0 && acceptedMimeTypes.some((mimeType) => mimeType === asset.mimeType)
-  const extensionMatches = acceptedExtensions.length > 0 && acceptedExtensions.some((acceptedExtension) => acceptedExtension.replace(/^\./, '').toLowerCase() === extension)
+function matchesAcceptedFileType(fileName: string, mimeType: string | undefined, acceptedMimeTypes: string[], acceptedExtensions: string[]) {
+  const extension = getFileExtension(fileName)
+  const mimeMatches = acceptedMimeTypes.length > 0 && !!mimeType && acceptedMimeTypes.some((m) => m === mimeType)
+  const extensionMatches = acceptedExtensions.length > 0 && acceptedExtensions.some((ext) => ext.replace(/^\./, '').toLowerCase() === extension)
 
   if (acceptedMimeTypes.length === 0 && acceptedExtensions.length === 0) return true
   return mimeMatches || extensionMatches
@@ -47,19 +49,15 @@ async function validatePickedAsset(
   invalidFileSizeMessage?: string,
   fileSizeUnknownMessage?: string
 ) {
-  if (!matchesAcceptedFileType(asset, acceptedMimeTypes, acceptedExtensions)) {
+  if (!matchesAcceptedFileType(asset.name, asset.mimeType, acceptedMimeTypes, acceptedExtensions)) {
     return invalidFileTypeMessage ?? 'The selected file type is not allowed.'
   }
 
-  if (typeof maxSizeBytes !== 'number') {
-    return ''
-  }
-
-  if (typeof asset.size !== 'number') {
+  if (typeof maxSizeBytes === 'number' && typeof asset.size !== 'number') {
     return fileSizeUnknownMessage ?? 'The selected file size could not be verified.'
   }
 
-  if (asset.size > maxSizeBytes) {
+  if (typeof maxSizeBytes === 'number' && typeof asset.size === 'number' && asset.size > maxSizeBytes) {
     return invalidFileSizeMessage ?? 'The selected file is too large.'
   }
 
@@ -78,6 +76,8 @@ export function StyledFileInput({
   error,
   subtitle,
   required = false,
+  bucketName = 'resumes',
+  fileNamePrefix = 'resume',
   fileSelectorProps = {},
   onValueChange,
   additionalStyle = {},
@@ -143,7 +143,7 @@ export function StyledFileInput({
       }
 
       const fileExt = picked.name.split('.').pop()
-      const filePath = `${user.id}/resume.${fileExt}`
+      const filePath = `${user.id}/${fileNamePrefix}.${fileExt}`
 
       // Create FormData payload for React Native upload
       const formData = new FormData()
@@ -154,7 +154,7 @@ export function StyledFileInput({
       } as any)
 
       const { error: uploadError } = await supabase.storage
-        .from('resumes')
+        .from(bucketName)
         .upload(filePath, formData, { upsert: true })
 
       if (uploadError) throw uploadError
@@ -191,7 +191,7 @@ export function StyledFileInput({
         </Text>
         <Text style={styles.actionText}>{isUploading ? 'Uploading...' : 'Browse'}</Text>
       </Pressable>
-      {subtitle && <Text style={formFieldStyles.helperText}>{subtitle}</Text>}
+      {subtitle && (typeof subtitle === 'string' ? <Text style={formFieldStyles.helperText}>{subtitle}</Text> : subtitle)}
       {!!(localError || error) && <Text style={formFieldStyles.errorText}>{localError || error}</Text>}
     </View>
   )

@@ -22,6 +22,8 @@ import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 
+import { sanitizeEmail } from 'app/utils/sanitization'
+
 type LoginFormValues = {
   email: string
   password: string
@@ -29,7 +31,7 @@ type LoginFormValues = {
 
 const styles = StyleSheet.create({
   authError: {
-    color: '#c0392b',
+    color: '#ff6554',
     textAlign: 'center',
     fontWeight: '600',
     fontFamily: 'Montserrat',
@@ -179,6 +181,7 @@ export function LoginScreen() {
 
     setAuthError(null)
     setIsSubmitting(true)
+    let shouldNavigate = false
 
     try {
       if (!isSupabaseConfigured) {
@@ -187,7 +190,7 @@ export function LoginScreen() {
       }
 
       const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: sanitizeEmail(email),
         password,
       })
 
@@ -196,11 +199,18 @@ export function LoginScreen() {
         return
       }
 
-      navigateTo('/home')
-    } catch {
-      setAuthError('Unable to log in. Please try again.')
+      shouldNavigate = true
+    } catch (err: any) {
+      if (err?.digest?.startsWith?.('NEXT_REDIRECT') || err?.message === 'NEXT_REDIRECT') {
+        return
+      }
+      setAuthError(err?.message || 'Unable to log in. Please try again.')
     } finally {
       setIsSubmitting(false)
+    }
+
+    if (shouldNavigate) {
+      navigateTo('/home')
     }
   }
 

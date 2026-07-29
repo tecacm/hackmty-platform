@@ -23,6 +23,8 @@ import { FormCheckbox } from 'app/components/form-checkbox'
 import { useForm, Controller } from "react-hook-form"
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 
+import { sanitizeName } from 'app/utils/sanitization'
+
 type CompleteSignupValues = {
   firstName: string
   lastName: string
@@ -53,7 +55,7 @@ const styles = StyleSheet.create({
     })
   },
   authError: {
-    color: '#ffd3d3',
+    color: '#ff6554',
     textAlign: 'center',
     fontWeight: '600',
   },
@@ -212,8 +214,8 @@ export function CompleteSignupScreen() {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
+          first_name: sanitizeName(formData.firstName),
+          last_name: sanitizeName(formData.lastName),
           agree_mlh: formData.agreeMLH,
           subscribe_mailing_list: formData.subscribeMailingList,
         })

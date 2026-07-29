@@ -75,7 +75,7 @@ const labelReferences: Record<string, ReactNode> = {
 }
 
 // Map for file type configurations
-const fileTypeConfigs: Record<string, FileSelectorProps> = {
+export const fileTypeConfigs: Record<string, FileSelectorProps> = {
   pdf: {
     acceptedMimeTypes: ['application/pdf'],
     acceptedExtensions: ['pdf'],
@@ -151,7 +151,7 @@ type ApplicantFormField = {
   autocompleteData?: string[]
   fileSelectorProps?: FileSelectorProps
   height?: number
-  dependsOn?: { field: string; value: any }
+  dependsOn?: { field: string; value: any; operator?: '=' | '==' | '===' | '!=' | '<' | '<=' | '>' | '>=' }
 }
 
 type ApplicantDividerField = {

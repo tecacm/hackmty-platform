@@ -1,15 +1,12 @@
 import * as React from 'react'
 import { useState, useEffect } from 'react'
 import { StyleSheet, View, Text, Platform, ActivityIndicator, Pressable, useWindowDimensions, Image, Clipboard, Modal } from 'react-native'
-import { WebNavbar } from 'app/components/web-navbar'
-import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
+
 import { PillButton } from 'app/components/pill-button'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
-import { SolitoImage } from 'solito/image'
-import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
 import { StyledInput } from 'app/components/styled-input'
-import numbersbg from 'app/assets/images/numbers-bg.webp'
+import { PersonSilhouette } from 'app/components/person-silhouette'
+import { sanitizeEmail, sanitizeName, sanitizeString } from 'app/utils/sanitization'
 
 interface Member {
   id: string
@@ -30,7 +27,6 @@ interface Team {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1d041f',
   },
   formContainer: {
     width: '90%',
@@ -509,8 +505,7 @@ const styles = StyleSheet.create({
 })
 
 export function TeamsScreen() {
-  const insets = useSafeArea()
-  const headerHeight = useHeaderHeightSafe()
+
   const { width } = useWindowDimensions()
 
   const [loading, setLoading] = useState(true)
@@ -752,7 +747,8 @@ export function TeamsScreen() {
   }
 
   const handleCreateTeam = async () => {
-    if (!teamNameInput.trim()) {
+    const cleanTeamName = sanitizeName(teamNameInput)
+    if (!cleanTeamName) {
       setError('Please enter a team name.')
       return
     }
@@ -764,7 +760,7 @@ export function TeamsScreen() {
       if (!isSupabaseConfigured) {
         setTeam({
           id: 'dev-team-123',
-          name: teamNameInput.trim(),
+          name: cleanTeamName,
           code: 'ACM999',
           creator_id: '1',
           members: [{ id: '1', first_name: 'Ernesto', last_name: 'Developer', avatar_url: null }]
@@ -774,7 +770,7 @@ export function TeamsScreen() {
       }
 
       const { error: createError } = await supabase.rpc('create_team', {
-        team_name: teamNameInput.trim()
+        team_name: cleanTeamName
       })
 
       if (createError) throw createError
@@ -789,7 +785,8 @@ export function TeamsScreen() {
   }
 
   const handleJoinTeam = async () => {
-    if (!joinCodeInput.trim()) {
+    const cleanJoinCode = sanitizeString(joinCodeInput).toUpperCase()
+    if (!cleanJoinCode) {
       setError('Please enter a join code.')
       return
     }
@@ -802,7 +799,7 @@ export function TeamsScreen() {
         setTeam({
           id: 'dev-team-123',
           name: 'Tech ACM Team',
-          code: joinCodeInput.trim().toUpperCase(),
+          code: cleanJoinCode,
           creator_id: '1',
           members: [
             { id: '1', first_name: 'Ernesto', last_name: 'Developer', avatar_url: null },
@@ -814,7 +811,7 @@ export function TeamsScreen() {
       }
 
       const { error: joinError } = await supabase.rpc('join_team', {
-        join_code: joinCodeInput.trim().toUpperCase()
+        join_code: cleanJoinCode
       })
 
       if (joinError) throw joinError
@@ -907,7 +904,7 @@ export function TeamsScreen() {
   }
 
   const handleSendInvite = async () => {
-    const email = inviteEmailInput.trim()
+    const email = sanitizeEmail(inviteEmailInput)
     if (!email) {
       setInviteResult({ status: 'error', message: 'Please enter a valid email address.' })
       return
@@ -1019,36 +1016,11 @@ export function TeamsScreen() {
     }
   }
 
-  const backgroundProps: any = {
-    src: numbersbg,
-    width: isHydrated && width > 0 ? width : 1920,
-    height: 1080,
-    contentFit: 'cover' as const,
-    resizeMode: 'cover' as const,
-    transition: 0,
-    alt: 'Abstract numbers background',
-  }
 
-  const background = <SolitoImage {...backgroundProps} />
 
   return (
-    <View style={styles.container}>
-      <WebNavbar />
-
-      <ParallaxScrollView
-        background={background}
-        style={{ backgroundColor: '#5a0061cc' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : Math.max(headerHeight, insets.top) + 16,
-          paddingBottom: insets.bottom + 40,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
-        <View style={styles.formContainer}>
+    <>
+      <View style={styles.formContainer}>
           {loading ? (
             <View style={styles.innerCard}>
               <ActivityIndicator size="large" color="#c2b75f" style={{ marginVertical: 32 }} />
@@ -1072,16 +1044,33 @@ export function TeamsScreen() {
                       An admin requested changes on team application(s). Please resolve for accountability:
                     </Text>
                     {membersWithChanges.map(member => {
-                      const apps = membersApplications.filter(a => a.user_id === member.id)
-                      const appWithFeedback = apps.find(a => a.status === 'changes_requested' && a.admin_feedback)
-                      const feedback = appWithFeedback?.admin_feedback || 'No specific feedback provided.'
-                      const name = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Teammate'
-                      return (
-                        <View key={member.id} style={styles.warningBannerItem}>
-                          <Text style={styles.warningBannerName}>• {name}:</Text>
-                          <Text style={styles.warningBannerFeedback}>"{feedback}"</Text>
-                        </View>
-                      )
+                       const apps = membersApplications.filter(a => a.user_id === member.id)
+                       const appWithFeedback = apps.find(a => a.status === 'changes_requested' && a.admin_feedback)
+                       
+                       let feedback = 'No specific feedback provided.'
+                       if (appWithFeedback && appWithFeedback.admin_feedback) {
+                         const fbVal = appWithFeedback.admin_feedback
+                         if (Array.isArray(fbVal)) {
+                           const activeEntry = fbVal.find(f => f && !f.resolved_at)
+                           if (activeEntry && activeEntry.feedback) {
+                             feedback = activeEntry.feedback
+                           } else if (fbVal.length > 0 && fbVal[fbVal.length - 1]?.feedback) {
+                             feedback = fbVal[fbVal.length - 1].feedback
+                           }
+                         } else if (typeof fbVal === 'string') {
+                           feedback = fbVal
+                         } else if (fbVal && typeof fbVal === 'object' && (fbVal as any).feedback) {
+                           feedback = (fbVal as any).feedback
+                         }
+                       }
+
+                       const name = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Teammate'
+                       return (
+                         <View key={member.id} style={styles.warningBannerItem}>
+                           <Text style={styles.warningBannerName}>• {name}:</Text>
+                           <Text style={styles.warningBannerFeedback}>"{feedback}"</Text>
+                         </View>
+                       )
                     })}
                   </View>
                 )
@@ -1113,7 +1102,7 @@ export function TeamsScreen() {
                   if (rows.length >= maxTeamSize) return
                   const first = (member.first_name || '').charAt(0).toUpperCase()
                   const last = (member.last_name || '').charAt(0).toUpperCase()
-                  const initials = `${first}${last}` || '👤'
+                  const initials = `${first}${last}`.trim()
                   const isOwner = member.id === team.creator_id
                   const isMe = member.id === userId
                   const overallIndex = rows.length
@@ -1133,8 +1122,10 @@ export function TeamsScreen() {
                       <View style={styles.memberInitials}>
                         {member.avatar_display_url ? (
                           <Image source={{ uri: member.avatar_display_url }} style={styles.memberAvatarImage} />
-                        ) : (
+                        ) : initials ? (
                           <Text style={styles.memberInitialsText}>{initials}</Text>
+                        ) : (
+                          <PersonSilhouette size={38} color="#c2b75f" />
                         )}
                       </View>
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -1181,8 +1172,7 @@ export function TeamsScreen() {
                       ]}
                     >
                       <View style={styles.memberInitialsPlaceholder}>
-                        <View style={styles.silhouetteHead} />
-                        <View style={styles.silhouetteShoulders} />
+                        <PersonSilhouette size={38} />
                       </View>
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -1223,8 +1213,7 @@ export function TeamsScreen() {
                       ]}
                     >
                       <View style={styles.memberInitialsPlaceholder}>
-                        <View style={styles.silhouetteHead} />
-                        <View style={styles.silhouetteShoulders} />
+                        <PersonSilhouette size={38} />
                       </View>
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                         <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -1343,7 +1332,6 @@ export function TeamsScreen() {
             </View>
           )}
         </View>
-      </ParallaxScrollView>
 
       <Modal
         transparent={true}
@@ -1402,6 +1390,6 @@ export function TeamsScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   )
 }

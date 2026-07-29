@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 
-// Module-level cache state
 let cachedPermissions: string[] | null = null
 let cachedRole: string | null = null
 let currentUserId: string | null = null
-let isFetching = false
+let permissionsLoadPromise: Promise<void> | null = null
+let permissionsLoadGeneration: number | null = null
+let cacheGeneration = 0
 
 const listeners = new Set<(state: { permissions: string[]; role: string; loading: boolean }) => void>()
 
@@ -13,68 +14,98 @@ function notifyListeners() {
   const state = {
     permissions: cachedPermissions || [],
     role: cachedRole || 'user',
-    loading: cachedPermissions === null
+    loading: cachedPermissions === null,
   }
   listeners.forEach(listener => listener(state))
 }
 
-async function loadPermissions() {
-  if (!isSupabaseConfigured) {
-    cachedPermissions = ['teams:create', 'teams:view', 'applications:create', 'applications:view', 'applications:modify', 'sponsor_portal:view']
-    cachedRole = 'admin'
-    notifyListeners()
-    return
-  }
+function resetPermissions() {
+  cacheGeneration += 1
+  cachedPermissions = null
+  cachedRole = null
+  currentUserId = null
+}
 
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const user = session?.user
-    if (!user) {
+async function loadPermissions() {
+  // Every mounted screen shares one request. This is important because the navbar
+  // and the current page both use this hook.
+  if (permissionsLoadPromise && permissionsLoadGeneration === cacheGeneration) return permissionsLoadPromise
+
+  const generation = cacheGeneration
+  const promise = (async () => {
+    if (!isSupabaseConfigured) {
+      cachedPermissions = ['teams:create', 'teams:view', 'applications:view_others', 'applications:review', 'sponsor_portal:view', 'announcements:view', 'announcements:create']
+      cachedRole = 'admin'
+      return
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (generation !== cacheGeneration) return
+
+      const user = session?.user
+      if (!user) {
+        cachedPermissions = []
+        cachedRole = 'user'
+        currentUserId = null
+        return
+      }
+
+      if (user.id === currentUserId && cachedPermissions !== null) return
+
+      const currentYear = new Date().getFullYear().toString()
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role, event_year')
+        .eq('user_id', user.id)
+
+      if (generation !== cacheGeneration) return
+      if (rolesError) throw rolesError
+
+      const userRoles = (rolesData || [])
+        .filter(r => r.event_year === currentYear || r.event_year === null || r.event_year === 'NULL' || r.event_year === 'null')
+        .map(r => r.role)
+      const activeRoles = userRoles.length > 0 ? userRoles : ['user']
+
+      const { data: mapping, error: mappingError } = await supabase
+        .from('role_permissions')
+        .select('permission_id')
+        .in('role', activeRoles)
+
+      if (generation !== cacheGeneration) return
+      if (mappingError) throw mappingError
+
+      cachedPermissions = Array.from(new Set((mapping || []).map(m => m.permission_id)))
+      cachedRole = activeRoles.join(', ')
+      currentUserId = user.id
+    } catch (err) {
+      if (generation !== cacheGeneration) return
+      console.error('Failed to load user permissions:', err)
       cachedPermissions = []
       cachedRole = 'user'
       currentUserId = null
-      notifyListeners()
-      return
     }
+  })()
 
-    // Skip network request if user is unchanged and cache is loaded
-    if (user.id === currentUserId && cachedPermissions !== null) {
-      return
-    }
-
-    if (isFetching) return
-    isFetching = true
-    currentUserId = user.id
-
-    // 1. Fetch user role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    const userRole = profile?.role || 'user'
-    cachedRole = userRole
-
-    // 2. Fetch role mapping configuration
-    const { data: mapping } = await supabase
-      .from('role_permissions')
-      .select('permission_id')
-      .eq('role', userRole)
-
-    if (mapping) {
-      cachedPermissions = mapping.map(m => m.permission_id)
-    } else {
-      cachedPermissions = []
-    }
-  } catch (err) {
-    console.error('Failed to load user permissions:', err)
-    cachedPermissions = []
-    cachedRole = 'user'
+  permissionsLoadPromise = promise
+  permissionsLoadGeneration = generation
+  try {
+    await promise
   } finally {
-    isFetching = false
-    notifyListeners()
+    if (permissionsLoadPromise === promise) {
+      permissionsLoadPromise = null
+      permissionsLoadGeneration = null
+    }
+    if (generation === cacheGeneration) notifyListeners()
   }
+}
+
+function schedulePermissionLoad() {
+  // Supabase auth holds an internal lock while invoking onAuthStateChange.
+  // Starting auth/database work in the next macrotask avoids deadlocking it.
+  setTimeout(() => {
+    void loadPermissions()
+  }, 0)
 }
 
 export function useUserPermissions() {
@@ -90,42 +121,37 @@ export function useUserPermissions() {
     }
     listeners.add(listener)
 
-    if (cachedPermissions === null) {
-      loadPermissions()
+    if (cachedPermissions === null) void loadPermissions()
+
+    if (!isSupabaseConfigured) {
+      return () => listeners.delete(listener)
     }
 
-    let subscription: any = null
-    if (isSupabaseConfigured) {
-      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_OUT' || !session) {
-          cachedPermissions = []
-          cachedRole = 'user'
-          currentUserId = null
-          notifyListeners()
-        } else {
-          // Trigger reload only on user change or if cache is empty
-          if (session.user.id !== currentUserId || cachedPermissions === null) {
-            cachedPermissions = null
-            notifyListeners()
-            await loadPermissions()
-          }
-        }
-      })
-      subscription = data.subscription
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        resetPermissions()
+        cachedPermissions = []
+        cachedRole = 'user'
+        notifyListeners()
+        return
+      }
+
+      if (session.user.id !== currentUserId || cachedPermissions === null) {
+        resetPermissions()
+        notifyListeners()
+        schedulePermissionLoad()
+      }
+    })
 
     return () => {
       listeners.delete(listener)
-      if (subscription) {
-        subscription.unsubscribe()
-      }
+      subscription.unsubscribe()
     }
   }, [])
 
-  const hasPermission = (feature: string, action: 'view' | 'modify' | 'create'): boolean => {
+  const hasPermission = (feature: string, action: 'view' | 'modify' | 'create' | 'view_others' | 'review'): boolean => {
     return permissions.includes(`${feature}:${action}`)
   }
 
   return { permissions, role, hasPermission, loading }
 }
-

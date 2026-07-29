@@ -8,6 +8,8 @@ interface PillButtonProps {
   isLoading?: boolean
   disabled?: boolean
   additionalStyle?: any
+  textStyle?: any
+  fontSize?: number
 }
 
 export function PillButton({
@@ -17,6 +19,8 @@ export function PillButton({
   isLoading = false,
   disabled = false,
   additionalStyle = {},
+  textStyle = {},
+  fontSize,
 }: PillButtonProps) {
   const [hovered, setHovered] = useState(false)
   const isDisabled = disabled || isLoading
@@ -75,6 +79,23 @@ export function PillButton({
     isOutline = true
   }
 
+  let effectiveBgColor = baseColor
+  let effectiveTextColor = textColor
+  let effectiveBorderColor = isOutline
+    ? (variant === 'outline-primary' ? '#4b1687' : variant === 'outline-danger' ? '#dc2626' : '#c2b75f')
+    : undefined
+
+  if (isDisabled) {
+    if (isOutline) {
+      effectiveBgColor = 'transparent'
+      effectiveBorderColor = '#cbd5e1'
+      effectiveTextColor = '#94a3b8'
+    } else {
+      effectiveBgColor = '#e2e8f0'
+      effectiveTextColor = '#475569'
+    }
+  }
+
   return (
     <Pressable
       onPress={isDisabled ? undefined : onPress}
@@ -82,22 +103,21 @@ export function PillButton({
         styles.button,
         isOutline && {
           borderWidth: 1.5,
-          borderColor: variant === 'outline-primary' ? '#4b1687' : (variant === 'outline-danger' ? '#dc2626' : '#c2b75f'),
+          borderColor: effectiveBorderColor,
           shadowOpacity: 0,
           elevation: 0,
         },
         additionalStyle,
         {
           transform: [{ scale: pressed && !isDisabled ? 0.96 : 1 }],
-          backgroundColor: isDisabled ? 'rgba(0, 0, 0, 0.05)' : (pressed ? pressedColor : baseColor),
-          opacity: isDisabled ? 0.6 : 1,
+          backgroundColor: isDisabled ? effectiveBgColor : (pressed ? pressedColor : baseColor),
         },
       ]}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color={textColor} />
+        <ActivityIndicator size="small" color={effectiveTextColor} />
       ) : (
-        <Text style={[styles.text, { color: textColor }]}>{title}</Text>
+        <Text style={[styles.text, { color: effectiveTextColor }, fontSize ? { fontSize } : null, textStyle]}>{title}</Text>
       )}
     </Pressable>
   )
@@ -108,6 +128,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 56,
     borderRadius: 28,
+    paddingHorizontal: 16,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import {
   getApplicantFieldsForRole,
@@ -7,6 +7,7 @@ import {
   dataReferences,
   type ApplicantField
 } from './applicant-field-config'
+import { sanitizeFormData } from 'app/utils/sanitization'
 import type { ApplicantRole, ApplicantFormData } from './applicant-types'
 
 export type UseApplicationFormResult = {
@@ -17,13 +18,15 @@ export type UseApplicationFormResult = {
   disabledFields: string[]
   status: string | null
   adminFeedback: string | null
+  feedbackHistory: any[]
   onSubmit: (data: ApplicantFormData) => Promise<void>
   onSaveDraft: (data: ApplicantFormData) => Promise<void>
+  onConfirmAttendance: () => Promise<void>
   systemLinks: Record<string, { text: any; href: string }>
   isClosed: boolean
 }
 
-export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): UseApplicationFormResult {
+export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inviteCode?: string | null): UseApplicationFormResult {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [fields, setFields] = useState<ApplicantField[]>([])
@@ -31,11 +34,17 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
   const [disabledFields, setDisabledFields] = useState<string[]>([])
   const [status, setStatus] = useState<string | null>(null)
   const [adminFeedback, setAdminFeedback] = useState<string | null>(null)
+  const [feedbackHistory, setFeedbackHistory] = useState<any[]>([])
   const [systemLinks, setSystemLinks] = useState<Record<string, { text: any; href: string }>>({})
   const [isClosed, setIsClosed] = useState(false)
 
+  const activeRequestIdRef = useRef(0)
+
   // Fetch form configurations and user responses
   const loadData = useCallback(async () => {
+    const requestId = ++activeRequestIdRef.current
+    const isCurrent = () => requestId === activeRequestIdRef.current
+
     setIsLoading(true)
     setError(null)
 
@@ -43,6 +52,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
     if (!isSupabaseConfigured) {
       console.log('Supabase not configured, using static configuration fallback.')
       const staticFields = getApplicantFieldsForRole(role)
+      if (!isCurrent()) return
       setFields(staticFields)
       setInitialValues({})
       setStatus(null)
@@ -59,8 +69,55 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
     try {
       // 1. Check user authentication
       const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (!isCurrent()) return
       if (authError || !user) {
         throw new Error('User is not authenticated. Please log in first.')
+      }
+
+      // 2. Fetch role close_at and is_public flag
+      let deadlineClosed = false
+      let isPublic = true
+      const { data: typeData } = await supabase
+        .from('application_types')
+        .select('close_at, is_public')
+        .eq('id', role)
+        .maybeSingle()
+
+      if (!isCurrent()) return
+      if (typeData) {
+        if (typeData.close_at) {
+          deadlineClosed = new Date(typeData.close_at).getTime() < Date.now()
+        }
+        if (typeof typeData.is_public === 'boolean') {
+          isPublic = typeData.is_public
+        }
+      }
+
+      // 3. Verify invite code for hidden/restricted application types (e.g. sponsor, judge)
+      if (!isPublic) {
+        const cleanInvite = inviteCode?.trim()
+        if (!cleanInvite) {
+          throw new Error(`Restricted Role: A secret invite link or code is required to apply for ${role.toUpperCase()}. Please contact organizers for access.`)
+        }
+
+        const { data: inviteData, error: inviteErr } = await supabase
+          .from('application_invite_codes')
+          .select('*')
+          .eq('code', cleanInvite)
+          .maybeSingle()
+
+        if (!isCurrent()) return
+        if (inviteErr || !inviteData) {
+          throw new Error('Invalid Secret Link: The invite code or link provided is invalid.')
+        } else if (!inviteData.is_active) {
+          throw new Error('Inactive Invite Link: This secret invite link has been deactivated.')
+        } else if (inviteData.application_type_id !== role) {
+          throw new Error(`Role Mismatch: This secret code is for ${inviteData.application_type_id.toUpperCase()} applications, not ${role.toUpperCase()}.`)
+        } else if (inviteData.expires_at && new Date(inviteData.expires_at).getTime() < Date.now()) {
+          throw new Error('Expired Invite Link: This secret invite link has expired.')
+        } else if (inviteData.max_uses !== null && inviteData.use_count >= inviteData.max_uses) {
+          throw new Error('Usage Limit Reached: This secret invite link has reached its maximum uses.')
+        }
       }
 
       // 2. Fetch application type fields ordered by display_order
@@ -89,6 +146,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         .eq('application_type_id', role)
         .order('display_order', { ascending: true })
 
+      if (!isCurrent()) return
       if (relError) throw relError
       if (!relationData || relationData.length === 0) {
         throw new Error(`No form fields configured for role: ${role}`)
@@ -99,6 +157,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         .from('form_sections')
         .select('id, label, display_order')
 
+      if (!isCurrent()) return
       if (secError) throw secError
 
       // 4. Fetch lookup data for autocomplete fields
@@ -113,6 +172,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
           .select('category, options')
           .in('category', lookupRefs)
 
+        if (!isCurrent()) return
         if (lookupError) throw lookupError
         lookups?.forEach((item) => {
           lookupMap[item.category] = item.options
@@ -124,12 +184,12 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         .from('system_links')
         .select('id, text, href')
 
+      if (!isCurrent()) return
       if (linksError) throw linksError
       const linksMap: Record<string, { text: any; href: string }> = {}
       linksData?.forEach((link) => {
         linksMap[link.id] = { text: link.text, href: link.href }
       })
-      setSystemLinks(linksMap)
 
       // 6. Fetch text blocks for content references (headers/paragraphs)
       const contentRefs = relationData
@@ -143,6 +203,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
           .select('id, body')
           .in('id', contentRefs)
 
+        if (!isCurrent()) return
         if (blocksError) throw blocksError
         blocks?.forEach((block) => {
           textBlocksMap[block.id] = block.body
@@ -178,6 +239,17 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
 
         const uiMetadata = field.ui_metadata || {}
         const optionsRef = uiMetadata.optionsRef
+
+        // Resolve fileSelectorProps directly from ui_metadata in DB response (with i18n support for message strings)
+        let resolvedFileSelectorProps = uiMetadata.fileSelectorProps
+        if (resolvedFileSelectorProps) {
+          resolvedFileSelectorProps = {
+            ...resolvedFileSelectorProps,
+            invalidFileTypeMessage: getVal(resolvedFileSelectorProps.invalidFileTypeMessage) || undefined,
+            invalidFileSizeMessage: getVal(resolvedFileSelectorProps.invalidFileSizeMessage) || undefined,
+            fileSizeUnknownMessage: getVal(resolvedFileSelectorProps.fileSizeUnknownMessage) || undefined,
+          }
+        }
 
         // Resolve options with translations
         let resolvedOptions = field.options?.map((opt: any) => ({
@@ -215,10 +287,10 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
             order: section.display_order
           } : undefined,
           sectionKey: sectionId,
-          ...uiMetadata // Spread multiple, layout, height, fileSelectorProps, etc.
+          ...uiMetadata,
+          fileSelectorProps: resolvedFileSelectorProps || undefined,
         } as ApplicantField
       })
-      setFields(compiledFields)
 
       // 8. Fetch user's profile details to prefill info
       const { data: profileData, error: profileError } = await supabase
@@ -227,6 +299,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         .eq('id', user.id)
         .maybeSingle()
 
+      if (!isCurrent()) return
       if (profileError) {
         console.warn('Failed to fetch user profile for prefilling fields:', profileError)
       }
@@ -273,8 +346,6 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       if (profileData?.personal_site) profileValues.personalSite = profileData.personal_site
       if (profileData?.resume_url) profileValues.resume = profileData.resume_url
 
-      setDisabledFields(disabled)
-
       // 9. Fetch user's existing application answers/status
       const { data: appData, error: appError } = await supabase
         .from('applications')
@@ -283,8 +354,24 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
         .eq('user_id', user.id)
         .maybeSingle()
 
+      if (!isCurrent()) return
       if (appError) throw appError
 
+      // Extract active feedback from JSONB array
+      const getActiveFeedback = (feedbackVal: any): string | null => {
+        if (!feedbackVal) return null
+        if (typeof feedbackVal === 'string') return feedbackVal
+        if (Array.isArray(feedbackVal)) {
+          const active = feedbackVal.find(f => !f.resolved_at)
+          return active ? active.feedback : null
+        }
+        return null
+      }
+
+      // Batch set state values when we know this is the latest call
+      setSystemLinks(linksMap)
+      setFields(compiledFields)
+      setDisabledFields(disabled)
       if (appData) {
         // Merge profile/auth prefilled values OVER existing draft answers to ensure they are never overridden by empty database draft entries
         setInitialValues({
@@ -292,39 +379,32 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
           ...profileValues
         })
         setStatus(appData.status || null)
-        setAdminFeedback(appData.admin_feedback || null)
+        setAdminFeedback(getActiveFeedback(appData.admin_feedback))
+        setFeedbackHistory(Array.isArray(appData.admin_feedback) ? appData.admin_feedback : [])
       } else {
         setInitialValues(profileValues)
         setStatus(null)
         setAdminFeedback(null)
-      }
-
-      // Fetch role close_at
-      let deadlineClosed = false
-      const { data: typeData } = await supabase
-        .from('application_types')
-        .select('close_at')
-        .eq('id', role)
-        .maybeSingle()
-      if (typeData?.close_at) {
-        deadlineClosed = new Date(typeData.close_at).getTime() < Date.now()
+        setFeedbackHistory([])
       }
       setIsClosed(deadlineClosed)
+      setIsLoading(false)
 
     } catch (err: any) {
+      if (!isCurrent()) return
       console.error('Error loading Supabase configuration:', err)
       setError(err.message || 'Failed to load form configuration')
-    } finally {
       setIsLoading(false)
     }
-  }, [role, lang])
+  }, [role, lang, inviteCode])
 
   useEffect(() => {
     loadData()
   }, [loadData])
 
   // Save full answers as draft
-  const onSaveDraft = async (answers: ApplicantFormData) => {
+  const onSaveDraft = async (rawAnswers: ApplicantFormData) => {
+    const answers = sanitizeFormData(rawAnswers)
     if (isClosed) {
       throw new Error('Registration has closed. You cannot save drafts.')
     }
@@ -394,7 +474,8 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
   }
 
   // Submit final application answers
-  const onSubmit = async (answers: ApplicantFormData) => {
+  const onSubmit = async (rawAnswers: ApplicantFormData) => {
+    const answers = sanitizeFormData(rawAnswers)
     if (isClosed) {
       throw new Error('Registration has closed. You cannot submit applications.')
     }
@@ -410,6 +491,27 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Unauthenticated')
 
+      // Fetch current application to get existing feedback history
+      const { data: existingApp } = await supabase
+        .from('applications')
+        .select('admin_feedback')
+        .eq('user_id', user.id)
+        .eq('application_type_id', role)
+        .maybeSingle()
+
+      let updatedFeedback: any[] = []
+      if (existingApp && Array.isArray(existingApp.admin_feedback)) {
+        updatedFeedback = existingApp.admin_feedback.map((f: any) => 
+          !f.resolved_at ? { ...f, resolved_at: new Date().toISOString() } : f
+        )
+      } else if (existingApp && typeof existingApp.admin_feedback === 'string' && existingApp.admin_feedback) {
+        updatedFeedback = [{
+          feedback: existingApp.admin_feedback,
+          requested_at: new Date().toISOString(),
+          resolved_at: new Date().toISOString()
+        }]
+      }
+
       // 1. Save answers to applications table
       const { error: saveError } = await supabase
         .from('applications')
@@ -419,13 +521,29 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
             application_type_id: role,
             answers,
             status: 'submitted',
-            admin_feedback: null, // Reset feedback on submission
+            admin_feedback: updatedFeedback,
             updated_at: new Date().toISOString()
           },
           { onConflict: 'user_id,application_type_id' }
         )
 
       if (saveError) throw saveError
+
+      // Increment invite code usage count if an invite code was used
+      if (inviteCode?.trim() && isSupabaseConfigured) {
+        try {
+          const cleanInvite = inviteCode.trim()
+          const { data: inv } = await supabase.from('application_invite_codes').select('use_count').eq('code', cleanInvite).maybeSingle()
+          if (inv) {
+            await supabase.from('application_invite_codes').update({
+              use_count: (inv.use_count || 0) + 1,
+              last_used_at: new Date().toISOString()
+            }).eq('code', cleanInvite)
+          }
+        } catch (err) {
+          console.warn('Failed to increment invite code usage count:', err)
+        }
+      }
 
       // 2. Mirror core values to the user profiles table
       const getStr = (val: any) => typeof val === 'string' ? val : null
@@ -459,6 +577,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
 
       setStatus('submitted')
       setAdminFeedback(null)
+      setFeedbackHistory(updatedFeedback)
       setInitialValues(answers)
       console.log('Application submitted successfully!')
     } catch (err) {
@@ -466,6 +585,59 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
       throw err
     }
   }
+
+  const onConfirmAttendance = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      console.log('Offline: Mock confirming attendance')
+      setStatus('confirmed')
+      return
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Unauthenticated')
+
+      // Update status to 'confirmed' and confirmed_at to now
+      const { error: confirmErr } = await supabase
+        .from('applications')
+        .update({
+          status: 'confirmed',
+          confirmed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('application_type_id', role)
+
+      if (confirmErr) throw confirmErr
+
+      const currentYear = new Date().getFullYear().toString()
+
+      const { error: roleErr } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: user.id,
+          role: role,
+          event_year: currentYear
+        })
+
+      if (roleErr && roleErr.code !== '23505') {
+        console.warn(`Failed to insert user role ${role}:`, roleErr)
+      }
+
+      // Remove the basic 'user' candidate role for this year
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('role', 'user')
+        .eq('event_year', currentYear)
+
+      setStatus('confirmed')
+    } catch (err: any) {
+      console.error('Failed to confirm attendance:', err)
+      throw err
+    }
+  }, [role])
 
   return {
     isLoading,
@@ -475,8 +647,10 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en'): Us
     disabledFields,
     status,
     adminFeedback,
+    feedbackHistory,
     onSubmit,
     onSaveDraft,
+    onConfirmAttendance,
     systemLinks,
     isClosed
   }

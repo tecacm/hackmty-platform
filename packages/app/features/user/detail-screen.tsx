@@ -15,19 +15,17 @@ import {
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+import { notifyApplicantOnStatusChanged, notifyTeamOnChangesRequested } from 'app/services/notification-service'
 import { useParams, useSearchParams } from 'solito/navigation'
 import { PillButton } from 'app/components/pill-button'
-import { WebNavbar } from 'app/components/web-navbar'
-import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
-import { SolitoImage } from 'solito/image'
+import { DocumentPreview } from 'app/components/document-preview'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
-import numbersbg from 'app/assets/images/numbers-bg.webp'
+import { sanitizeString } from 'app/utils/sanitization'
 
 interface Application {
   id: string
   status: string
-  admin_feedback: string | null
+  admin_feedback: any
   application_type_id: string
   answers: any
   user_id: string
@@ -41,13 +39,15 @@ interface Application {
 }
 
 export function UserDetailScreen() {
+  const insets = useSafeArea()
   const params = useParams()
   const searchParams = useSearchParams()
   const userId = params?.userId || params?.id
   const appId = searchParams?.get('appId')
   const { navigateTo } = useSmartNavigate()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
-  const hasModifyPermission = !permissionsLoading && hasPermission('applications', 'modify')
+  const hasViewOthersPermission = !permissionsLoading && hasPermission('applications', 'view_others')
+  const hasReviewPermission = !permissionsLoading && hasPermission('applications', 'review')
 
   const [userApps, setUserApps] = useState<Application[]>([])
   const [activeAppIndex, setActiveAppIndex] = useState(0)
@@ -64,20 +64,11 @@ export function UserDetailScreen() {
   const [updatingApp, setUpdatingApp] = useState(false)
   const [resumeUrl, setResumeUrl] = useState<string | null>(null)
   const [loadingResume, setLoadingResume] = useState(false)
+  const [permissionSlipUrl, setPermissionSlipUrl] = useState<string | null>(null)
+  const [guardianIdUrl, setGuardianIdUrl] = useState<string | null>(null)
 
   // Layout sizing
-  const insets = useSafeArea()
-  const headerHeight = useHeaderHeightSafe()
-  const { width, height: screenHeight } = useWindowDimensions()
-  const [stableHeaderHeight, setStableHeaderHeight] = useState(0)
-
-  useEffect(() => {
-    if (headerHeight > stableHeaderHeight) {
-      setStableHeaderHeight(headerHeight)
-    }
-  }, [headerHeight, stableHeaderHeight])
-
-  const topOffset = Math.max(stableHeaderHeight, insets.top)
+  const { width } = useWindowDimensions()
 
   useEffect(() => {
     setIsReady(true)
@@ -170,10 +161,10 @@ export function UserDetailScreen() {
   }
 
   useEffect(() => {
-    if (hasModifyPermission && isReady) {
+    if (hasViewOthersPermission && isReady) {
       fetchApplicationDetails()
     }
-  }, [userId, hasModifyPermission, isReady])
+  }, [userId, hasViewOthersPermission, isReady])
 
   // Load team name when active app changes
   useEffect(() => {
@@ -207,26 +198,77 @@ export function UserDetailScreen() {
 
     try {
       setUpdatingApp(true)
+
+      let updatedFeedback: any[] = []
+      if (Array.isArray(app.admin_feedback)) {
+        updatedFeedback = [...app.admin_feedback]
+      } else if (typeof app.admin_feedback === 'string' && app.admin_feedback) {
+        updatedFeedback = [{
+          feedback: app.admin_feedback,
+          requested_at: new Date().toISOString(),
+          resolved_at: new Date().toISOString()
+        }]
+      }
+
+      if (status === 'changes_requested' && feedback) {
+        const cleanFeedback = sanitizeString(feedback)
+        updatedFeedback.push({
+          feedback: cleanFeedback,
+          requested_at: new Date().toISOString(),
+          resolved_at: null
+        })
+      } else if (status !== 'changes_requested') {
+        updatedFeedback = updatedFeedback.map(f => !f.resolved_at ? { ...f, resolved_at: new Date().toISOString() } : f)
+      }
+
+      const updatedAnswers = app.answers ? { ...app.answers } : {}
+      if (status === 'accepted' || status === 'rejected') {
+        const guardianIdPath = app.answers?.guardianId
+        if (guardianIdPath) {
+          if (isSupabaseConfigured) {
+            await supabase.storage
+              .from('guardian-ids')
+              .remove([guardianIdPath])
+              .catch(e => console.warn('Failed to delete guardian ID from storage:', e))
+          }
+          delete updatedAnswers.guardianId
+        }
+      }
+
       if (isSupabaseConfigured) {
         const { error: updateErr } = await supabase
           .from('applications')
           .update({
             status,
-            admin_feedback: feedback,
+            answers: updatedAnswers,
+            admin_feedback: updatedFeedback,
             updated_at: new Date().toISOString()
           })
           .eq('id', app.id)
-
         if (updateErr) throw updateErr
+
+        if (status === 'changes_requested' && feedback) {
+          notifyTeamOnChangesRequested({
+            applicationId: app.id,
+            reason: sanitizeString(feedback)
+          }).catch(e => console.warn('Failed to trigger team notification:', e))
+        } else if (status === 'accepted' || status === 'rejected') {
+          notifyApplicantOnStatusChanged({
+            applicationId: app.id,
+          }).catch(e => console.warn('Failed to trigger application status notification:', e))
+        }
       }
 
       // Update local state array
       setUserApps(prev => prev.map(a => {
         if (a.id === app.id) {
-          return { ...a, status, admin_feedback: feedback }
+          return { ...a, status, answers: updatedAnswers, admin_feedback: updatedFeedback }
         }
         return a
       }))
+      if (status === 'accepted' || status === 'rejected') {
+        setGuardianIdUrl(null)
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to update status.')
     } finally {
@@ -236,13 +278,15 @@ export function UserDetailScreen() {
 
   // Submit request changes
   const submitRequestChanges = async () => {
-    if (!requestReason.trim()) {
+    const cleanReason = sanitizeString(requestReason)
+    if (!cleanReason) {
       alert('Please specify a reason for requesting changes.')
       return
     }
 
     setShowRequestChangesModal(false)
-    await handleUpdateStatus('changes_requested', requestReason)
+    setRequestReason('')
+    await handleUpdateStatus('changes_requested', cleanReason)
   }
 
   // Parse dynamic application fields configurations
@@ -353,23 +397,67 @@ export function UserDetailScreen() {
     fetchResumeUrl()
   }, [app])
 
+  // Fetch secure signed URLs for minor permission slip and guardian ID
+  useEffect(() => {
+    const fetchMinorUrls = async () => {
+      setPermissionSlipUrl(null)
+      setGuardianIdUrl(null)
+      if (!app?.answers) return
+
+      const slipPath = app.answers.permissionSlip
+      const idPath = app.answers.guardianId
+
+      if (slipPath) {
+        if (slipPath.startsWith('http://') || slipPath.startsWith('https://')) {
+          setPermissionSlipUrl(slipPath)
+        } else if (isSupabaseConfigured) {
+          try {
+            const { data } = await supabase.storage.from('permission-slips').createSignedUrl(slipPath, 900)
+            setPermissionSlipUrl(data?.signedUrl || supabase.storage.from('permission-slips').getPublicUrl(slipPath).data.publicUrl)
+          } catch {
+            setPermissionSlipUrl(supabase.storage.from('permission-slips').getPublicUrl(slipPath).data.publicUrl)
+          }
+        } else {
+          setPermissionSlipUrl(slipPath)
+        }
+      }
+
+      if (idPath) {
+        if (idPath.startsWith('http://') || idPath.startsWith('https://')) {
+          setGuardianIdUrl(idPath)
+        } else if (isSupabaseConfigured) {
+          try {
+            const { data } = await supabase.storage.from('guardian-ids').createSignedUrl(idPath, 900)
+            setGuardianIdUrl(data?.signedUrl || supabase.storage.from('guardian-ids').getPublicUrl(idPath).data.publicUrl)
+          } catch {
+            setGuardianIdUrl(supabase.storage.from('guardian-ids').getPublicUrl(idPath).data.publicUrl)
+          }
+        } else {
+          setGuardianIdUrl(idPath)
+        }
+      }
+    }
+
+    fetchMinorUrls()
+  }, [app])
+
   if (!isReady) {
     return (
-      <View style={[styles.container, { backgroundColor: '#1d041f' }]} />
+      <View style={[styles.container]} />
     )
   }
 
   if (permissionsLoading) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: '#1d041f' }]}>
+      <View style={[styles.centerContainer]}>
         <ActivityIndicator size="large" color="#c2b75f" />
       </View>
     )
   }
 
-  if (!hasPermission('applications', 'modify')) {
+  if (!hasViewOthersPermission) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: '#1d041f' }]}>
+      <View style={[styles.centerContainer]}>
         <View style={styles.accessDeniedCard}>
           <Text style={styles.accessDeniedTitle}>Access Denied</Text>
           <Text style={styles.accessDeniedSubtitle}>
@@ -384,19 +472,6 @@ export function UserDetailScreen() {
       </View>
     )
   }
-
-  const backgroundProps: any = {
-    src: numbersbg,
-    width,
-    height: Math.max(screenHeight, 1000),
-    contentFit: 'cover',
-    resizeMode: 'cover',
-    alt: 'Numbers Background',
-  }
-
-  const background = (
-    <SolitoImage {...backgroundProps} />
-  )
 
   const renderStatusBadge = (status: string) => {
     let bgColor = '#f1f5f9'
@@ -434,40 +509,31 @@ export function UserDetailScreen() {
 
   return (
     <>
-      <WebNavbar />
-      <ParallaxScrollView
-        background={background}
-        style={{ backgroundColor: '#1d041f' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : topOffset,
-          paddingBottom: insets.bottom + 40,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
-        <View style={styles.contentWrapper}>
+        <View style={[styles.contentWrapper, {
+          paddingTop: Platform.OS === 'web' ? 24 : Math.max(insets.top + 32, 52),
+          paddingBottom: Platform.OS === 'web' ? 40 : Math.max(insets.bottom + 20, 36),
+          paddingLeft: Platform.OS === 'web' ? 0 : Math.max(insets.left, 16),
+          paddingRight: Platform.OS === 'web' ? 0 : Math.max(insets.right, 16),
+        }]}>
           {Platform.OS === 'web' ? (
             <View style={styles.detailHeaderActionsRow}>
               <Pressable onPress={() => navigateTo('/admin')} style={styles.backBtn}>
                 <Text style={styles.backBtnText}>← Back to Admin Dashboard</Text>
               </Pressable>
               <PillButton
-                title="↻ Refresh Data"
+                title="↻ Refresh"
                 onPress={fetchApplicationDetails}
                 isLoading={loading}
                 additionalStyle={styles.detailRefreshBtn}
               />
             </View>
           ) : (
-            <View style={{ width: '100%', alignItems: 'flex-end', marginBottom: 12 }}>
+            <View style={styles.mobileRefreshContainer}>
               <PillButton
-                title="Refresh"
+                title="↻ Refresh"
                 onPress={fetchApplicationDetails}
                 isLoading={loading}
-                additionalStyle={{ width: 100, height: 36 }}
+                additionalStyle={styles.detailRefreshBtn}
               />
             </View>
           )}
@@ -542,50 +608,82 @@ export function UserDetailScreen() {
                   </View>
                 </View>
 
-                {/* Organizer Notes Banner */}
-                {app.admin_feedback && (
-                  <View style={styles.feedbackBanner}>
-                    <Text style={styles.feedbackBannerTitle}>Previous Request Reason / Admin Feedback:</Text>
-                    <Text style={styles.feedbackBannerText}>{app.admin_feedback}</Text>
-                  </View>
-                )}
+                {/* Active Feedback Banner */}
+                {(() => {
+                  const activeFeedback = Array.isArray(app.admin_feedback)
+                    ? app.admin_feedback.find((f: any) => !f.resolved_at)?.feedback
+                    : app.admin_feedback
+                  return activeFeedback ? (
+                    <View style={styles.feedbackBanner}>
+                      <Text style={styles.feedbackBannerTitle}>Active Change Request Feedback:</Text>
+                      <Text style={styles.feedbackBannerText}>"{activeFeedback}"</Text>
+                    </View>
+                  ) : null
+                })()}
+
+                {/* Historical Requested Changes Log */}
+                {(() => {
+                  const feedbackHistory = Array.isArray(app.admin_feedback) ? app.admin_feedback : []
+                  return feedbackHistory.length > 0 ? (
+                    <View style={styles.historyCard}>
+                      <Text style={styles.historyCardTitle}>Changes Request History</Text>
+                      {feedbackHistory.map((item: any, idx: number) => {
+                        const reqDate = item.requested_at ? new Date(item.requested_at).toLocaleString() : 'Unknown date'
+                        const resDate = item.resolved_at ? new Date(item.resolved_at).toLocaleString() : 'Pending resolution'
+                        return (
+                          <View key={idx} style={[styles.historyRow, idx > 0 && styles.historyRowBorder]}>
+                            <Text style={styles.historyText}>"{item.feedback}"</Text>
+                            <View style={styles.historyMetaRow}>
+                              <Text style={styles.historyMetaText}>Requested: {reqDate}</Text>
+                              <Text style={[styles.historyMetaText, !item.resolved_at && styles.historyPendingText]}>
+                                Resolved: {resDate}
+                              </Text>
+                            </View>
+                          </View>
+                        )
+                      })}
+                    </View>
+                  ) : null
+                })()}
 
                 {/* Action Trigger Buttons */}
-                <View style={styles.actionsCard}>
-                  <Text style={styles.actionsCardTitle}>Organizer Actions</Text>
-                  <View style={styles.actionsRow}>
-                    {app.status !== 'accepted' && (
-                      <PillButton
-                        variant="secondary"
-                        title="Approve"
-                        isLoading={updatingApp}
-                        onPress={() => handleUpdateStatus('accepted')}
-                        additionalStyle={styles.actionBtn}
-                      />
-                    )}
-                    {app.status !== 'rejected' && (
-                      <PillButton
-                        variant="outline-danger"
-                        title="Reject"
-                        isLoading={updatingApp}
-                        onPress={() => handleUpdateStatus('rejected')}
-                        additionalStyle={styles.actionBtn}
-                      />
-                    )}
-                    {app.status !== 'changes_requested' && (
-                      <PillButton
-                        variant="outline-secondary"
-                        title="Request Changes"
-                        isLoading={updatingApp}
-                        onPress={() => {
-                          setRequestReason('')
-                          setShowRequestChangesModal(true)
-                        }}
-                        additionalStyle={styles.actionBtn}
-                      />
-                    )}
+                {hasReviewPermission && (
+                  <View style={styles.actionsCard}>
+                    <Text style={styles.actionsCardTitle}>Organizer Actions</Text>
+                    <View style={styles.actionsRow}>
+                      {app.status !== 'accepted' && (
+                        <PillButton
+                          variant="secondary"
+                          title="Approve"
+                          isLoading={updatingApp}
+                          onPress={() => handleUpdateStatus('accepted')}
+                          additionalStyle={styles.actionBtn}
+                        />
+                      )}
+                      {app.status !== 'rejected' && (
+                        <PillButton
+                          variant="outline-danger"
+                          title="Reject"
+                          isLoading={updatingApp}
+                          onPress={() => handleUpdateStatus('rejected')}
+                          additionalStyle={styles.actionBtn}
+                        />
+                      )}
+                      {app.status !== 'changes_requested' && (
+                        <PillButton
+                          variant="outline-secondary"
+                          title="Request Changes"
+                          isLoading={updatingApp}
+                          onPress={() => {
+                            setRequestReason('')
+                            setShowRequestChangesModal(true)
+                          }}
+                          additionalStyle={styles.actionBtn}
+                        />
+                      )}
+                    </View>
                   </View>
-                </View>
+                )}
 
                 {/* Application Information Form Fields */}
                 <View style={styles.fieldsCard}>
@@ -625,51 +723,49 @@ export function UserDetailScreen() {
 
               </View>
 
-              {/* Right Panel: Embedded PDF Resume Viewer */}
+              {/* Right Panel: Embedded PDF Resume Viewer & Minor Verification */}
               <View style={styles.detailPanelRight}>
-                <View style={styles.resumeViewerCard}>
-                  <Text style={styles.resumeCardTitle}>Candidate Resume / CV</Text>
-                  {loadingResume ? (
-                    <View style={styles.noResumeContainer}>
-                      <ActivityIndicator size="large" color="#c2b75f" />
-                      <Text style={[styles.noResumeText, { marginTop: 12 }]}>Generating secure access link...</Text>
-                    </View>
-                  ) : resumeUrl ? (
-                    <View style={styles.resumeFrameContainer}>
-                      {Platform.OS === 'web' ? (
-                        <iframe
-                          src={resumeUrl}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            minHeight: 650,
-                            border: 'none',
-                            borderRadius: 12,
-                          }}
-                        />
-                      ) : (
-                        <View style={styles.nativeResumePlaceholder}>
-                          <Text style={styles.nativeResumeText}>Inline PDF embedding is supported on Web browsers.</Text>
-                          <PillButton
-                            title="Open Resume PDF ↗"
-                            onPress={() => Linking.openURL(resumeUrl)}
-                            additionalStyle={{ width: 220, height: 48, marginTop: 16 }}
-                          />
-                        </View>
-                      )}
-                    </View>
-                  ) : (
-                    <View style={styles.noResumeContainer}>
-                      <Text style={styles.noResumeText}>No resume PDF file uploaded by the applicant.</Text>
-                    </View>
-                  )}
-                </View>
+
+                {/* Minor Verification Documents Card (If applicant is under 18 or uploaded docs) */}
+                {(parseInt(app.answers?.age || '0', 10) < 18 || permissionSlipUrl || guardianIdUrl || app.answers?.permissionSlip) && (
+                  <View style={styles.minorDocCard}>
+                    <Text style={styles.resumeCardTitle}>Minor Verification Documents</Text>
+                    <Text style={styles.minorCardSubtitle}>
+                      Verify the guardian ID against the signed permission slip. Guardian ID will be automatically purged upon approval/rejection.
+                    </Text>
+
+                    <DocumentPreview
+                      title="Signed Permission Slip"
+                      url={permissionSlipUrl}
+                      emptyMessage="No permission slip uploaded."
+                      height={360}
+                    />
+
+                    <DocumentPreview
+                      title="Guardian Official ID Photo"
+                      url={guardianIdUrl}
+                      emptyMessage={
+                        app.status === 'accepted' || app.status === 'rejected'
+                          ? '🔒 Guardian ID purged post-review for privacy compliance.'
+                          : 'No guardian ID uploaded.'
+                      }
+                      height={260}
+                    />
+                  </View>
+                )}
+
+                <DocumentPreview
+                  title="Candidate Resume / CV"
+                  url={resumeUrl}
+                  loading={loadingResume}
+                  emptyMessage="No resume PDF file uploaded by the applicant."
+                  height={500}
+                />
               </View>
 
             </View>
           )}
         </View>
-      </ParallaxScrollView>
 
       {/* Request Changes Reason Modal Dialog */}
       <Modal
@@ -805,7 +901,6 @@ const mockDetailApplications: Application[] = [
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1d041f',
   },
   centerContainer: {
     flex: 1,
@@ -846,8 +941,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   contentWrapper: {
-    width: '90%',
+    width: '100%',
     maxWidth: 1200,
+    alignSelf: 'center',
     alignItems: 'flex-start',
   },
   backBtn: {
@@ -1000,9 +1096,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionBtn: {
-    flex: 1,
-    minWidth: 120,
+    paddingHorizontal: 20,
     height: 44,
+    minWidth: 140,
+    width: 'auto',
+    flexGrow: 1,
   },
   fieldsCard: {
     backgroundColor: '#ffffff',
@@ -1067,14 +1165,70 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     paddingVertical: 8,
   },
-  resumeViewerCard: {
+  minorDocCard: {
     backgroundColor: '#ffffff',
     borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(90, 0, 97, 0.12)',
     padding: 24,
-    height: '100%',
-    minHeight: 700,
+    marginBottom: 20,
+    width: '100%',
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.06)',
+      },
+    }),
+  },
+  minorCardSubtitle: {
+    color: '#666666',
+    fontSize: 13,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  minorDocSection: {
+    marginBottom: 14,
+    backgroundColor: 'rgba(90, 0, 97, 0.03)',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(90, 0, 97, 0.08)',
+  },
+  minorDocSectionTitle: {
+    color: '#22002c',
+    fontWeight: '700',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  minorDocEmptyText: {
+    color: '#9ca3af',
+    fontSize: 13,
+  },
+  minorDocBtn: {
+    height: 44,
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  resumeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  resumeHeaderBtn: {
+    height: 36,
+    paddingHorizontal: 16,
+    width: 'auto',
+  },
+  resumeViewerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(90, 0, 97, 0.12)',
+    padding: 20,
+    height: 'auto',
+    minHeight: 400,
     ...Platform.select({
       web: {
         boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.06)',
@@ -1087,7 +1241,6 @@ const styles = StyleSheet.create({
     color: '#5a0061',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 16,
   },
   resumeFrameContainer: {
     flex: 1,
@@ -1098,7 +1251,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'stretch',
-    minHeight: 650,
+    minHeight: 480,
   },
   nativeResumePlaceholder: {
     flex: 1,
@@ -1249,11 +1402,82 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
+    marginTop: 8,
+    marginBottom: 20,
+    gap: 12,
+  },
+  mobileRefreshContainer: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginTop: 8,
     marginBottom: 16,
-    gap: 16,
   },
   detailRefreshBtn: {
-    width: 140,
-    height: 38,
+    width: 'auto',
+    minWidth: 130,
+    paddingHorizontal: 18,
+    height: 40,
+  },
+  historyCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(90, 0, 97, 0.12)',
+    padding: 24,
+    width: '100%',
+    gap: 16,
+    marginTop: 16,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.04)',
+      },
+    }),
+  },
+  historyCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#22002c',
+  },
+  historyRow: {
+    paddingVertical: 12,
+    gap: 8,
+  },
+  historyRowBorder: {
+    borderTopWidth: 1,
+    borderColor: 'rgba(34, 0, 44, 0.08)',
+  },
+  historyText: {
+    fontSize: 14,
+    color: '#555555',
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  historyMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  historyMetaText: {
+    fontSize: 11,
+    color: '#888888',
+    fontWeight: '500',
+  },
+  historyPendingText: {
+    color: '#d32f2f',
+    fontWeight: '700',
+  },
+  minorBadge: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#93c5fd',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  minorBadgeText: {
+    color: '#1d4ed8',
+    fontSize: 12,
+    fontWeight: '700',
   },
 })

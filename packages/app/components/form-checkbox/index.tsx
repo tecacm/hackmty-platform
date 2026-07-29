@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
 import { formFieldColors } from '../form-field-styles'
 
-export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error, variant = 'default', required = false, subtitle }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string; variant?: 'default' | 'form' | 'glass'; required?: boolean; subtitle?: string }) {
+export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error, variant = 'default', required = false, subtitle }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string; variant?: 'default' | 'form' | 'glass'; required?: boolean; subtitle?: ReactNode | string }) {
   const isControlled = typeof value !== 'undefined'
   const [internalValue, setInternalValue] = useState<boolean>(!!value)
 
@@ -89,7 +89,7 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
           />
         )}
       </Pressable>
-      {subtitle ? <Text style={styles.subtitleText}>{subtitle}</Text> : null}
+      {subtitle ? (typeof subtitle === 'string' ? <Text style={styles.subtitleText}>{subtitle}</Text> : subtitle) : null}
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   )

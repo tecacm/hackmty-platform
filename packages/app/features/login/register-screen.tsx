@@ -123,12 +123,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
   },
   authError: {
-    color: '#c0392b',
+    color: '#ff6554',
     textAlign: 'center',
     fontWeight: '600',
     fontFamily: 'Montserrat',
   },
 })
+
+import { sanitizeEmail, sanitizeName } from 'app/utils/sanitization'
 
 type RegisterFormValues = {
   firstName: string
@@ -168,6 +170,7 @@ export function RegisterScreen() {
 
     setAuthError(null)
     setIsSubmitting(true)
+    let shouldNavigate = false
 
     try {
       if (!isSupabaseConfigured) {
@@ -175,13 +178,17 @@ export function RegisterScreen() {
         return
       }
 
+      const cleanEmail = sanitizeEmail(formData.email)
+      const cleanFirstName = sanitizeName(formData.firstName)
+      const cleanLastName = sanitizeName(formData.lastName)
+
       const { data, error } = await supabase.auth.signUp({
-        email: formData.email.trim(),
+        email: cleanEmail,
         password: formData.password,
         options: {
           data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
+            first_name: cleanFirstName,
+            last_name: cleanLastName,
             agree_mlh: formData.agreeMLH,
             subscribe_mailing_list: formData.subscribeMailingList,
           },
@@ -193,23 +200,29 @@ export function RegisterScreen() {
         return
       }
 
-      // Supabase returns no error and a null user/session when the email is
-      // already registered, instead of an error (to avoid leaking which
-      // emails exist). Some project configs instead return a user with an
-      // empty identities array for the same case, so check both.
-      if (!data.user || (data.user.identities && data.user.identities.length === 0)) {
+      // With email confirmation enabled, Supabase may return an obfuscated
+      // user with an explicitly empty identities array for an existing
+      // account. Some successful new-signup responses omit identities, so
+      // a missing property must not be treated as an existing account.
+      if (data.user?.identities?.length === 0) {
         setAuthError('An account with this email already exists. Please log in instead.')
         return
       }
 
-      navigateTo('/login')
-    } catch {
-      setAuthError('Unable to sign up. Please try again.')
+      shouldNavigate = true
+    } catch (err: any) {
+      if (err?.digest?.startsWith?.('NEXT_REDIRECT') || err?.message === 'NEXT_REDIRECT') {
+        return
+      }
+      console.error('Registration error:', err)
+      setAuthError(err?.message || 'Unable to sign up. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
 
-    // Send to Supabase/Firebase/Auth0
+    if (shouldNavigate) {
+      navigateTo('/login')
+    }
   }
 
   useEffect(() => {
@@ -377,7 +390,8 @@ export function RegisterScreen() {
             <PillButton
               variant="gradient"
               title={isSubmitting ? 'Registering...' : 'Register'}
-              onPress={handleSubmit(onSubmit)}
+              isLoading={isSubmitting}
+              onPress={isSubmitting ? undefined : handleSubmit(onSubmit)}
               additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
             />
             <SimpleTextLink
