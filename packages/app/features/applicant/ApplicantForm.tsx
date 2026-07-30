@@ -15,6 +15,7 @@ import applicationFieldsConfig from 'app/data/application-fields.json'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
 import { formFieldColors, formFieldStyles } from 'app/components/form-field-styles'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
+import { ConfettiOverlay } from 'app/components/confetti-overlay'
 
 type ApplicantFormProps = {
   role: ApplicantRole
@@ -166,6 +167,7 @@ export function ApplicantForm({
     (status !== 'draft' && status !== 'changes_requested')
 
   const [isConfirming, setIsConfirming] = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
 
   const handleConfirmAttendance = async () => {
     if (!onConfirmAttendance) return
@@ -590,7 +592,10 @@ export function ApplicantForm({
             onPress={handleSubmit(async (data) => {
               try {
                 await onSubmit(data as ApplicantFormData)
-                alert('Application submitted successfully!')
+                setShowConfetti(true)
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }
               } catch (e) {
                 alert('Failed to submit application.')
               }
@@ -599,6 +604,8 @@ export function ApplicantForm({
           />
         </View>
       )}
+
+      <ConfettiOverlay active={showConfetti} onComplete={() => setShowConfetti(false)} />
 
       {!isClosed && saveStatus === 'saving' && (
         <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 10, fontStyle: 'italic', textAlign: 'center' }}>
