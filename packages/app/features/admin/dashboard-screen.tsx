@@ -295,9 +295,9 @@ export function AdminDashboardScreen() {
         .order('display_order')
 
       const mappedFields: any[] = (relData || []).map((rel, idx) => {
-        const fieldDef = Array.isArray(rel.form_fields)
+        const fieldDef: any = (Array.isArray(rel.form_fields)
           ? rel.form_fields[0] || {}
-          : rel.form_fields || {}
+          : rel.form_fields || {})
         const labelRaw = fieldDef.label
         const labelStr = typeof labelRaw === 'object' && labelRaw !== null
           ? (typeof labelRaw.en === 'string' ? labelRaw.en : String(Object.values(labelRaw)[0] ?? rel.field_id))
