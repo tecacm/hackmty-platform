@@ -15,10 +15,13 @@ export const SECTIONS = applicationFieldsConfig.sections as any
 
 // Build dynamic data sources
 const currentYear = new Date().getFullYear()
-const graduationYearOptions = Array.from({ length: 6 }, (_, index) => {
-  const year = currentYear - 1 + index
-  return { label: String(year), value: String(year) }
-})
+const graduationYearOptions = [
+  ...Array.from({ length: 6 }, (_, index) => {
+    const year = currentYear - 1 + index
+    return { label: String(year), value: String(year) }
+  }),
+  { label: 'Other', value: 'other' },
+]
 
 // Map for resolving data references in JSON
 export const dataReferences: Record<string, any[]> = {

@@ -295,9 +295,9 @@ export function AdminDashboardScreen() {
         .order('display_order')
 
       const mappedFields: any[] = (relData || []).map((rel, idx) => {
-        const fieldDef = Array.isArray(rel.form_fields)
+        const fieldDef: any = (Array.isArray(rel.form_fields)
           ? rel.form_fields[0] || {}
-          : rel.form_fields || {}
+          : rel.form_fields || {})
         const labelRaw = fieldDef.label
         const labelStr = typeof labelRaw === 'object' && labelRaw !== null
           ? (typeof labelRaw.en === 'string' ? labelRaw.en : String(Object.values(labelRaw)[0] ?? rel.field_id))
@@ -724,11 +724,16 @@ export function AdminDashboardScreen() {
 
   const addIncludeTag = (text?: string) => {
     const target = typeof text === 'string' ? text : includeInput
-    const trimmed = target.trim()
-    if (!trimmed) return
-    const cleanTag = trimmed.endsWith(',') ? trimmed.slice(0, -1).trim() : trimmed
-    if (cleanTag && !includeTags.includes(cleanTag)) {
-      setIncludeTags(prev => [...prev, cleanTag])
+    if (!target || typeof target !== 'string') return
+    const parts = target.split(',').map(s => s.trim()).filter(Boolean)
+    if (parts.length > 0) {
+      setIncludeTags(prev => {
+        const next = [...prev]
+        parts.forEach(p => {
+          if (!next.includes(p)) next.push(p)
+        })
+        return next
+      })
     }
     setIncludeInput('')
   }
@@ -739,14 +744,19 @@ export function AdminDashboardScreen() {
 
   const [excludeInput, setExcludeInput] = useState<string>('')
   const [excludeTags, setExcludeTags] = useState<string[]>([])
-  
+
   const addExcludeTag = (text?: string) => {
     const target = typeof text === 'string' ? text : excludeInput
-    const trimmed = target.trim()
-    if (!trimmed) return
-    const cleanTag = trimmed.endsWith(',') ? trimmed.slice(0, -1).trim() : trimmed
-    if (cleanTag && !excludeTags.includes(cleanTag)) {
-      setExcludeTags(prev => [...prev, cleanTag])
+    if (!target || typeof target !== 'string') return
+    const parts = target.split(',').map(s => s.trim()).filter(Boolean)
+    if (parts.length > 0) {
+      setExcludeTags(prev => {
+        const next = [...prev]
+        parts.forEach(p => {
+          if (!next.includes(p)) next.push(p)
+        })
+        return next
+      })
     }
     setExcludeInput('')
   }
@@ -976,43 +986,53 @@ export function AdminDashboardScreen() {
       // 4. Status Filter
       const matchesStatus = selectedStatus === 'all' || app.status === selectedStatus
 
-      // 5. Exclude Tags (pill-based multi-filter)
+      // 5. Shared Tag Matcher
+      const checkTagMatch = (tag: string) => {
+        const queryStr = tag.toLowerCase().trim()
+        const country = String(app.answers?.country || '').toLowerCase()
+        const major = String(app.answers?.major || '').toLowerCase()
+        const fullContentStr = `${fullName} ${email} ${university} ${city} ${country} ${major} ${JSON.stringify(app.answers || {})}`.toLowerCase()
+
+        if (queryStr.includes(':')) {
+          const parts = queryStr.split(':')
+          const prefix = (parts[0] || '').trim()
+          const val = parts.slice(1).join(':').trim()
+
+          if (prefix === 'university' || prefix === 'uni' || prefix === 'school') {
+            return university.toLowerCase().includes(val)
+          } else if (prefix === 'city') {
+            return city.toLowerCase().includes(val)
+          } else if (prefix === 'country') {
+            return country.includes(val)
+          } else if (prefix === 'major') {
+            return major.includes(val)
+          } else if (prefix === 'status') {
+            return (app.status || '').toLowerCase().includes(val)
+          } else if (prefix === 'role' || prefix === 'type') {
+            return (app.application_type_id || '').toLowerCase().includes(val)
+          }
+          return fullContentStr.includes(val)
+        }
+
+        return fullContentStr.includes(queryStr)
+      }
+
+      // 6. Exclude Tags (Candidate must NOT match any exclude tag)
       let matchesExclude = true
       if (excludeTags.length > 0) {
         for (const tag of excludeTags) {
-          const queryStr = tag.toLowerCase().trim()
-          let matchesThisTag = false
-          
-          if (queryStr.includes(':')) {
-            const parts = queryStr.split(':')
-            const prefix = (parts[0] || '').trim()
-            const val = parts.slice(1).join(':').trim()
-            
-            if (prefix === 'university' || prefix === 'uni' || prefix === 'school') {
-              matchesThisTag = university.toLowerCase().includes(val)
-            } else if (prefix === 'city') {
-              matchesThisTag = city.toLowerCase().includes(val)
-            } else {
-              matchesThisTag = university.toLowerCase().includes(queryStr) || city.toLowerCase().includes(queryStr)
-            }
-          } else {
-            matchesThisTag = university.toLowerCase().includes(queryStr) || city.toLowerCase().includes(queryStr)
-          }
-
-          if (matchesThisTag) {
+          if (checkTagMatch(tag)) {
             matchesExclude = false
             break
           }
         }
       }
 
-      // 6. Include Tags
+      // 7. Include Tags (Candidate MUST match ALL include tags)
       let matchesInclude = true
       if (includeTags.length > 0) {
         for (const tag of includeTags) {
-          const queryStr = tag.toLowerCase().trim()
-          const fullContentStr = `${fullName} ${email} ${university} ${city} ${JSON.stringify(app.answers || {})}`.toLowerCase()
-          if (!fullContentStr.includes(queryStr)) {
+          if (!checkTagMatch(tag)) {
             matchesInclude = false
             break
           }
@@ -1748,7 +1768,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 2,
     minWidth: 260,
-    height: 48,
+    height: 44,
     backgroundColor: '#fdfbfe',
     borderRadius: 12,
     borderWidth: 1,
@@ -1761,7 +1781,7 @@ const styles = StyleSheet.create({
     minWidth: 140,
   },
   dropdownBtn: {
-    height: 48,
+    height: 44,
     backgroundColor: '#fdfbfe',
     borderRadius: 12,
     borderWidth: 1,

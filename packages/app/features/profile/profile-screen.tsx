@@ -607,6 +607,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
 
             {/* Quick Action Slot */}
             <View style={styles.quickActionsContainer}>
+              {false &&
               <GlassButton
                 glassEffectStyle="clear"
                 colorScheme="dark"
@@ -620,6 +621,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
                 <AppIcon name="qrcode" color="#ffffff" size={16} />
                 <Text style={styles.quickActionText}>My QR</Text>
               </GlassButton>
+              }
             </View>
           </View>
 

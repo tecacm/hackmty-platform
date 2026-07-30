@@ -1,7 +1,7 @@
 'use client'
 
 import { TextLink } from 'solito/link'
-import { Text, View, useWindowDimensions } from 'react-native'
+import { Text, View, useWindowDimensions, Modal } from 'react-native'
 import { SolitoImage } from 'solito/image'
 import { LinearGradient } from 'app/components/linear-gradient'
 import logoImage from 'app/assets/images/hackmty-logo.webp'
@@ -23,6 +23,7 @@ import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { FormCheckbox } from 'app/components/form-checkbox'
 import { useForm, Controller } from "react-hook-form"
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+import { ConfettiOverlay } from 'app/components/confetti-overlay'
 
 const styles = StyleSheet.create({
   glassCard: {
@@ -151,6 +152,8 @@ export function RegisterScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { width } = useWindowDimensions();
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const images = [rectoria, pavoreal, ciap, photo2024, skyview];
   const { control, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormValues>({
     defaultValues: {
@@ -200,10 +203,6 @@ export function RegisterScreen() {
         return
       }
 
-      // With email confirmation enabled, Supabase may return an obfuscated
-      // user with an explicitly empty identities array for an existing
-      // account. Some successful new-signup responses omit identities, so
-      // a missing property must not be treated as an existing account.
       if (data.user?.identities?.length === 0) {
         setAuthError('An account with this email already exists. Please log in instead.')
         return
@@ -221,7 +220,8 @@ export function RegisterScreen() {
     }
 
     if (shouldNavigate) {
-      navigateTo('/login')
+      setShowConfetti(true)
+      setShowSuccessModal(true)
     }
   }
 
@@ -402,6 +402,56 @@ export function RegisterScreen() {
             />
           </View>
         </View>
+
+        <ConfettiOverlay active={showConfetti} onComplete={() => setShowConfetti(false)} />
+
+        {showSuccessModal && (
+          <Modal
+            visible={showSuccessModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => {
+              setShowSuccessModal(false)
+              navigateTo('/login')
+            }}
+          >
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+              <View style={{
+                backgroundColor: '#1b0026',
+                borderRadius: 28,
+                borderWidth: 1.5,
+                borderColor: 'rgba(194, 183, 95, 0.45)',
+                padding: 30,
+                width: '100%',
+                maxWidth: 440,
+                alignItems: 'center',
+                gap: 16,
+                ...Platform.select({
+                  web: {
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(90,0,97,0.3)',
+                  } as any,
+                }),
+              }}>
+                <Text style={{ fontSize: 42 }}>🎉</Text>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.3, fontFamily: 'Montserrat' }}>
+                  Account Created!
+                </Text>
+                <Text style={{ fontSize: 14, color: '#e2e8f0', textAlign: 'center', lineHeight: 22, fontFamily: 'Montserrat' }}>
+                  We sent a confirmation link to your email. Please check your inbox and confirm your email address before logging in.
+                </Text>
+                <PillButton
+                  title="OK, Go to Login"
+                  variant="gradient"
+                  onPress={() => {
+                    setShowSuccessModal(false)
+                    navigateTo('/login')
+                  }}
+                  additionalStyle={{ width: '100%', height: 46, marginTop: 8 }}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
     </ParallaxScrollView>
   )
 }
