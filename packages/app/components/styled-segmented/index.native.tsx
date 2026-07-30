@@ -212,7 +212,7 @@ export function StyledSegmented({
                   height: 48,
                   paddingHorizontal: 16,
                   fontSize: 14,
-                  color: formFieldColors.inputText || '#22002c',
+                  color: formFieldColors.text || '#22002c',
                   backgroundColor: formFieldColors.surface || '#ffffff',
                   borderWidth: 1,
                   borderColor: error ? formFieldColors.error : formFieldColors.borderColor || '#cbd5e1',
