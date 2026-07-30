@@ -33,7 +33,7 @@ interface SubmissionsTabProps {
   error: string | null
   filteredApps: any[]
   displayedApps: any[]
-  groupedData: Record<string, any[]>
+  groupedData: any
   expandedTeams: Record<string, boolean>
   toggleTeamExpand: (teamName: string) => void
   renderApplicationRow: (app: any) => React.ReactNode
@@ -90,6 +90,20 @@ export function SubmissionsTab({
   setAppPageSize,
   styles,
 }: SubmissionsTabProps) {
+  const normalizedGroupedData = React.useMemo(() => {
+    if (!groupedData) return []
+    if (Array.isArray(groupedData)) {
+      return groupedData.map((group: any) => ({
+        teamName: String(group?.teamName || 'Team'),
+        applications: Array.isArray(group?.applications) ? group.applications : [],
+      }))
+    }
+    return Object.entries(groupedData).map(([teamName, apps]: [string, any]) => ({
+      teamName,
+      applications: Array.isArray(apps) ? apps : (Array.isArray(apps?.applications) ? apps.applications : []),
+    }))
+  }, [groupedData])
+
   return (
     <View style={{ width: '100%', gap: 18 }}>
       {/* Stats Overview Grid */}
@@ -118,23 +132,25 @@ export function SubmissionsTab({
 
       {/* Advanced Filter Toolbar */}
       <View style={styles.toolbarCard}>
-        <View style={styles.searchRow}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by candidate name, email, school, major, team, country..."
-            placeholderTextColor="rgba(34, 0, 44, 0.4)"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <View style={{ flex: 1, minWidth: 260, height: 44 }}>
+            <TextInput
+              style={[styles.searchInput, { height: 44, width: '100%' }]}
+              placeholder="Search candidate, email, university..."
+              placeholderTextColor="#94a3b8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
 
-          <View style={styles.dropdownContainer}>
+          <View style={[styles.dropdownContainer, { height: 44 }]}>
             <Pressable
               onPress={() => {
-                const types = ['all', ...dynamicTypeOptions]
+                const types = ['all', ...(dynamicTypeOptions || [])]
                 const nextIdx = (types.indexOf(selectedType) + 1) % types.length
                 setSelectedType(types[nextIdx] || 'all')
               }}
-              style={styles.dropdownBtn}
+              style={[styles.dropdownBtn, { height: 44 }]}
             >
               <Text style={styles.dropdownBtnText}>
                 ROLE: {(selectedType || 'all').toUpperCase()}
@@ -142,14 +158,14 @@ export function SubmissionsTab({
             </Pressable>
           </View>
 
-          <View style={styles.dropdownContainer}>
+          <View style={[styles.dropdownContainer, { height: 44 }]}>
             <Pressable
               onPress={() => {
                 const statuses = ['all', 'submitted', 'accepted', 'rejected', 'in_review', 'draft']
                 const nextIdx = (statuses.indexOf(selectedStatus) + 1) % statuses.length
                 setSelectedStatus(statuses[nextIdx] || 'all')
               }}
-              style={styles.dropdownBtn}
+              style={[styles.dropdownBtn, { height: 44 }]}
             >
               <Text style={styles.dropdownBtnText}>
                 STATUS: {(selectedStatus || 'all').toUpperCase()}
@@ -161,7 +177,7 @@ export function SubmissionsTab({
             title={groupByTeams ? '✓ Grouped Teams' : 'Group by Teams'}
             onPress={() => setGroupByTeams(!groupByTeams)}
             variant={groupByTeams ? 'primary' : 'outline-primary'}
-            additionalStyle={{ height: 42, paddingHorizontal: 14, width: 'auto' }}
+            additionalStyle={{ height: 44, paddingHorizontal: 14, width: 'auto' }}
             fontSize={12}
           />
         </View>
@@ -183,13 +199,13 @@ export function SubmissionsTab({
           <View style={{ flex: 1, minWidth: 260, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <TextInput
               style={[styles.searchInput, { flex: 1, height: 38, fontSize: 13 }]}
-              placeholder="Exclude tag..."
+              placeholder="Exclude tag (e.g. Java, High School)..."
               placeholderTextColor="#94a3b8"
               value={excludeInput}
               onChangeText={setExcludeInput}
               onSubmitEditing={addExcludeTag}
             />
-            <PillButton title="+ Exclude" onPress={addExcludeTag} variant="outline-danger" additionalStyle={{ height: 38, width: 'auto', paddingHorizontal: 12 }} fontSize={11} />
+            <PillButton title="- Exclude" onPress={addExcludeTag} additionalStyle={{ height: 38, width: 'auto', paddingHorizontal: 12, backgroundColor: '#dc2626' }} fontSize={11} />
           </View>
         </View>
 
@@ -227,8 +243,9 @@ export function SubmissionsTab({
           </View>
         ) : groupByTeams ? (
           <View style={{ gap: 16 }}>
-            {Object.keys(groupedData).map(teamName => {
-              const teamApps = groupedData[teamName] || []
+            {normalizedGroupedData.map(group => {
+              const teamName = group.teamName
+              const teamApps = group.applications
               const isExpanded = !!expandedTeams[teamName]
               return (
                 <View key={teamName} style={{ backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' }}>
@@ -245,7 +262,9 @@ export function SubmissionsTab({
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>{teamName}</Text>
                       <View style={{ backgroundColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>{teamApps.length} Members</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>
+                          {teamApps.length} {teamApps.length === 1 ? 'Member' : 'Members'}
+                        </Text>
                       </View>
                     </View>
                     <Text style={{ fontSize: 14, fontWeight: '800', color: '#6d28d9' }}>{isExpanded ? '▲ Hide' : '▼ Expand'}</Text>
@@ -253,7 +272,7 @@ export function SubmissionsTab({
 
                   {isExpanded && (
                     <View style={{ padding: 14, gap: 10 }}>
-                      {teamApps.map(app => renderApplicationRow(app))}
+                      {teamApps.map((app: any) => renderApplicationRow(app))}
                     </View>
                   )}
                 </View>
