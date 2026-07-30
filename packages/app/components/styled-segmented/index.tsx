@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { View, Text, StyleSheet, Pressable, TextStyle, ViewStyle, Animated } from 'react-native'
+import { View, Text, StyleSheet, Pressable, TextInput, TextStyle, ViewStyle, Animated } from 'react-native'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
 
 type SegmentedOption = {
@@ -28,13 +28,31 @@ export function StyledSegmented({
   onValueChange,
   additionalStyle = {},
 }: StyledSegmentedProps) {
-  const hasSelection = value != null && value !== '' && options.some((option) => option.value === value)
+  const standardOptions = useMemo(() => options.filter(o => o.value !== 'other'), [options])
+  const hasOtherOption = useMemo(() => options.some(o => o.value === 'other'), [options])
+
+  const [otherMode, setOtherMode] = useState(false)
+
+  const isStandardSelection = useMemo(() => {
+    return value != null && value !== '' && standardOptions.some((o) => o.value === value)
+  }, [standardOptions, value])
+
+  const isOtherActive = useMemo(() => {
+    if (!hasOtherOption) return false
+    return otherMode || (!!value && !isStandardSelection)
+  }, [hasOtherOption, isStandardSelection, otherMode, value])
+
+  const hasSelection = isStandardSelection || isOtherActive
 
   const selectedIndex = useMemo(() => {
+    if (isOtherActive) {
+      const otherIdx = options.findIndex((o) => o.value === 'other')
+      return otherIdx >= 0 ? otherIdx : 0
+    }
     if (!value) return 0
     const found = options.findIndex((option) => option.value === value)
     return found >= 0 ? found : 0
-  }, [options, value])
+  }, [options, value, isOtherActive])
 
   const [wrapperWidth, setWrapperWidth] = useState(0)
   const indicatorX = useRef(new Animated.Value(0)).current
@@ -52,11 +70,21 @@ export function StyledSegmented({
     }).start()
   }, [hasSelection, indicatorX, segmentWidth, selectedIndex])
 
+  const handlePressOption = (optValue: string) => {
+    if (optValue === 'other') {
+      setOtherMode(true)
+      onValueChange('') // Require user to type custom year into text box
+    } else {
+      setOtherMode(false)
+      onValueChange(optValue)
+    }
+  }
+
   return (
     <View style={formFieldStyles.container}>
       <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
       <View
-        style={[formFieldStyles.fieldShell, styles.segmentedWrapper, additionalStyle, error && formFieldStyles.errorInput]}
+        style={[formFieldStyles.fieldShell, styles.segmentedWrapper, { paddingHorizontal: 0 }, additionalStyle, error && formFieldStyles.errorInput]}
         onLayout={(event) => setWrapperWidth(event.nativeEvent.layout.width)}
       >
         {hasSelection && segmentWidth > 0 && (
@@ -72,19 +100,50 @@ export function StyledSegmented({
           />
         )}
         {options.map((option) => {
-          const isActive = option.value === value
+          const isActive = option.value === 'other'
+            ? isOtherActive
+            : option.value === value && !isOtherActive
 
           return (
             <Pressable
               key={option.value}
               style={styles.segmentItem}
-              onPress={() => onValueChange(option.value)}
+              onPress={() => handlePressOption(option.value)}
             >
               <Text style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}>{option.label}</Text>
             </Pressable>
           )
         })}
       </View>
+
+      {isOtherActive && (
+        <View style={{ marginTop: 10, width: '100%' }}>
+          <TextInput
+            style={[
+              formFieldStyles.fieldShell,
+              {
+                height: 48,
+                paddingHorizontal: 16,
+                fontSize: 14,
+                color: formFieldColors.inputText || '#22002c',
+                backgroundColor: formFieldColors.surface || '#ffffff',
+                borderWidth: 1,
+                borderColor: error ? formFieldColors.error : formFieldColors.borderColor || '#cbd5e1',
+                borderRadius: 14,
+              },
+              error && formFieldStyles.errorInput
+            ]}
+            placeholder="Enter your graduation year (e.g. 2031)..."
+            placeholderTextColor="#94a3b8"
+            value={value || ''}
+            keyboardType="number-pad"
+            onChangeText={(text) => {
+              onValueChange(text.trim())
+            }}
+          />
+        </View>
+      )}
+
       {subtitle && (typeof subtitle === 'string' ? <Text style={formFieldStyles.helperText}>{subtitle}</Text> : subtitle)}
       {error && <Text style={formFieldStyles.errorText}>{error}</Text>}
     </View>
