@@ -7,6 +7,15 @@ type SegmentedOption = {
   value: string
 }
 
+export type OtherInputProps = {
+  placeholder?: string
+  keyboardType?: 'default' | 'number-pad' | 'numeric' | 'email-address' | 'phone-pad'
+  maxLength?: number
+  numericOnly?: boolean
+  pattern?: string
+  validationMessage?: string
+}
+
 type StyledSegmentedProps = {
   label: string
   value?: string
@@ -16,6 +25,7 @@ type StyledSegmentedProps = {
   required?: boolean
   onValueChange: (value: string) => void
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
+  otherInputProps?: OtherInputProps
 }
 
 export function StyledSegmented({
@@ -27,6 +37,7 @@ export function StyledSegmented({
   required = false,
   onValueChange,
   additionalStyle = {},
+  otherInputProps,
 }: StyledSegmentedProps) {
   const standardOptions = useMemo(() => options.filter(o => o.value !== 'other'), [options])
   const hasOtherOption = useMemo(() => options.some(o => o.value === 'other'), [options])
@@ -73,12 +84,17 @@ export function StyledSegmented({
   const handlePressOption = (optValue: string) => {
     if (optValue === 'other') {
       setOtherMode(true)
-      onValueChange('') // Require user to type custom year into text box
+      onValueChange('') // Require user to type custom value
     } else {
       setOtherMode(false)
       onValueChange(optValue)
     }
   }
+
+  const customPlaceholder = otherInputProps?.placeholder || 'Enter custom value...'
+  const customKeyboardType = otherInputProps?.keyboardType || 'default'
+  const customMaxLength = otherInputProps?.maxLength
+  const isNumericOnly = otherInputProps?.numericOnly ?? false
 
   return (
     <View style={formFieldStyles.container}>
@@ -133,12 +149,14 @@ export function StyledSegmented({
               },
               error && formFieldStyles.errorInput
             ]}
-            placeholder="Enter your graduation year (e.g. 2031)..."
+            placeholder={customPlaceholder}
             placeholderTextColor="#94a3b8"
             value={value || ''}
-            keyboardType="number-pad"
+            keyboardType={customKeyboardType}
+            maxLength={customMaxLength}
             onChangeText={(text) => {
-              onValueChange(text.trim())
+              const cleaned = isNumericOnly ? text.replace(/[^0-9]/g, '') : text
+              onValueChange(cleaned)
             }}
           />
         </View>

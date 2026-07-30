@@ -439,12 +439,32 @@ export function ApplicantForm({
 
                     const displayLabelString = typeof ff.label === 'string' ? ff.label : (ff.validationLabel ?? 'This field')
 
+                    const otherInputProps = ff.otherInputProps || ff.ui_metadata?.otherInputProps || ff.ui_metadata?.otherInput || ff.uiMetadata?.otherInput
+
                     return (
                       <View key={ff.name} style={[styles.rowField, isWide ? styles.rowFieldWide : styles.rowFieldNarrow]}>
                         <Controller
                           control={control}
                           name={ff.name as any}
-                          rules={{ required: ff.required ? `${ff.validationLabel ?? displayLabelString} is required` : false }}
+                          rules={{
+                            required: ff.required ? `${ff.validationLabel ?? displayLabelString} is required` : false,
+                            validate: (val) => {
+                              if (!val) return true
+                              const patternStr = ff.pattern || ff.ui_metadata?.pattern || ff.uiMetadata?.pattern || otherInputProps?.pattern
+                              const valMsg = ff.ui_metadata?.validationMessage || ff.uiMetadata?.validationMessage || otherInputProps?.validationMessage || 'Invalid format'
+                              if (patternStr) {
+                                try {
+                                  const rx = new RegExp(patternStr)
+                                  if (!rx.test(String(val).trim())) {
+                                    return valMsg
+                                  }
+                                } catch (e) {
+                                  // ignore invalid regex
+                                }
+                              }
+                              return true
+                            }
+                          }}
                           render={({ field: { onChange, value } }) => {
                             if (ff.fieldType === 'checkbox') {
                               const checked = !!value
@@ -532,6 +552,7 @@ export function ApplicantForm({
                                   onValueChange={(nextValue: any) => onChange(nextValue)}
                                   additionalStyle={styles.inputShadow}
                                   error={(errors as any)[ff.name]?.message}
+                                  otherInputProps={otherInputProps}
                                 />
                               )
                             }

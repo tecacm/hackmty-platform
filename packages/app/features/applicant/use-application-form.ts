@@ -251,6 +251,16 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
           }
         }
 
+        // Resolve otherInputProps directly from ui_metadata in DB response (with i18n support)
+        let resolvedOtherInputProps = uiMetadata.otherInputProps || uiMetadata.otherInput
+        if (resolvedOtherInputProps) {
+          resolvedOtherInputProps = {
+            ...resolvedOtherInputProps,
+            placeholder: getVal(resolvedOtherInputProps.placeholder) || resolvedOtherInputProps.placeholder,
+            validationMessage: getVal(resolvedOtherInputProps.validationMessage) || resolvedOtherInputProps.validationMessage,
+          }
+        }
+
         // Resolve options with translations
         let resolvedOptions = field.options?.map((opt: any) => ({
           label: getVal(opt.label),
@@ -289,6 +299,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
           sectionKey: sectionId,
           ...uiMetadata,
           fileSelectorProps: resolvedFileSelectorProps || undefined,
+          otherInputProps: resolvedOtherInputProps || undefined,
         } as ApplicantField
       })
 
