@@ -164,7 +164,7 @@ export function ApplicantForm({
   const isWide = width >= 520
   const isFormLocked =
     isClosed ||
-    (status !== 'draft' && status !== 'changes_requested')
+    (status !== null && status !== 'draft' && status !== 'changes_requested')
 
   const [isConfirming, setIsConfirming] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -466,19 +466,23 @@ export function ApplicantForm({
                             }
                           }}
                           render={({ field: { onChange, value } }) => {
+                            const isFieldDisabled = disabledFields.includes(ff.name)
+
                             if (ff.fieldType === 'checkbox') {
                               const checked = !!value
                               return (
-                                <FormCheckbox
-                                  variant="form"
-                                  label={resolvedLabel}
-                                  subtitle={resolvedSubtitle}
-                                  required={!!ff.required}
-                                  value={checked}
-                                  onValueChange={(v) => onChange(v)}
-                                  additionalStyle={styles.inputShadow}
-                                  error={(errors as any)[ff.name]?.message}
-                                />
+                                <View style={isFieldDisabled ? { opacity: 0.6 } : undefined} pointerEvents={isFieldDisabled ? 'none' : 'auto'}>
+                                  <FormCheckbox
+                                    variant="form"
+                                    label={resolvedLabel}
+                                    subtitle={resolvedSubtitle}
+                                    required={!!ff.required}
+                                    value={checked}
+                                    onValueChange={(v) => onChange(v)}
+                                    additionalStyle={styles.inputShadow}
+                                    error={(errors as any)[ff.name]?.message}
+                                  />
+                                </View>
                               )
                             }
 
@@ -490,19 +494,21 @@ export function ApplicantForm({
                                   : undefined
 
                               return (
-                                <FormRadio
-                                  title={resolvedLabel}
-                                  options={ff.options || []}
-                                  multiple={!!ff.multiple}
-                                  layout={ff.layout || 'vertical'}
-                                  subtitle={resolvedSubtitle}
-                                  value={radioValue}
-                                  onChange={(next: any) => onChange(next)}
-                                  required={!!ff.required}
-                                  variant="form"
-                                  additionalStyle={styles.inputShadow}
-                                  error={(errors as any)[ff.name]?.message}
-                                />
+                                <View style={isFieldDisabled ? { opacity: 0.6 } : undefined} pointerEvents={isFieldDisabled ? 'none' : 'auto'}>
+                                  <FormRadio
+                                    title={resolvedLabel}
+                                    options={ff.options || []}
+                                    multiple={!!ff.multiple}
+                                    layout={ff.layout || 'vertical'}
+                                    subtitle={resolvedSubtitle}
+                                    value={radioValue}
+                                    onChange={(next: any) => onChange(next)}
+                                    required={!!ff.required}
+                                    variant="form"
+                                    additionalStyle={styles.inputShadow}
+                                    error={(errors as any)[ff.name]?.message}
+                                  />
+                                </View>
                               )
                             }
 
@@ -510,50 +516,56 @@ export function ApplicantForm({
 
                             if (ff.fieldType === 'select' && ff.options?.length) {
                               return (
-                                <StyledSelect
-                                  label={resolvedLabel}
-                                  value={controlledValue}
-                                  placeholder={ff.placeholder}
-                                  options={ff.options}
-                                  subtitle={resolvedSubtitle}
-                                  required={ff.required}
-                                  onValueChange={(nextValue: any) => onChange(nextValue)}
-                                  additionalStyle={styles.inputShadow}
-                                  error={(errors as any)[ff.name]?.message}
-                                />
+                                <View style={isFieldDisabled ? { opacity: 0.6 } : undefined} pointerEvents={isFieldDisabled ? 'none' : 'auto'}>
+                                  <StyledSelect
+                                    label={resolvedLabel}
+                                    value={controlledValue}
+                                    placeholder={ff.placeholder}
+                                    options={ff.options}
+                                    subtitle={resolvedSubtitle}
+                                    required={ff.required}
+                                    onValueChange={(nextValue: any) => onChange(nextValue)}
+                                    additionalStyle={styles.inputShadow}
+                                    error={(errors as any)[ff.name]?.message}
+                                  />
+                                </View>
                               )
                             }
 
                             if (ff.fieldType === 'autocomplete' && ff.autocompleteData?.length) {
                               return (
-                                <StyledAutocomplete
-                                  label={resolvedLabel}
-                                  placeholder={ff.placeholder}
-                                  subtitle={resolvedSubtitle}
-                                  required={ff.required}
-                                  textContentType={ff.textContentType as any}
-                                  additionalStyle={styles.inputShadow}
-                                  onChangeText={onChange}
-                                  value={controlledValue}
-                                  error={(errors as any)[ff.name]?.message}
-                                  options={ff.autocompleteData}
-                                />
+                                <View style={isFieldDisabled ? { opacity: 0.6 } : undefined} pointerEvents={isFieldDisabled ? 'none' : 'auto'}>
+                                  <StyledAutocomplete
+                                    label={resolvedLabel}
+                                    placeholder={ff.placeholder}
+                                    subtitle={resolvedSubtitle}
+                                    required={ff.required}
+                                    textContentType={ff.textContentType as any}
+                                    additionalStyle={styles.inputShadow}
+                                    onChangeText={onChange}
+                                    value={controlledValue}
+                                    error={(errors as any)[ff.name]?.message}
+                                    options={ff.autocompleteData}
+                                  />
+                                </View>
                               )
                             }
 
                             if (ff.fieldType === 'segmented' && ff.options?.length) {
                               return (
-                                <StyledSegmented
-                                  label={resolvedLabel}
-                                  value={controlledValue}
-                                  options={ff.options}
-                                  subtitle={resolvedSubtitle}
-                                  required={ff.required}
-                                  onValueChange={(nextValue: any) => onChange(nextValue)}
-                                  additionalStyle={styles.inputShadow}
-                                  error={(errors as any)[ff.name]?.message}
-                                  otherInputProps={otherInputProps}
-                                />
+                                <View style={isFieldDisabled ? { opacity: 0.6 } : undefined} pointerEvents={isFieldDisabled ? 'none' : 'auto'}>
+                                  <StyledSegmented
+                                    label={resolvedLabel}
+                                    value={controlledValue}
+                                    options={ff.options}
+                                    subtitle={resolvedSubtitle}
+                                    required={ff.required}
+                                    onValueChange={(nextValue: any) => onChange(nextValue)}
+                                    additionalStyle={styles.inputShadow}
+                                    error={(errors as any)[ff.name]?.message}
+                                    otherInputProps={otherInputProps}
+                                  />
+                                </View>
                               )
                             }
 
@@ -561,7 +573,7 @@ export function ApplicantForm({
                               const bucketName = (ff as any).bucketName || (ff as any).ui_metadata?.bucketName || 'resumes'
                               const fileNamePrefix = (ff as any).fileNamePrefix || (ff as any).ui_metadata?.fileNamePrefix || ff.name
                               return (
-                                <View style={{ width: '100%' }}>
+                                <View style={[{ width: '100%' }, isFieldDisabled && { opacity: 0.6 }]} pointerEvents={isFieldDisabled ? 'none' : 'auto'}>
                                   <StyledFileInput
                                     label={resolvedLabel}
                                     value={controlledValue}
@@ -591,7 +603,7 @@ export function ApplicantForm({
                                 onChangeText={onChange}
                                 value={controlledValue}
                                 error={(errors as any)[ff.name]?.message}
-                                editable={!disabledFields.includes(ff.name)}
+                                editable={!isFieldDisabled}
                               />
                             )
                           }}

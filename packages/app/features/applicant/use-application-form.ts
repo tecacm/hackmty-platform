@@ -337,25 +337,62 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
         disabled.push('email')
       }
 
-      // Prefill phone from profiles first, fallback to user metadata (but do not disable so it remains editable)
+      // Prefill phone from profiles first, fallback to user metadata
       const phoneVal = profileData?.phone || user?.phone || user?.user_metadata?.phone
       if (phoneVal) {
         profileValues.phone = phoneVal
+        disabled.push('phone')
       }
 
       // Prefill other profile values
-      if (profileData?.gender) profileValues.gender = profileData.gender
-      if (profileData?.university) profileValues.university = profileData.university
-      if (profileData?.major) profileValues.major = profileData.major
-      if (profileData?.graduation_year) profileValues.year = profileData.graduation_year
-      if (profileData?.level_of_study) profileValues.levelOfStudy = profileData.level_of_study
-      if (profileData?.tshirt_size) profileValues.tshirt = profileData.tshirt_size
-      if (profileData?.dietary_restrictions) profileValues.diet = profileData.dietary_restrictions
-      if (profileData?.github) profileValues.github = profileData.github
-      if (profileData?.devpost) profileValues.devpost = profileData.devpost
-      if (profileData?.linkedin) profileValues.linkedin = profileData.linkedin
-      if (profileData?.personal_site) profileValues.personalSite = profileData.personal_site
-      if (profileData?.resume_url) profileValues.resume = profileData.resume_url
+      if (profileData?.gender) {
+        profileValues.gender = profileData.gender
+        disabled.push('gender')
+      }
+      if (profileData?.university) {
+        profileValues.university = profileData.university
+        disabled.push('university')
+      }
+      if (profileData?.major) {
+        profileValues.major = profileData.major
+        disabled.push('major')
+      }
+      if (profileData?.graduation_year) {
+        profileValues.year = profileData.graduation_year
+        disabled.push('year')
+      }
+      if (profileData?.level_of_study) {
+        profileValues.levelOfStudy = profileData.level_of_study
+        disabled.push('levelOfStudy')
+      }
+      if (profileData?.tshirt_size) {
+        profileValues.tshirt = profileData.tshirt_size
+        disabled.push('tshirt')
+      }
+      if (profileData?.dietary_restrictions) {
+        profileValues.diet = profileData.dietary_restrictions
+        disabled.push('diet')
+      }
+      if (profileData?.github) {
+        profileValues.github = profileData.github
+        disabled.push('github')
+      }
+      if (profileData?.devpost) {
+        profileValues.devpost = profileData.devpost
+        disabled.push('devpost')
+      }
+      if (profileData?.linkedin) {
+        profileValues.linkedin = profileData.linkedin
+        disabled.push('linkedin')
+      }
+      if (profileData?.personal_site) {
+        profileValues.personalSite = profileData.personal_site
+        disabled.push('personalSite')
+      }
+      if (profileData?.resume_url) {
+        profileValues.resume = profileData.resume_url
+        disabled.push('resume')
+      }
 
       // 9. Fetch user's existing application answers/status
       const { data: appData, error: appError } = await supabase
@@ -393,8 +430,30 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
         setAdminFeedback(getActiveFeedback(appData.admin_feedback))
         setFeedbackHistory(Array.isArray(appData.admin_feedback) ? appData.admin_feedback : [])
       } else {
+        let newStatus: string | null = null
+        if (Object.keys(profileValues).length > 0) {
+          try {
+            const { error: saveDraftError } = await supabase
+              .from('applications')
+              .upsert(
+                {
+                  user_id: user.id,
+                  application_type_id: role,
+                  answers: profileValues,
+                  status: 'draft',
+                  updated_at: new Date().toISOString()
+                },
+                { onConflict: 'user_id,application_type_id' }
+              )
+            if (!saveDraftError) {
+              newStatus = 'draft'
+            }
+          } catch (draftErr) {
+            console.warn('Failed to auto-create draft on load:', draftErr)
+          }
+        }
         setInitialValues(profileValues)
-        setStatus(null)
+        setStatus(newStatus)
         setAdminFeedback(null)
         setFeedbackHistory([])
       }
