@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -799,7 +799,7 @@ export function AdminDashboardScreen() {
   // Inline expansion states removed
 
   // Team Collapsed States
-  const [expandedTeams, setExpandedTeams] = useState<Record<string, boolean>>({})
+  const [expandedTeams, setExpandedTeams] = useState<Record<string, boolean>>(initialCache.expandedTeams || {})
 
   const toggleTeamExpand = (teamName: string) => {
     setExpandedTeams(prev => ({ ...prev, [teamName]: !prev[teamName] }))
@@ -975,6 +975,7 @@ export function AdminDashboardScreen() {
       userPageSize,
       userSearchQuery,
       userRoleFilter,
+      expandedTeams,
     })
   }, [
     adminTab,
@@ -991,10 +992,17 @@ export function AdminDashboardScreen() {
     userPageSize,
     userSearchQuery,
     userRoleFilter,
+    expandedTeams,
   ])
 
-  // Reset pages when search query or filters change
+  // Reset pages when search query or filters change (skip initial mount to preserve restored page)
+  const isFirstAppPageRender = useRef(true)
+
   useEffect(() => {
+    if (isFirstAppPageRender.current) {
+      isFirstAppPageRender.current = false
+      return
+    }
     setAppPage(1)
   }, [searchQuery, selectedType, selectedCountries, selectedStatus, excludeTags, includeTags, groupByTeams])
 
