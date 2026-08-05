@@ -10,6 +10,8 @@ type StyledFileInputProps = {
   error?: string
   subtitle?: React.ReactNode | string
   required?: boolean
+  disabled?: boolean
+  editable?: boolean
   bucketName?: string
   fileNamePrefix?: string
   fileSelectorProps?: FileSelectorProps
@@ -68,12 +70,15 @@ export function StyledFileInput({
   error,
   subtitle,
   required = false,
+  disabled,
+  editable,
   bucketName = 'resumes',
   fileNamePrefix = 'resume',
   fileSelectorProps = {},
   onValueChange,
   additionalStyle = {},
 }: StyledFileInputProps) {
+  const isDisabled = disabled || editable === false
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [localError, setLocalError] = useState('')
   const [isUploading, setIsUploading] = useState(false)
@@ -87,7 +92,7 @@ export function StyledFileInput({
   } = fileSelectorProps
 
   const openPicker = () => {
-    if (!isUploading) {
+    if (!isUploading && !isDisabled) {
       inputRef.current?.click()
     }
   }
@@ -99,20 +104,21 @@ export function StyledFileInput({
       </Text>
       <Pressable
         onPress={openPicker}
-        disabled={isUploading}
+        disabled={isUploading || isDisabled}
         style={({ pressed }) => [
           formFieldStyles.fieldShell,
           styles.trigger,
           additionalStyle,
           error && formFieldStyles.errorInput,
-          pressed && styles.triggerPressed,
+          pressed && !isDisabled && styles.triggerPressed,
+          isDisabled && { backgroundColor: '#e2e2e2' },
           isUploading && { opacity: 0.6 }
         ]}
       >
-        <Text style={[styles.triggerText, !value && styles.placeholderText]}>
+        <Text style={[styles.triggerText, !value && styles.placeholderText, isDisabled && { color: '#a4a7ae' }]}>
           {isUploading ? 'Uploading file...' : getDisplayLabel(value, placeholder)}
         </Text>
-        <Text style={styles.actionText}>{isUploading ? 'Uploading...' : 'Browse'}</Text>
+        <Text style={[styles.actionText, isDisabled && { color: '#a4a7ae' }]}>{isUploading ? 'Uploading...' : 'Browse'}</Text>
       </Pressable>
       <input
         ref={inputRef}

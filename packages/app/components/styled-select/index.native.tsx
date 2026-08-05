@@ -11,6 +11,8 @@ type StyledSelectProps = {
   placeholder?: string
   error?: string
   required?: boolean
+  disabled?: boolean
+  editable?: boolean
   options: SelectOption[]
   onValueChange: (value: string) => void
   subtitle?: string
@@ -25,7 +27,8 @@ function isMenuViewSupported() {
   }
 }
 
-export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, additionalStyle, error, required = false }: StyledSelectProps) {
+export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, additionalStyle, error, required = false, disabled, editable }: StyledSelectProps) {
+  const isDisabled = disabled || editable === false
   const [isModalVisible, setIsModalVisible] = useState(false)
   const normalizedPlaceholder = placeholder.trim().toLowerCase()
   const placeholderMatchedOption = useMemo(
@@ -43,8 +46,17 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
   const selectedValue = (value ?? '') === '' ? (placeholderMatchedOption?.value ?? '') : (value ?? '')
   const selectedLabel = options.find((option) => option.value === selectedValue)?.label || placeholder
   const isPlaceholderActive = selectedValue === ''
-  const triggerTextStyle = [formFieldStyles.inputText, isPlaceholderActive && { color: formFieldColors.muted }, additionalStyle]
-  const combinedStyle = [formFieldStyles.fieldShell, error && formFieldStyles.errorInput]
+  const triggerTextStyle = [
+    formFieldStyles.inputText,
+    isPlaceholderActive && { color: formFieldColors.muted },
+    additionalStyle,
+    isDisabled && { color: '#a4a7ae' },
+  ]
+  const combinedStyle = [
+    formFieldStyles.fieldShell,
+    error && formFieldStyles.errorInput,
+    isDisabled && { backgroundColor: '#e2e2e2' },
+  ]
   const useMenuView = useMemo(() => isMenuViewSupported(), [])
 
   const actions: MenuAction[] = [
@@ -65,7 +77,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
   return (
     <View style={formFieldStyles.container}>
       <Text style={formFieldStyles.label}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
-      <View style={additionalStyle}>
+      <View style={additionalStyle} pointerEvents={isDisabled ? 'none' : 'auto'}>
       {useMenuView ? (
         <MenuView
           title={selectedLabel}
@@ -74,14 +86,14 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
           style={formFieldStyles.fullWidth}
         >
           <View style={[additionalStyle]}>
-            <TouchableOpacity style={combinedStyle}>
+            <TouchableOpacity style={combinedStyle} disabled={isDisabled}>
               <Text style={triggerTextStyle}>{selectedLabel}</Text>
             </TouchableOpacity>
           </View>
         </MenuView>
       ) : (
         <>
-          <TouchableOpacity style={combinedStyle} onPress={() => setIsModalVisible(true)} activeOpacity={0.8}>
+          <TouchableOpacity style={combinedStyle} onPress={() => setIsModalVisible(true)} activeOpacity={0.8} disabled={isDisabled}>
             <Text style={triggerTextStyle}>{selectedLabel}</Text>
           </TouchableOpacity>
 

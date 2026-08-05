@@ -23,6 +23,8 @@ type StyledSegmentedProps = {
   error?: string
   subtitle?: React.ReactNode | string
   required?: boolean
+  disabled?: boolean
+  editable?: boolean
   onValueChange: (value: string) => void
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
   otherInputProps?: OtherInputProps
@@ -35,10 +37,13 @@ export function StyledSegmented({
   error,
   subtitle,
   required = false,
+  disabled,
+  editable,
   onValueChange,
   additionalStyle = {},
   otherInputProps,
 }: StyledSegmentedProps) {
+  const isDisabled = disabled || editable === false
   const standardOptions = useMemo(() => options.filter(o => o.value !== 'other'), [options])
   const hasOtherOption = useMemo(() => options.some(o => o.value === 'other'), [options])
 
@@ -82,6 +87,7 @@ export function StyledSegmented({
   }, [hasSelection, indicatorX, segmentWidth, selectedIndex])
 
   const handlePressOption = (optValue: string) => {
+    if (isDisabled) return
     if (optValue === 'other') {
       setOtherMode(true)
       onValueChange('') // Require user to type custom value
@@ -100,7 +106,14 @@ export function StyledSegmented({
     <View style={formFieldStyles.container}>
       <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
       <View
-        style={[formFieldStyles.fieldShell, styles.segmentedWrapper, { paddingHorizontal: 0 }, additionalStyle, error && formFieldStyles.errorInput]}
+        style={[
+          formFieldStyles.fieldShell,
+          styles.segmentedWrapper,
+          { paddingHorizontal: 0 },
+          additionalStyle,
+          error && formFieldStyles.errorInput,
+          isDisabled && { backgroundColor: '#e2e2e2' },
+        ]}
         onLayout={(event) => setWrapperWidth(event.nativeEvent.layout.width)}
       >
         {hasSelection && segmentWidth > 0 && (
@@ -108,6 +121,7 @@ export function StyledSegmented({
             pointerEvents='none'
             style={[
               styles.selectionIndicator,
+              isDisabled && { backgroundColor: '#c0c4cc' },
               {
                 width: segmentWidth,
                 transform: [{translateX: indicatorX}],
@@ -123,10 +137,11 @@ export function StyledSegmented({
           return (
             <Pressable
               key={option.value}
+              disabled={isDisabled}
               style={styles.segmentItem}
               onPress={() => handlePressOption(option.value)}
             >
-              <Text style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}>{option.label}</Text>
+              <Text style={[styles.segmentLabel, isDisabled && { color: '#a4a7ae' }, isActive && (isDisabled ? { color: '#475569', fontWeight: '700' } : styles.segmentLabelActive)]}>{option.label}</Text>
             </Pressable>
           )
         })}
@@ -135,14 +150,15 @@ export function StyledSegmented({
       {isOtherActive && (
         <View style={{ marginTop: 10, width: '100%' }}>
           <TextInput
+            editable={!isDisabled}
             style={[
               formFieldStyles.fieldShell,
               {
                 height: 48,
                 paddingHorizontal: 16,
                 fontSize: 14,
-                color: formFieldColors.text || '#22002c',
-                backgroundColor: formFieldColors.surface || '#ffffff',
+                color: isDisabled ? '#a4a7ae' : (formFieldColors.text || '#22002c'),
+                backgroundColor: isDisabled ? '#e2e2e2' : (formFieldColors.surface || '#ffffff'),
                 borderWidth: 1,
                 borderColor: error ? formFieldColors.error : formFieldColors.borderColor || '#cbd5e1',
                 borderRadius: 14,

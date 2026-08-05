@@ -104,6 +104,12 @@ export function SubmissionsTab({
     }))
   }, [groupedData])
 
+  const totalTeamPages = Math.ceil(normalizedGroupedData.length / appPageSize) || 1
+  const displayedGroupedData = React.useMemo(() => {
+    const start = (appPage - 1) * appPageSize
+    return normalizedGroupedData.slice(start, start + appPageSize)
+  }, [normalizedGroupedData, appPage, appPageSize])
+
   return (
     <View style={{ width: '100%', gap: 18 }}>
       {/* Stats Overview Grid */}
@@ -146,8 +152,9 @@ export function SubmissionsTab({
           <View style={[styles.dropdownContainer, { height: 44 }]}>
             <Pressable
               onPress={() => {
-                const types = ['all', ...(dynamicTypeOptions || [])]
-                const nextIdx = (types.indexOf(selectedType) + 1) % types.length
+                const types = Array.from(new Set(['all', ...(dynamicTypeOptions || []).map((t: any) => typeof t === 'string' ? t : t.id)]))
+                const currentIdx = types.indexOf(selectedType)
+                const nextIdx = currentIdx < 0 ? 0 : (currentIdx + 1) % types.length
                 setSelectedType(types[nextIdx] || 'all')
               }}
               style={[styles.dropdownBtn, { height: 44 }]}
@@ -242,43 +249,53 @@ export function SubmissionsTab({
             <Text style={styles.emptyText}>No applications found matching criteria.</Text>
           </View>
         ) : groupByTeams ? (
-          <View style={{ gap: 16 }}>
-            {normalizedGroupedData.map(group => {
-              const teamName = group.teamName
-              const teamApps = group.applications
-              const isExpanded = !!expandedTeams[teamName]
-              return (
-                <View key={teamName} style={{ backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' }}>
-                  <Pressable
-                    onPress={() => toggleTeamExpand(teamName)}
-                    style={{
-                      padding: 18,
-                      backgroundColor: '#f8fafc',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>{teamName}</Text>
-                      <View style={{ backgroundColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>
-                          {teamApps.length} {teamApps.length === 1 ? 'Member' : 'Members'}
-                        </Text>
+          <>
+            <View style={{ gap: 16 }}>
+              {displayedGroupedData.map(group => {
+                const teamName = group.teamName
+                const teamApps = group.applications
+                const isExpanded = !!expandedTeams[teamName]
+                return (
+                  <View key={teamName} style={{ backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' }}>
+                    <Pressable
+                      onPress={() => toggleTeamExpand(teamName)}
+                      style={{
+                        padding: 18,
+                        backgroundColor: '#f8fafc',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>{teamName}</Text>
+                        <View style={{ backgroundColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>
+                            {teamApps.length} {teamApps.length === 1 ? 'Member' : 'Members'}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#6d28d9' }}>{isExpanded ? '▲ Hide' : '▼ Expand'}</Text>
-                  </Pressable>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#6d28d9' }}>{isExpanded ? '▲ Hide' : '▼ Expand'}</Text>
+                    </Pressable>
 
-                  {isExpanded && (
-                    <View style={{ padding: 14, gap: 10 }}>
-                      {teamApps.map((app: any) => renderApplicationRow(app))}
-                    </View>
-                  )}
-                </View>
-              )
-            })}
-          </View>
+                    {isExpanded && (
+                      <View style={{ padding: 14, gap: 10 }}>
+                        {teamApps.map((app: any) => renderApplicationRow(app))}
+                      </View>
+                    )}
+                  </View>
+                )
+              })}
+            </View>
+            {renderPaginationBar(
+              appPage,
+              totalTeamPages,
+              appPageSize,
+              normalizedGroupedData.length,
+              setAppPage,
+              setAppPageSize
+            )}
+          </>
         ) : (
           <>
             <View style={{ gap: 12 }}>

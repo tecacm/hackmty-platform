@@ -2,7 +2,8 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
 import { formFieldColors } from '../form-field-styles'
 
-export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error, variant = 'default', required = false, subtitle }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string; variant?: 'default' | 'form' | 'glass'; required?: boolean; subtitle?: ReactNode | string }) {
+export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}, error, variant = 'default', required = false, subtitle, disabled, editable }: { label: ReactNode; value?: boolean; onValueChange?: (v: boolean) => void; additionalStyle?: any; error?: string; variant?: 'default' | 'form' | 'glass'; required?: boolean; subtitle?: ReactNode | string; disabled?: boolean; editable?: boolean }) {
+  const isDisabled = disabled || editable === false
   const isControlled = typeof value !== 'undefined'
   const [internalValue, setInternalValue] = useState<boolean>(!!value)
 
@@ -13,6 +14,7 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
   const checked = isControlled ? !!value : internalValue
 
   const setChecked = (next: boolean) => {
+    if (isDisabled) return
     if (!isControlled) setInternalValue(next)
     onValueChange?.(next)
   }
@@ -23,6 +25,7 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
   // toggling the checkbox.  When the tap comes from a native mobile
   // component `target` will be a numeric React tag so the check is a no‑op.
   const shouldIgnorePress = (e: any) => {
+    if (isDisabled) return true;
     if (Platform.OS === 'web') {
       const tag = e.nativeEvent?.target?.tagName?.toLowerCase();
       // anchors are the most common; if you render other touchable
@@ -45,6 +48,7 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
   return (
     <View style={styles.wrapper}>
       <Pressable
+        disabled={isDisabled}
         style={[styles.container, additionalStyle]}
         onPress={handleContainerPress}
       >
@@ -53,18 +57,19 @@ export function FormCheckbox({ label, value, onValueChange, additionalStyle = {}
           styles.checkboxBase,
           variant === 'glass' && styles.checkboxBaseGlass,
           checked && (variant === 'form' ? styles.checkboxCheckedForm : variant === 'glass' ? styles.checkboxCheckedGlass : styles.checkboxCheckedDefault),
-          error && styles.checkboxError
+          error && styles.checkboxError,
+          isDisabled && { borderColor: '#a4a7ae', backgroundColor: checked ? '#a4a7ae' : '#e2e2e2' }
         ]}>
-          {checked && <View style={variant === 'form' ? styles.checkmarkForm : variant === 'glass' ? styles.checkmarkGlass : styles.checkmarkDefault} />}
+          {checked && <View style={[variant === 'form' ? styles.checkmarkForm : variant === 'glass' ? styles.checkmarkGlass : styles.checkmarkDefault, isDisabled && { borderColor: '#ffffff' }]} />}
         </View>
 
         {typeof label === 'string' ? (
-          <Text style={variant === 'form' ? styles.labelForm : variant === 'glass' ? styles.labelGlass : styles.labelDefault}>
+          <Text style={[variant === 'form' ? styles.labelForm : variant === 'glass' ? styles.labelGlass : styles.labelDefault, isDisabled && { color: '#a4a7ae' }]}>
             {label}
             {required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}
           </Text>
         ) : (
-          <Text style={{ flex: 1, flexShrink: 1 }}>
+          <Text style={[{ flex: 1, flexShrink: 1 }, isDisabled && { color: '#a4a7ae' }]}>
             {label}
             {required && (
               <Text style={[

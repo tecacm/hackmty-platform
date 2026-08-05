@@ -12,6 +12,8 @@ export function FormRadio({
   value,
   onChange,
   required = false,
+  disabled,
+  editable,
   variant = 'form',
   subtitle,
   error,
@@ -24,11 +26,14 @@ export function FormRadio({
   value?: string | string[]
   onChange?: (v: string | string[]) => void
   required?: boolean
+  disabled?: boolean
+  editable?: boolean
   variant?: 'default' | 'form'
   subtitle?: string | React.ReactNode
   error?: string
   additionalStyle?: any
 }) {
+  const isDisabled = disabled || editable === false
   const isControlled = typeof value !== 'undefined'
 
   const [internalValue, setInternalValue] = useState<string | string[] | undefined>(
@@ -49,6 +54,7 @@ export function FormRadio({
   }
 
   const toggleOption = (opt: string) => {
+    if (isDisabled) return
     if (multiple) {
       const arr = (selected as string[]) || []
       const has = arr.includes(opt)
@@ -81,7 +87,9 @@ export function FormRadio({
           return (
             <Pressable
               key={o.value}
+              disabled={isDisabled}
               onPress={(e: any) => {
+                if (isDisabled) return
                 // ignore inner interactive taps on web (links etc.)
                 if (Platform.OS === 'web') {
                   const tag = e.nativeEvent?.target?.tagName?.toLowerCase()
@@ -92,20 +100,28 @@ export function FormRadio({
               style={[styles.optionRow, isHorizontalWrap ? styles.optionRowHorizontalWrap : styles.optionRowVertical]}
             >
               {multiple ? (
-                <View style={[styles.checkboxBase, checked && styles.checkboxCheckedForm]}>
+                <View style={[
+                  styles.checkboxBase,
+                  checked && styles.checkboxCheckedForm,
+                  isDisabled && { borderColor: '#a4a7ae', backgroundColor: checked ? '#a4a7ae' : '#e2e2e2' }
+                ]}>
                   {checked && <View style={styles.checkmarkForm} />}
                 </View>
               ) : (
-                <View style={[styles.radioBase, checked && styles.radioSelectedBase]}>
-                  {checked && <View style={styles.radioDot} />}
+                <View style={[
+                  styles.radioBase,
+                  checked && styles.radioSelectedBase,
+                  isDisabled && { borderColor: '#a4a7ae', backgroundColor: checked ? '#e2e2e2' : 'transparent' }
+                ]}>
+                  {checked && <View style={[styles.radioDot, isDisabled && { backgroundColor: '#a4a7ae' }]} />}
                 </View>
               )}
 
               <View style={isHorizontalWrap ? styles.optionLabelHorizontal : styles.optionLabelVertical}>
                 {typeof o.label === 'string' ? (
-                  <Text style={variant === 'form' ? styles.labelForm : styles.labelDefault}>{o.label}</Text>
+                  <Text style={[variant === 'form' ? styles.labelForm : styles.labelDefault, isDisabled && { color: '#a4a7ae' }]}>{o.label}</Text>
                 ) : (
-                  <View>{o.label}</View>
+                  <View style={isDisabled ? { opacity: 0.7 } : undefined}>{o.label}</View>
                 )}
               </View>
             </Pressable>
