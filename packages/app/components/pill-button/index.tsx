@@ -1,10 +1,11 @@
 import { Pressable, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native'
-import { useState } from 'react'
+import React, { useState } from 'react'
 
 interface PillButtonProps {
-  title: string
+  title?: string
+  children?: React.ReactNode
   onPress?: () => void
-  variant?: 'primary' | 'danger' | 'secondary' | 'outline-primary' | 'outline-danger' | 'outline-secondary' | 'flat' | 'gradient'
+  variant?: 'primary' | 'success' | 'danger' | 'secondary' | 'outline-primary' | 'outline-success' | 'outline-danger' | 'outline-secondary' | 'flat' | 'gradient'
   isLoading?: boolean
   disabled?: boolean
   additionalStyle?: any
@@ -14,6 +15,7 @@ interface PillButtonProps {
 
 export function PillButton({
   title,
+  children,
   onPress,
   variant = 'primary',
   isLoading = false,
@@ -54,7 +56,11 @@ export function PillButton({
   let textColor = 'white'
   let isOutline = false
 
-  if (variant === 'danger') {
+  if (variant === 'success') {
+    baseColor = '#16a34a'
+    pressedColor = '#15803d'
+    textColor = 'white'
+  } else if (variant === 'danger') {
     baseColor = '#dc2626'
     pressedColor = '#ef4444'
     textColor = 'white'
@@ -67,6 +73,11 @@ export function PillButton({
     pressedColor = 'rgba(75, 22, 135, 0.1)'
     textColor = '#4b1687'
     isOutline = true
+  } else if (variant === 'outline-success') {
+    baseColor = 'transparent'
+    pressedColor = 'rgba(22, 163, 74, 0.1)'
+    textColor = '#16a34a'
+    isOutline = true
   } else if (variant === 'outline-danger') {
     baseColor = 'transparent'
     pressedColor = 'rgba(220, 38, 38, 0.1)'
@@ -78,6 +89,9 @@ export function PillButton({
     textColor = '#c2b75f'
     isOutline = true
   }
+
+  const customBg = additionalStyle?.backgroundColor
+  const activeBaseColor = customBg || baseColor
 
   let effectiveBgColor = baseColor
   let effectiveTextColor = textColor
@@ -110,12 +124,14 @@ export function PillButton({
         additionalStyle,
         {
           transform: [{ scale: pressed && !isDisabled ? 0.96 : 1 }],
-          backgroundColor: isDisabled ? effectiveBgColor : (pressed ? pressedColor : baseColor),
+          backgroundColor: isDisabled ? effectiveBgColor : (pressed ? pressedColor : activeBaseColor),
         },
       ]}
     >
       {isLoading ? (
         <ActivityIndicator size="small" color={effectiveTextColor} />
+      ) : children ? (
+        children
       ) : (
         <Text style={[styles.text, { color: effectiveTextColor }, fontSize ? { fontSize } : null, textStyle]}>{title}</Text>
       )}

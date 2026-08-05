@@ -306,6 +306,7 @@ export function FormBuilderTab({
 }: FormBuilderTabProps) {
   const { width } = useWindowDimensions()
   const isWide = width >= 700
+  const isSmallScreen = width > 0 && width < 768
   const [showRoleDropdown, setShowRoleDropdown] = React.useState(false)
   const [showRegistryModal, setShowRegistryModal] = React.useState(false)
   const [showAddSectionModal, setShowAddSectionModal] = React.useState(false)
@@ -367,15 +368,15 @@ export function FormBuilderTab({
   return (
     <View style={{ width: '100%', gap: 18 }}>
       {/* Header toolbar */}
-      <View style={{ position: 'relative', zIndex: 50, elevation: 50, backgroundColor: '#ffffff', borderRadius: 18, padding: 18, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <View style={{ flex: 1, minWidth: 240 }}>
+      <View style={{ position: 'relative', zIndex: 50, elevation: 50, backgroundColor: '#ffffff', borderRadius: 18, padding: 18, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: 14 }}>
+        <View style={{ flex: isSmallScreen ? undefined : 1, width: isSmallScreen ? '100%' : 'auto' }}>
           <Text style={{ fontSize: 18, fontWeight: '800', color: '#22002c', letterSpacing: -0.3 }}>Form Builder</Text>
           <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
             Editing <Text style={{ fontWeight: '800', color: '#5a0061' }}>{currentRoleLabel.toUpperCase()}</Text>
             {' · '}{formFieldsList.length} field{formFieldsList.length !== 1 ? 's' : ''}{allSectionIds.length > 0 ? ` · ${allSectionIds.length} section${allSectionIds.length !== 1 ? 's' : ''}` : ''}
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center', width: isSmallScreen ? '100%' : 'auto' }}>
           <View style={{ position: 'relative', zIndex: 100, elevation: 100 }}>
             <Pressable onPress={() => setShowRoleDropdown(!showRoleDropdown)}
               style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : '#fff' })}>

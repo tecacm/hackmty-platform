@@ -13,6 +13,7 @@ import {
   Smartphone,
   Check,
   ChevronRight,
+  ChevronLeft,
   ChevronUp,
   ChevronDown,
   Ban,
@@ -38,6 +39,7 @@ export type IconName =
   | 'smartphone'
   | 'checkmark'
   | 'chevron.right'
+  | 'chevron.left'
   | 'chevron.up'
   | 'chevron.down'
   | 'ban'
@@ -133,7 +135,11 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
   }
 
   if (name === 'chevron.right') {
-    return <ChevronRight size={size} color={color} strokeWidth={2.5} />
+    return <ChevronRight size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'chevron.left') {
+    return <ChevronLeft size={size} color={color} strokeWidth={2} />
   }
 
   if (name === 'chevron.up') {

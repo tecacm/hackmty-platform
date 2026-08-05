@@ -1,10 +1,12 @@
 import { GlassView } from 'expo-glass-effect'
+import React from 'react'
 import { Pressable, Text, StyleSheet, Platform, ActivityIndicator, View } from 'react-native'
 
 interface PillButtonProps {
-  title: string
+  title?: string
+  children?: React.ReactNode
   onPress?: () => void
-  variant?: 'primary' | 'danger' | 'secondary' | 'outline-primary' | 'outline-danger' | 'outline-secondary'
+  variant?: 'primary' | 'success' | 'danger' | 'secondary' | 'outline-primary' | 'outline-success' | 'outline-danger' | 'outline-secondary'
   isLoading?: boolean
   disabled?: boolean
   additionalStyle?: any
@@ -12,6 +14,7 @@ interface PillButtonProps {
 
 export function PillButton({
   title,
+  children,
   onPress,
   variant = 'primary',
   isLoading = false,
@@ -23,7 +26,11 @@ export function PillButton({
   let textColor = 'white'
   let isOutline = false
 
-  if (variant === 'danger') {
+  if (variant === 'success') {
+    baseColor = '#16a34a'
+    pressedColor = '#15803d'
+    textColor = 'white'
+  } else if (variant === 'danger') {
     baseColor = '#dc2626'
     pressedColor = '#b91c1c'
     textColor = 'white'
@@ -36,6 +43,11 @@ export function PillButton({
     pressedColor = 'rgba(75, 22, 135, 0.1)'
     textColor = '#4b1687'
     isOutline = true
+  } else if (variant === 'outline-success') {
+    baseColor = 'transparent'
+    pressedColor = 'rgba(22, 163, 74, 0.1)'
+    textColor = '#16a34a'
+    isOutline = true
   } else if (variant === 'outline-danger') {
     baseColor = 'transparent'
     pressedColor = 'rgba(220, 38, 38, 0.1)'
@@ -47,6 +59,9 @@ export function PillButton({
     textColor = '#c2b75f'
     isOutline = true
   }
+
+  const customBg = additionalStyle?.backgroundColor
+  const activeBaseColor = customBg || baseColor
 
   const isDisabled = disabled || isLoading
 
@@ -66,7 +81,7 @@ export function PillButton({
           transform: [{ scale: pressed && !isDisabled ? 0.96 : 1 }],
           ...Platform.select({
             android: {
-              backgroundColor: isDisabled ? 'rgba(0, 0, 0, 0.05)' : (pressed ? pressedColor : baseColor),
+              backgroundColor: isDisabled ? 'rgba(0, 0, 0, 0.05)' : (pressed ? pressedColor : activeBaseColor),
             },
           }),
           opacity: isDisabled ? 0.6 : 1,
@@ -75,9 +90,11 @@ export function PillButton({
     >
       {({ pressed }) => (
         isOutline ? (
-          <View style={[styles.glassContainer, { backgroundColor: pressed ? pressedColor : baseColor }]}>
+          <View style={[styles.glassContainer, { backgroundColor: pressed ? pressedColor : activeBaseColor }]}>
             {isLoading ? (
               <ActivityIndicator size="small" color={textColor} />
+            ) : children ? (
+              children
             ) : (
               <Text style={[styles.text, { color: textColor }]}>{title}</Text>
             )}
@@ -87,10 +104,12 @@ export function PillButton({
             isInteractive={!isDisabled}
             style={[styles.glassContainer, additionalStyle?.paddingHorizontal && { paddingHorizontal: additionalStyle.paddingHorizontal }]}
             colorScheme='dark'
-            tintColor={isDisabled ? 'rgba(0,0,0,0.2)' : (pressed ? pressedColor : baseColor)}
+            tintColor={isDisabled ? 'rgba(0,0,0,0.2)' : (pressed ? pressedColor : activeBaseColor)}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color={textColor} />
+            ) : children ? (
+              children
             ) : (
               <Text style={[styles.text, { color: textColor }]}>{title}</Text>
             )}

@@ -179,17 +179,17 @@ export function RolesAccessTab({ rolesLoading, rolesList, permissionsList, roleP
           <View style={{ gap: 8 }}>
             {inviteCodesList.map(invite => (
               <View key={invite.id} style={{ backgroundColor: '#faf6fd', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: 'rgba(90,0,97,0.1)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                <View style={{ gap: 4 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flex: 1, minWidth: 200, flexShrink: 1, gap: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <Text style={{ fontSize: 14, fontWeight: '800', color: '#5a0061' }}>{invite.code}</Text>
-                    <View style={{ backgroundColor: 'rgba(90,0,97,0.1)', borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2 }}>
+                    <View style={{ backgroundColor: 'rgba(90,0,97,0.1)', borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2, flexShrink: 0 }}>
                       <Text style={{ fontSize: 10, fontWeight: '800', color: '#5a0061', letterSpacing: 0.3 }}>{String(invite.application_type_id || 'role').toUpperCase()}</Text>
                     </View>
-                    {invite.label && <Text style={{ fontSize: 12, color: '#666' }}>— {invite.label}</Text>}
+                    {invite.label && <Text numberOfLines={1} ellipsizeMode="tail" style={{ fontSize: 12, color: '#666', flexShrink: 1 }}>— {invite.label}</Text>}
                   </View>
                   <Text style={{ fontSize: 11, color: '#888' }}>Uses: {invite.use_count}/{invite.max_uses ?? '∞'} · {invite.is_active ? 'Active' : 'Inactive'}</Text>
                 </View>
-                <Pressable onPress={() => copyInviteLink(invite.code, invite.application_type_id, invite.id)} style={({ pressed }) => ({ height: 32, paddingHorizontal: 14, borderRadius: 8, backgroundColor: copiedCodeId === invite.id ? '#16a34a' : pressed ? 'rgba(90,0,97,0.14)' : 'rgba(90,0,97,0.08)', justifyContent: 'center', alignItems: 'center' })}>
+                <Pressable onPress={() => copyInviteLink(invite.code, invite.application_type_id, invite.id)} style={({ pressed }) => ({ height: 32, paddingHorizontal: 14, borderRadius: 8, backgroundColor: copiedCodeId === invite.id ? '#16a34a' : pressed ? 'rgba(90,0,97,0.14)' : 'rgba(90,0,97,0.08)', justifyContent: 'center', alignItems: 'center', flexShrink: 0 })}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: copiedCodeId === invite.id ? '#fff' : '#5a0061' }}>{copiedCodeId === invite.id ? 'Copied!' : 'Copy Link'}</Text>
                 </Pressable>
               </View>

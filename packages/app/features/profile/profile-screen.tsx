@@ -27,6 +27,7 @@ import { dataReferences } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { PersonSilhouette } from 'app/components/person-silhouette'
+import { AppIcon } from 'app/components/app-icon'
 
 import { sanitizeName, sanitizeString, sanitizeUrl } from 'app/utils/sanitization'
 
@@ -109,7 +110,6 @@ function InfoTile({
   return content
 }
 
-import { AppIcon } from 'app/components/app-icon'
 import { GlassButton } from 'app/components/glass-button'
 import { useProfileNavHeader } from './use-profile-nav-header'
 
