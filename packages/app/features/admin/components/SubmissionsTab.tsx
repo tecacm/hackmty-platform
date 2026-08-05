@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { View, Text, TextInput, Pressable, ActivityIndicator, Platform } from 'react-native'
 import { PillButton } from '../../../components/pill-button'
+import { AppIcon } from '../../../components/app-icon'
 
 interface SubmissionsTabProps {
   stats: {
@@ -24,7 +25,7 @@ interface SubmissionsTabProps {
   removeExcludeTag: (tag: string) => void
   selectedType: string
   setSelectedType: (val: string) => void
-  dynamicTypeOptions: string[]
+  dynamicTypeOptions: Array<{ id: string; label: string }> | any[]
   selectedStatus: string
   setSelectedStatus: (val: string) => void
   groupByTeams: boolean
@@ -50,6 +51,7 @@ interface SubmissionsTabProps {
   appPageSize: number
   setAppPage: (page: number) => void
   setAppPageSize: (size: number) => void
+  onOpenMessageModal?: (targetType: 'team' | 'user', targetId: string, targetName: string, memberUserIds?: string[]) => void
   styles: any
 }
 
@@ -88,6 +90,7 @@ export function SubmissionsTab({
   appPageSize,
   setAppPage,
   setAppPageSize,
+  onOpenMessageModal,
   styles,
 }: SubmissionsTabProps) {
   const normalizedGroupedData = React.useMemo(() => {
@@ -275,7 +278,35 @@ export function SubmissionsTab({
                           </Text>
                         </View>
                       </View>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#6d28d9' }}>{isExpanded ? '▲ Hide' : '▼ Expand'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        {onOpenMessageModal ? (
+                          <Pressable
+                            onPress={(e: any) => {
+                              if (typeof e?.stopPropagation === 'function') e.stopPropagation()
+                              const memberIds = teamApps.map((a: any) => a.user_id).filter(Boolean)
+                              onOpenMessageModal('team', teamName, teamName, memberIds)
+                            }}
+                            style={{
+                              backgroundColor: '#f3e8ff',
+                              borderColor: '#c084fc',
+                              borderWidth: 1,
+                              borderRadius: 12,
+                              paddingHorizontal: 10,
+                              paddingVertical: 5,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <AppIcon name="message.fill" size={12} color="#7e22ce" />
+                            <Text style={{ color: '#7e22ce', fontSize: 11, fontWeight: '700' }}>Msg Team</Text>
+                          </Pressable>
+                        ) : null}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <AppIcon name={isExpanded ? 'chevron.up' : 'chevron.down'} size={14} color="#6d28d9" />
+                          <Text style={{ fontSize: 13, fontWeight: '800', color: '#6d28d9' }}>{isExpanded ? 'Hide' : 'Expand'}</Text>
+                        </View>
+                      </View>
                     </Pressable>
 
                     {isExpanded && (
