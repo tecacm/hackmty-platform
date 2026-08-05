@@ -21,6 +21,8 @@ import { UserEditModal } from './components/UserEditModal'
 import { CreateRoleModal } from './components/CreateRoleModal'
 import { AddFieldModal } from './components/AddFieldModal'
 import { SecretInviteModal } from './components/SecretInviteModal'
+import { DirectMessageModal } from './components/DirectMessageModal'
+import { AppIcon } from 'app/components/app-icon'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
@@ -94,6 +96,30 @@ export function AdminDashboardScreen() {
   useEffect(() => {
     setIsReady(true)
   }, [])
+
+  // Direct Message Modal State
+  const [messageModalState, setMessageModalState] = useState<{
+    visible: boolean
+    targetType: 'team' | 'user'
+    targetId: string
+    targetName: string
+    memberUserIds?: string[]
+  }>({
+    visible: false,
+    targetType: 'user',
+    targetId: '',
+    targetName: '',
+  })
+
+  const openMessageModal = (targetType: 'team' | 'user', targetId: string, targetName: string, memberUserIds?: string[]) => {
+    setMessageModalState({
+      visible: true,
+      targetType,
+      targetId,
+      targetName,
+      memberUserIds,
+    })
+  }
 
   // Pagination State
   const [appPage, setAppPage] = useState<number>(initialCache.appPage || 1)
@@ -283,9 +309,6 @@ export function AdminDashboardScreen() {
     if (!isSupabaseConfigured) return
     setFormBuilderLoading(true)
     try {
-      // application_type_fields has a composite key: (application_type_id, field_id).
-      // Keep the field definition in this query so the preview cannot get out of
-      // sync with the relationship rows (and never request a nonexistent `id`).
       const { data: relData, error: relError } = await supabase
         .from('application_type_fields')
         .select(`
@@ -449,7 +472,6 @@ export function AdminDashboardScreen() {
 
   const handleRemoveFieldFromRole = async (relId: string) => {
     if (!isSupabaseConfigured) return
-    // relId is encoded as "applicationTypeId|fieldId"
     const sepIdx = relId.indexOf('|')
     const appTypeId = relId.slice(0, sepIdx)
     const fieldId = relId.slice(sepIdx + 1)
@@ -468,17 +490,12 @@ export function AdminDashboardScreen() {
     const swap = sorted[swapIdx]!
     const aOrder = current.displayOrder
     const bOrder = swap.displayOrder
-    // optimistic update
     setFormFieldsList(prev => prev.map(f => {
       if (f.relId === current.relId) return { ...f, displayOrder: bOrder }
       if (f.relId === swap.relId) return { ...f, displayOrder: aOrder }
       return f
     }))
     setFormDraftActions((previous) => [...previous, { type: 'reorder' }])
-    // composite PK updates
-    const parseRelId = (r: string) => { const i = r.indexOf('|'); return { atId: r.slice(0, i), fId: r.slice(i + 1) } }
-    const c = parseRelId(current.relId)
-    const s = parseRelId(swap.relId)
   }
 
   const handleAttachExistingField = async (fieldId: string, sectionOverrideId: string | null) => {
@@ -496,7 +513,6 @@ export function AdminDashboardScreen() {
       setFormDraftActions((previous) => [...previous, { type: 'section', section: { id: sectionId, label: sectionLabel } }])
     } catch (err: any) {
       console.warn('Add section failed:', err)
-      // Optimistically add to local list
       setFormSectionsList(prev => [...prev, { id: sectionId, label: sectionLabel }])
     }
   }
@@ -534,8 +550,6 @@ export function AdminDashboardScreen() {
         .from('applications')
         .select('user_id, application_type_id, status, answers')
 
-      // auth.users.email is deliberately not exposed to browser clients. The
-      // SECURITY DEFINER RPC exposes only email addresses to admins/organizers.
       const { data: directoryEmails, error: directoryEmailsError } = await supabase
         .rpc('get_admin_directory_emails')
       if (directoryEmailsError) console.warn('Could not load auth emails:', directoryEmailsError.message)
@@ -594,7 +608,6 @@ export function AdminDashboardScreen() {
     if (!editingUser || !isSupabaseConfigured) return
     setIsSavingUser(true)
     try {
-      // 1. Update Profile fields
       const { error: profErr } = await supabase
         .from('profiles')
         .update({
@@ -609,7 +622,6 @@ export function AdminDashboardScreen() {
 
       if (profErr) throw profErr
 
-      // 2. Update User Roles (Multi-role support)
       const currentYear = new Date().getFullYear().toString()
       await supabase.from('user_roles').delete().eq('user_id', editingUser.id)
 
@@ -652,14 +664,12 @@ export function AdminDashboardScreen() {
     }
   }
 
-  // Filters and sorting
   const [searchQuery, setSearchQuery] = useState<string>(initialCache.searchQuery || '')
   const [selectedType, setSelectedType] = useState<string>(initialCache.selectedType || 'all')
   const [dbTypes, setDbTypes] = useState<Array<{ id: string; label: string }>>([])
   const [selectedCountries, setSelectedCountries] = useState<string[]>(initialCache.selectedCountries || [])
   const [selectedStatus, setSelectedStatus] = useState<string>(initialCache.selectedStatus || 'all')
 
-  // Secret Links Management Modal State
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteCodesList, setInviteCodesList] = useState<any[]>([])
   const [isInviteLoading, setIsInviteLoading] = useState(false)
@@ -795,39 +805,21 @@ export function AdminDashboardScreen() {
   }
 
   const [groupByTeams, setGroupByTeams] = useState<boolean>(initialCache.groupByTeams ?? false)
-  // Request Changes Modal (Transferred to subscreen detail view)
-  // Inline expansion states removed
 
-  // Team Collapsed States
   const [expandedTeams, setExpandedTeams] = useState<Record<string, boolean>>(initialCache.expandedTeams || {})
 
   const toggleTeamExpand = (teamName: string) => {
     setExpandedTeams(prev => ({ ...prev, [teamName]: !prev[teamName] }))
   }
 
-  const expandAllTeams = () => {
-    const next: Record<string, boolean> = {}
-    groupedData.forEach(g => {
-      next[g.teamName] = true
-    })
-    setExpandedTeams(next)
-  }
-
-  const collapseAllTeams = () => {
-    setExpandedTeams({})
-  }
-
-  // Layout sizing
   const { height: screenHeight } = useWindowDimensions()
-  // Load applications
   const fetchApplications = async () => {
     try {
       setError(null)
       setLoading(true)
 
       if (!isSupabaseConfigured) {
-        // Fallback mock data for developer sandbox (filter out drafts)
-        setApps(mockApplications.filter(app => app.status !== 'draft'))
+        setApps(mockApplications)
         setLoading(false)
         return
       }
@@ -848,9 +840,13 @@ export function AdminDashboardScreen() {
             team_id
           )
         `)
-        .neq('status', 'draft')
 
       if (fetchErr) throw fetchErr
+
+      const { data: teamProfilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, team_id')
+        .not('team_id', 'is', null)
 
       const { data: typesData } = await supabase
         .from('application_types')
@@ -877,8 +873,8 @@ export function AdminDashboardScreen() {
       }
 
       const teamsMap = new Map((teamsData || []).map((t: any) => [t.id, t.name]))
+      const appUserIds = new Set((appsData || []).map((app: any) => app.user_id))
 
-      // Format applications to guarantee user emails and resolve teams in-memory
       const formatted = (appsData || []).map((app: any) => {
         const teamId = app.profiles?.team_id
         const teamName = teamId ? teamsMap.get(teamId) : null
@@ -904,6 +900,32 @@ export function AdminDashboardScreen() {
         }
       })
 
+      if (teamProfilesData) {
+        teamProfilesData.forEach((prof: any) => {
+          if (prof.id && !appUserIds.has(prof.id)) {
+            const teamName = prof.team_id ? teamsMap.get(prof.team_id) : null
+            formatted.push({
+              id: `no-app-${prof.id}`,
+              status: 'not_started',
+              application_type_id: 'hacker',
+              user_id: prof.id,
+              answers: {
+                firstName: prof.first_name || 'Team',
+                lastName: prof.last_name || 'Member',
+                email: 'No application started',
+              },
+              profiles: {
+                id: prof.id,
+                first_name: prof.first_name,
+                last_name: prof.last_name,
+                team_id: prof.team_id,
+                teams: prof.team_id && teamName ? { id: prof.team_id, name: teamName } : null,
+              }
+            })
+          }
+        })
+      }
+
       setApps(formatted)
     } catch (err: any) {
       setError(err.message || 'Failed to fetch applications.')
@@ -918,47 +940,36 @@ export function AdminDashboardScreen() {
     }
   }, [hasViewOthersPermission])
 
-  // Get available application types dynamically from DB and loaded applications
   const dynamicTypeOptions = useMemo(() => {
     const optionsMap = new Map<string, string>()
     optionsMap.set('all', 'ALL TYPES')
-
-    // Add DB application types
     dbTypes.forEach(t => {
       optionsMap.set(t.id, t.label.toUpperCase())
     })
-
-    // Add any types present in existing apps
     apps.forEach(app => {
       if (app.application_type_id && !optionsMap.has(app.application_type_id)) {
         optionsMap.set(app.application_type_id, app.application_type_id.toUpperCase())
       }
     })
-
     return Array.from(optionsMap.entries()).map(([id, label]) => ({ id, label }))
   }, [dbTypes, apps])
 
-  // Filter users directory list
   const filteredUsers = useMemo(() => {
     return usersList.filter(user => {
       const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase()
       const email = (user.email || '').toLowerCase()
       const id = (user.id || '').toLowerCase()
       const university = (user.university || '').toLowerCase()
-
       const matchesSearch = 
         fullName.includes(userSearchQuery.toLowerCase()) ||
         email.includes(userSearchQuery.toLowerCase()) ||
         id.includes(userSearchQuery.toLowerCase()) ||
         university.includes(userSearchQuery.toLowerCase())
-
       const matchesRole = userRoleFilter === 'all' || user.roles.includes(userRoleFilter)
-
       return matchesSearch && matchesRole
     })
   }, [usersList, userSearchQuery, userRoleFilter])
 
-  // Auto-save dashboard view state for persistence across candidate navigation
   useEffect(() => {
     saveStoredDashboardState({
       adminTab,
@@ -995,9 +1006,7 @@ export function AdminDashboardScreen() {
     expandedTeams,
   ])
 
-  // Reset pages when search query or filters change (skip initial mount to preserve restored page)
   const isFirstAppPageRender = useRef(true)
-
   useEffect(() => {
     if (isFirstAppPageRender.current) {
       isFirstAppPageRender.current = false
@@ -1010,33 +1019,13 @@ export function AdminDashboardScreen() {
     setUserPage(1)
   }, [userSearchQuery, userRoleFilter])
 
-  // Get available countries dynamically
-  const uniqueCountries = useMemo(() => {
-    const countries = new Set<string>()
-    apps.forEach(app => {
-      const country = app.answers?.country
-      if (country && typeof country === 'string') {
-        countries.add(country)
-      }
-    })
-    return Array.from(countries).sort()
-  }, [apps])
-
-  // Toggle country filter
-  const toggleCountry = (country: string) => {
-    if (selectedCountries.includes(country)) {
-      setSelectedCountries(selectedCountries.filter(c => c !== country))
-    } else {
-      setSelectedCountries([...selectedCountries, country])
-    }
-  }
-
-  // Status updates and modal handlers removed (transferred to UserDetailScreen)
-
-  // Filter applications list
   const filteredApps = useMemo(() => {
     return apps.filter(app => {
-      // 1. Search Query (First Name, Last Name, Email, University)
+      // Filter out draft and not_started applications in individual view
+      if (!groupByTeams && (app.status === 'draft' || app.status === 'not_started' || app.id.startsWith('no-app-'))) {
+        return false
+      }
+
       const firstName = app.profiles?.first_name || app.answers?.firstName || ''
       const lastName = app.profiles?.last_name || app.answers?.lastName || ''
       const fullName = `${firstName} ${lastName}`.toLowerCase()
@@ -1048,28 +1037,18 @@ export function AdminDashboardScreen() {
         email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         university.toLowerCase().includes(searchQuery.toLowerCase()) ||
         city.toLowerCase().includes(searchQuery.toLowerCase())
-
-      // 2. Application Type
       const matchesType = selectedType === 'all' || app.application_type_id === selectedType
-
-      // 3. Countries Multi-select
       const matchesCountry = selectedCountries.length === 0 || selectedCountries.includes(app.answers?.country)
-
-      // 4. Status Filter
       const matchesStatus = selectedStatus === 'all' || app.status === selectedStatus
-
-      // 5. Shared Tag Matcher
       const checkTagMatch = (tag: string) => {
         const queryStr = tag.toLowerCase().trim()
         const country = String(app.answers?.country || '').toLowerCase()
         const major = String(app.answers?.major || '').toLowerCase()
         const fullContentStr = `${fullName} ${email} ${university} ${city} ${country} ${major} ${JSON.stringify(app.answers || {})}`.toLowerCase()
-
         if (queryStr.includes(':')) {
           const parts = queryStr.split(':')
           const prefix = (parts[0] || '').trim()
-          const val = parts.slice(1).join(':').trim()
-
+          const val = (parts[1] || '').trim()
           if (prefix === 'university' || prefix === 'uni' || prefix === 'school') {
             return university.toLowerCase().includes(val)
           } else if (prefix === 'city') {
@@ -1079,17 +1058,14 @@ export function AdminDashboardScreen() {
           } else if (prefix === 'major') {
             return major.includes(val)
           } else if (prefix === 'status') {
-            return (app.status || '').toLowerCase().includes(val)
+            return String(app.status || '').toLowerCase().includes(val)
           } else if (prefix === 'role' || prefix === 'type') {
             return (app.application_type_id || '').toLowerCase().includes(val)
           }
           return fullContentStr.includes(val)
         }
-
         return fullContentStr.includes(queryStr)
       }
-
-      // 6. Exclude Tags (Candidate must NOT match any exclude tag)
       let matchesExclude = true
       if (excludeTags.length > 0) {
         for (const tag of excludeTags) {
@@ -1099,8 +1075,6 @@ export function AdminDashboardScreen() {
           }
         }
       }
-
-      // 7. Include Tags (Candidate MUST match ALL include tags)
       let matchesInclude = true
       if (includeTags.length > 0) {
         for (const tag of includeTags) {
@@ -1110,18 +1084,14 @@ export function AdminDashboardScreen() {
           }
         }
       }
-
       return matchesSearch && matchesType && matchesCountry && matchesStatus && matchesExclude && matchesInclude
     })
-  }, [apps, searchQuery, selectedType, selectedCountries, selectedStatus, includeTags, excludeTags])
+  }, [apps, searchQuery, selectedType, selectedCountries, selectedStatus, includeTags, excludeTags, groupByTeams])
 
-  // Grouped by Team Map
   const groupedData = useMemo(() => {
     if (!groupByTeams) return []
-
     const teamMap: Record<string, { teamName: string; applications: Application[] }> = {}
     const individual: Application[] = []
-
     filteredApps.forEach(app => {
       const team = app.profiles?.teams
       const isHacker = app.application_type_id === 'hacker'
@@ -1130,15 +1100,11 @@ export function AdminDashboardScreen() {
         if (!teamMap[teamId]) {
           teamMap[teamId] = { teamName: team.name, applications: [] }
         }
-        const entry = teamMap[teamId]
-        if (entry) {
-          entry.applications.push(app)
-        }
+        teamMap[teamId]!.applications.push(app)
       } else {
         individual.push(app)
       }
     })
-
     const result = Object.values(teamMap).sort((a, b) => a.teamName.localeCompare(b.teamName))
     if (individual.length > 0) {
       result.push({ teamName: 'Individual Applicants (No Team)', applications: individual })
@@ -1146,7 +1112,6 @@ export function AdminDashboardScreen() {
     return result
   }, [filteredApps, groupByTeams])
 
-  // Paginated applications computation
   const totalAppPages = useMemo(() => {
     if (groupByTeams) {
       return Math.ceil(groupedData.length / appPageSize) || 1
@@ -1159,31 +1124,23 @@ export function AdminDashboardScreen() {
     return filteredApps.slice(start, start + appPageSize)
   }, [filteredApps, appPage, appPageSize])
 
-  // Paginated users computation
   const totalUserPages = Math.ceil(filteredUsers.length / userPageSize) || 1
   const displayedUsers = useMemo(() => {
     const start = (userPage - 1) * userPageSize
     return filteredUsers.slice(start, start + userPageSize)
   }, [filteredUsers, userPage, userPageSize])
 
-  // Statistics summaries
   const stats = useMemo(() => {
     const total = apps.length
     const accepted = apps.filter(app => app.status === 'accepted').length
     const rejected = apps.filter(app => app.status === 'rejected').length
     const changes = apps.filter(app => app.status === 'changes_requested').length
     const submitted = apps.filter(app => app.status === 'submitted').length
-    const drafts = apps.filter(app => app.status === 'draft').length
-    return { total, accepted, rejected, changes, submitted, drafts }
+    return { total, accepted, rejected, changes, submitted }
   }, [apps])
 
-  if (!isReady) {
-    return (
-      <View style={[styles.container]} />
-    )
-  }
+  if (!isReady) return <View style={[styles.container]} />
 
-  // Security Gate
   if (permissionsLoading) {
     return (
       <View style={[styles.centerContainer]}>
@@ -1214,28 +1171,12 @@ export function AdminDashboardScreen() {
     let bgColor = 'rgba(255,255,255,0.08)'
     let textColor = '#e1e1e1'
     let label = status.toUpperCase()
-
-    if (status === 'accepted') {
-      bgColor = 'rgba(16, 185, 129, 0.15)'
-      textColor = '#10b981'
-      label = 'ACCEPTED'
-    } else if (status === 'rejected') {
-      bgColor = 'rgba(239, 68, 68, 0.15)'
-      textColor = '#ef4444'
-      label = 'REJECTED'
-    } else if (status === 'changes_requested') {
-      bgColor = 'rgba(245, 158, 11, 0.15)'
-      textColor = '#f59e0b'
-      label = 'CHANGES REQ'
-    } else if (status === 'submitted') {
-      bgColor = 'rgba(59, 130, 246, 0.15)'
-      textColor = '#3b82f6'
-      label = 'SUBMITTED'
-    } else if (status === 'draft') {
-      bgColor = 'rgba(156, 163, 175, 0.15)'
-      textColor = '#9ca3af'
-      label = 'DRAFT'
-    }
+    if (status === 'accepted') { bgColor = 'rgba(16, 185, 129, 0.15)'; textColor = '#10b981'; label = 'ACCEPTED' }
+    else if (status === 'rejected') { bgColor = 'rgba(239, 68, 68, 0.15)'; textColor = '#ef4444'; label = 'REJECTED' }
+    else if (status === 'changes_requested') { bgColor = 'rgba(245, 158, 11, 0.15)'; textColor = '#f59e0b'; label = 'CHANGES REQ' }
+    else if (status === 'submitted') { bgColor = 'rgba(59, 130, 246, 0.15)'; textColor = '#3b82f6'; label = 'SUBMITTED' }
+    else if (status === 'draft') { bgColor = 'rgba(156, 163, 175, 0.15)'; textColor = '#9ca3af'; label = 'DRAFT' }
+    else if (status === 'not_started') { bgColor = 'rgba(203, 213, 225, 0.25)'; textColor = '#64748b'; label = 'NOT STARTED' }
 
     return (
       <View style={[styles.statusBadge, { backgroundColor: bgColor }]}>
@@ -1253,9 +1194,19 @@ export function AdminDashboardScreen() {
     const university = app.answers?.university || 'N/A'
     const roleType = app.application_type_id || 'hacker'
 
+    const isNonInteractive = app.status === 'draft' || app.status === 'not_started' || app.id.startsWith('no-app-')
+
     return (
       <View key={app.id} style={styles.appCard}>
-        <Pressable onPress={() => navigateTo(`/users/${app.user_id}?appId=${app.id}`)} style={styles.appHeaderRow}>
+        <Pressable
+          disabled={isNonInteractive}
+          onPress={() => {
+            if (!isNonInteractive) {
+              navigateTo(`/users/${app.user_id}?appId=${app.id}`)
+            }
+          }}
+          style={[styles.appHeaderRow, isNonInteractive && { opacity: 0.85, cursor: 'default' as any }]}
+        >
           <View style={styles.headerMainInfo}>
             <Text style={styles.applicantName}>{fullName}</Text>
             <Text style={styles.applicantEmail}>{email}</Text>
@@ -1271,9 +1222,35 @@ export function AdminDashboardScreen() {
             </View>
             <Text style={styles.universityText} numberOfLines={1}>{university}</Text>
           </View>
-          <View style={styles.headerStatusInfo}>
+          <View style={[styles.headerStatusInfo, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
             {renderStatusBadge(app.status)}
-            <Text style={styles.expandIndicator}>➔</Text>
+            {app.user_id ? (
+              <Pressable
+                onPress={(e: any) => {
+                  if (typeof e?.stopPropagation === 'function') e.stopPropagation()
+                  openMessageModal('user', app.user_id, fullName)
+                }}
+                style={{
+                  backgroundColor: '#f3e8ff',
+                  borderColor: '#c084fc',
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <AppIcon name="mail" size={12} color="#7e22ce" />
+                <Text style={{ color: '#7e22ce', fontSize: 11, fontWeight: '700' }}>Msg</Text>
+              </Pressable>
+            ) : null}
+            {!isNonInteractive ? (
+              <AppIcon name="chevron.right" size={14} color="#6d28d9" />
+            ) : (
+              <AppIcon name="ban" size={14} color="#94a3b8" />
+            )}
           </View>
         </Pressable>
       </View>
@@ -1337,48 +1314,6 @@ export function AdminDashboardScreen() {
     )
   }
 
-  if (permissionsLoading) {
-    return (
-      <View style={{flex: 1, height: screenHeight || '100%', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#c2b75f" />
-      </View>
-    )
-  }
-
-  if (!hasViewOthersPermission) {
-    return (
-      <>
-        <View style={{flex: 1, minHeight: 600, justifyContent: 'center', alignItems: 'center', alignSelf: 'stretch', padding: 20 }}>
-          <View style={{
-            backgroundColor: '#27082a',
-            padding: 32,
-            borderRadius: 16,
-            alignItems: 'center',
-            maxWidth: 480,
-            width: '100%',
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.05)',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 10,
-            elevation: 8,
-          }}>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#ff6b6b', marginBottom: 12 }}>Access Denied</Text>
-            <Text style={{ fontSize: 15, color: '#9ca3af', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
-              You do not have administrative privileges to access this dashboard.
-            </Text>
-            <PillButton
-              title="Return Home"
-              onPress={() => navigateTo('/home')}
-              additionalStyle={{ width: 200, height: 50 }}
-            />
-          </View>
-        </View>
-      </>
-    )
-  }
-
   return (
     <>
         <View style={styles.contentWrapper}>
@@ -1419,7 +1354,6 @@ export function AdminDashboardScreen() {
             </View>
           )}
 
-          {/* Admin Main Portal Tab Bar */}
           <AdminTabBar
             adminTab={adminTab}
             setAdminTab={setAdminTab}
@@ -1511,7 +1445,7 @@ export function AdminDashboardScreen() {
               removeExcludeTag={removeExcludeTag}
               selectedType={selectedType}
               setSelectedType={setSelectedType}
-              dynamicTypeOptions={dynamicTypeOptions.map((t: any) => typeof t === 'string' ? t : t.id)}
+              dynamicTypeOptions={dynamicTypeOptions}
               selectedStatus={selectedStatus}
               setSelectedStatus={setSelectedStatus}
               groupByTeams={groupByTeams}
@@ -1520,7 +1454,7 @@ export function AdminDashboardScreen() {
               error={error}
               filteredApps={filteredApps}
               displayedApps={displayedApps}
-              groupedData={groupedData as unknown as Record<string, any[]>}
+              groupedData={groupedData}
               expandedTeams={expandedTeams}
               toggleTeamExpand={toggleTeamExpand}
               renderApplicationRow={renderApplicationRow}
@@ -1530,12 +1464,21 @@ export function AdminDashboardScreen() {
               appPageSize={appPageSize}
               setAppPage={setAppPage}
               setAppPageSize={setAppPageSize}
+              onOpenMessageModal={openMessageModal}
               styles={styles}
             />
           )}
     </View>
 
-      {/* User Edit & Role Switcher Modal */}
+      <DirectMessageModal
+        visible={messageModalState.visible}
+        onClose={() => setMessageModalState(prev => ({ ...prev, visible: false }))}
+        targetType={messageModalState.targetType}
+        targetId={messageModalState.targetId}
+        targetName={messageModalState.targetName}
+        memberUserIds={messageModalState.memberUserIds}
+      />
+
       <UserEditModal
         visible={!!editingUser}
         onClose={() => setEditingUser(null)}

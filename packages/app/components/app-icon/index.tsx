@@ -8,6 +8,15 @@ import {
   X,
   Lock,
   Pencil,
+  Mail,
+  MessageSquare,
+  Smartphone,
+  Check,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  Ban,
+  Slash,
 } from 'lucide-react'
 
 export type IconName =
@@ -22,6 +31,16 @@ export type IconName =
   | 'xmark'
   | 'lock.fill'
   | 'pencil'
+  | 'mail'
+  | 'message'
+  | 'message.fill'
+  | 'smartphone'
+  | 'checkmark'
+  | 'chevron.right'
+  | 'chevron.up'
+  | 'chevron.down'
+  | 'ban'
+  | 'slash'
 
 interface AppIconProps {
   name: IconName
@@ -86,6 +105,49 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
 
   if (name === 'pencil') {
     return <Pencil size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'mail') {
+    return <Mail size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name.startsWith('message')) {
+    return (
+      <MessageSquare
+        size={size}
+        color={color}
+        fill={isFilled ? color : 'none'}
+        strokeWidth={2}
+      />
+    )
+  }
+
+  if (name === 'smartphone') {
+    return <Smartphone size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'checkmark') {
+    return <Check size={size} color={color} strokeWidth={2.5} />
+  }
+
+  if (name === 'chevron.right') {
+    return <ChevronRight size={size} color={color} strokeWidth={2.5} />
+  }
+
+  if (name === 'chevron.up') {
+    return <ChevronUp size={size} color={color} strokeWidth={2.5} />
+  }
+
+  if (name === 'chevron.down') {
+    return <ChevronDown size={size} color={color} strokeWidth={2.5} />
+  }
+
+  if (name === 'ban') {
+    return <Ban size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'slash') {
+    return <Slash size={size} color={color} strokeWidth={2} />
   }
 
   return <X size={size} color={color} strokeWidth={2.5} />

@@ -13,6 +13,16 @@ export type IconName =
   | 'xmark'
   | 'lock.fill'
   | 'pencil'
+  | 'mail'
+  | 'message'
+  | 'message.fill'
+  | 'smartphone'
+  | 'checkmark'
+  | 'chevron.right'
+  | 'chevron.up'
+  | 'chevron.down'
+  | 'ban'
+  | 'slash'
 
 interface AppIconProps {
   name: IconName
@@ -25,7 +35,16 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { SymbolView } = require('expo-symbols') as { SymbolView: any }
-      const iosSymbol = name === 'pencil' ? 'pencil' : name
+      let iosSymbol = name === 'pencil' ? 'pencil' : name
+      if (name === 'mail') iosSymbol = 'envelope'
+      if (name.startsWith('message')) iosSymbol = 'message.fill'
+      if (name === 'smartphone') iosSymbol = 'iphone'
+      if (name === 'checkmark') iosSymbol = 'checkmark'
+      if (name === 'chevron.right') iosSymbol = 'chevron.right'
+      if (name === 'chevron.up') iosSymbol = 'chevron.up'
+      if (name === 'chevron.down') iosSymbol = 'chevron.down'
+      if (name === 'ban') iosSymbol = 'nosign'
+      if (name === 'slash') iosSymbol = 'circle.slash'
       return <SymbolView name={iosSymbol as any} tintColor={color} size={size} />
     } catch (e) {}
   }
@@ -45,6 +64,14 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     else if (name === 'lock.fill') ionName = 'lock-closed'
     else if (name === 'xmark') ionName = 'close'
     else if (name === 'pencil') ionName = 'pencil'
+    else if (name === 'mail') ionName = 'mail'
+    else if (name.startsWith('message')) ionName = 'chatbubble'
+    else if (name === 'smartphone') ionName = 'phone-portrait'
+    else if (name === 'checkmark') ionName = 'checkmark'
+    else if (name === 'chevron.right') ionName = 'chevron-forward'
+    else if (name === 'chevron.up') ionName = 'chevron-up'
+    else if (name === 'chevron.down') ionName = 'chevron-down'
+    else if (name === 'ban' || name === 'slash') ionName = 'ban'
 
     return <Ionicons name={ionName} size={size} color={color} />
   } catch (e) {
