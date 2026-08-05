@@ -11,6 +11,8 @@ type StyledAutocompleteProps = {
   error?: string
   subtitle?: string
   required?: boolean
+  disabled?: boolean
+  editable?: boolean
   options: string[]
   onChangeText: (value: string) => void
   maxSuggestions?: number
@@ -25,18 +27,21 @@ export function StyledAutocomplete({
   error,
   subtitle,
   required = false,
+  disabled,
+  editable,
   options,
   onChangeText,
   maxSuggestions = 8,
   textContentType,
   additionalStyle,
 }: StyledAutocompleteProps) {
+  const isDisabled = disabled || editable === false
   const [isFocused, setIsFocused] = useState(false)
   const currentValue = value ?? ''
   const normalizedValue = currentValue.trim().toLowerCase()
 
   const suggestions = useMemo(() => {
-    if (!isFocused || normalizedValue.length < 1) return []
+    if (isDisabled || !isFocused || normalizedValue.length < 1) return []
 
     const startsWith = options.filter((entry) => entry.toLowerCase().startsWith(normalizedValue))
     const contains = options.filter(
@@ -44,7 +49,7 @@ export function StyledAutocomplete({
     )
 
     return [...startsWith, ...contains].slice(0, maxSuggestions)
-  }, [isFocused, maxSuggestions, normalizedValue, options])
+  }, [isDisabled, isFocused, maxSuggestions, normalizedValue, options])
 
   const showSuggestions = suggestions.length > 0
 
@@ -57,9 +62,13 @@ export function StyledAutocomplete({
         subtitle={subtitle}
         error={error}
         required={required}
+        editable={!isDisabled}
         textContentType={textContentType}
         additionalStyle={additionalStyle}
-        onFocus={() => setIsFocused(true)}
+        onFocus={() => {
+          if (isDisabled) return
+          setIsFocused(true)
+        }}
         onBlur={() => {
           // Delay close so tap events on suggestion rows can fire first.
           setTimeout(() => setIsFocused(false), 120)

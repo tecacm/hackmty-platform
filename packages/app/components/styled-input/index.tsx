@@ -29,7 +29,7 @@ export function StyledInput({ label, textContentType, additionalStyle = {}, erro
           error && formFieldStyles.errorInput,
           isPassword ? { paddingRight: 56 } : undefined,
           height ? { height, textAlignVertical: 'top' as const, paddingTop: 10 } : undefined,
-          props.editable === false && { backgroundColor: '#f3f4f6', color: '#6b7280' }
+          props.editable === false && { backgroundColor: '#e2e2e2', color: '#a4a7ae' }
         ]}
         placeholderTextColor={formFieldColors.muted}
         // Crucial for Native UX:

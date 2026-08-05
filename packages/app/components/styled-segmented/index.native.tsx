@@ -24,6 +24,8 @@ type StyledSegmentedProps = {
   error?: string
   subtitle?: string
   required?: boolean
+  disabled?: boolean
+  editable?: boolean
   onValueChange: (value: string) => void
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
   otherInputProps?: OtherInputProps
@@ -36,10 +38,13 @@ export function StyledSegmented({
   error,
   subtitle,
   required = false,
+  disabled,
+  editable,
   onValueChange,
   additionalStyle = {},
   otherInputProps,
 }: StyledSegmentedProps) {
+  const isDisabled = disabled || editable === false
   const standardOptions = useMemo(() => options.filter(o => o.value !== 'other'), [options])
   const hasOtherOption = useMemo(() => options.some(o => o.value === 'other'), [options])
 
@@ -65,6 +70,7 @@ export function StyledSegmented({
   }, [options, value, isOtherActive])
 
   const handlePressSegment = (nextIndex: number) => {
+    if (isDisabled) return
     const nextValue = options[nextIndex]?.value
     if (nextValue != null) {
       if (nextValue === 'other') {
@@ -85,17 +91,18 @@ export function StyledSegmented({
   return (
       <View style={formFieldStyles.container}>
         <Text style={[formFieldStyles.label, additionalStyle]}>{label}{required && <Text style={{ color: formFieldColors.error }}>{' *'}</Text>}</Text>
-         <View style={[formFieldStyles.fieldShell, { backgroundColor: 'transparent', paddingHorizontal: 0}, additionalStyle, error && formFieldStyles.errorInput]}>
+         <View style={[formFieldStyles.fieldShell, { backgroundColor: isDisabled ? '#e2e2e2' : 'transparent', paddingHorizontal: 0}, additionalStyle, error && formFieldStyles.errorInput]}>
           <SegmentedControl
-            backgroundColor={Platform.OS === 'ios' ? 'transparent' : formFieldColors.surface}
+            enabled={!isDisabled}
+            backgroundColor={Platform.OS === 'ios' ? (isDisabled ? '#e2e2e2' : 'transparent') : (isDisabled ? '#e2e2e2' : formFieldColors.surface)}
             style={{height: '100%', zIndex:Platform.OS === 'ios' ? 0 : 1, borderRadius: 16, elevation: 0}}
             values={options.map((o) => o.label)}
             onChange={(event) => {
               handlePressSegment(event.nativeEvent.selectedSegmentIndex)
             }}
-            tintColor={formFieldColors.theme}
-            fontStyle={styles.segmentLabel}
-            activeFontStyle={styles.segmentLabelActive}
+            tintColor={isDisabled ? '#c0c4cc' : formFieldColors.theme}
+            fontStyle={isDisabled ? { ...styles.segmentLabel, color: '#a4a7ae' } : styles.segmentLabel}
+            activeFontStyle={isDisabled ? { ...styles.segmentLabelActive, color: '#475569' } : styles.segmentLabelActive}
             appearance='light'
             selectedIndex={selectedIndex}
             sliderStyle={{borderRadius:46}}

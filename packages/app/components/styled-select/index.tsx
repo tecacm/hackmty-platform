@@ -11,13 +11,16 @@ type StyledSelectProps = {
   error?: string
   placeholder?: string
   required?: boolean
+  disabled?: boolean
+  editable?: boolean
   options: SelectOption[]
   onValueChange: (value: string) => void
   subtitle?: React.ReactNode | string
   additionalStyle?: TextStyle | ViewStyle | Array<TextStyle | ViewStyle>
 }
 
-export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, error, additionalStyle, required = false }: StyledSelectProps) {
+export function StyledSelect({ label, value, placeholder = 'Select...', options, onValueChange, subtitle, error, additionalStyle, required = false, disabled, editable }: StyledSelectProps) {
+  const isDisabled = disabled || editable === false
   const normalizedPlaceholder = placeholder.trim().toLowerCase()
   const placeholderMatchedOption = useMemo(
     () => options.find((option) => option.value.trim().toLowerCase() === normalizedPlaceholder || option.label.trim().toLowerCase() === normalizedPlaceholder),
@@ -32,13 +35,18 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
 
   const shouldRenderPlaceholderOption = !placeholderMatchedOption
   const selectedValue = (value ?? '') === '' ? (placeholderMatchedOption?.value ?? '') : (value ?? '')
-  const combinedStyle = [formFieldStyles.fieldShell, additionalStyle, error && formFieldStyles.errorInput]
+  const combinedStyle = [
+    formFieldStyles.fieldShell,
+    additionalStyle,
+    error && formFieldStyles.errorInput,
+    isDisabled && { backgroundColor: '#e2e2e2' },
+  ]
   const isPlaceholderActive = selectedValue === ''
   const selectorStyle: CSSProperties = {
-    backgroundColor: 'transparent',
+    backgroundColor: isDisabled ? '#e2e2e2' : 'transparent',
     width: '100%',
     height: '100%',
-    color: isPlaceholderActive ? formFieldColors.muted : formFieldColors.text,
+    color: isDisabled ? '#a4a7ae' : isPlaceholderActive ? formFieldColors.muted : formFieldColors.text,
     fontSize: 16,
     border: 'none',
     outline: 'none',
@@ -49,7 +57,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
     backgroundRepeat: 'no-repeat',
     backgroundPosition: 'right 0px center',
     backgroundSize: '18px',
-    cursor: 'pointer',
+    cursor: isDisabled ? 'not-allowed' : 'pointer',
   }
 
   return (
@@ -62,6 +70,7 @@ export function StyledSelect({ label, value, placeholder = 'Select...', options,
         <select
           aria-label={label}
           title={label}
+          disabled={isDisabled}
           value={selectedValue}
           style={selectorStyle}
           onChange={(e) => onValueChange(e.target.value)}
