@@ -13,6 +13,7 @@ import {
   Alert,
   Modal,
   Linking,
+  useWindowDimensions,
 } from 'react-native'
 
 import { StyledInput } from 'app/components/styled-input'
@@ -26,6 +27,7 @@ import { dataReferences } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { PersonSilhouette } from 'app/components/person-silhouette'
+import { AppIcon } from 'app/components/app-icon'
 
 import { sanitizeName, sanitizeString, sanitizeUrl } from 'app/utils/sanitization'
 
@@ -108,13 +110,14 @@ function InfoTile({
   return content
 }
 
-import { AppIcon } from 'app/components/app-icon'
 import { GlassButton } from 'app/components/glass-button'
 import { useProfileNavHeader } from './use-profile-nav-header'
 
 export function ProfileScreen({ navigation }: { navigation?: any }) {
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { role: userRole } = useUserPermissions()
+  const { width } = useWindowDimensions()
+  const isSmallScreen = width < 640
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -645,12 +648,21 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
                   style={[
                     styles.toggleEditBtn,
                     isEditing && styles.toggleEditBtnCancel,
+                    isSmallScreen && !isEditing && { paddingHorizontal: 0, width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
                   ]}
                   onPress={handleToggleEdit}
                 >
-                  <Text style={[styles.toggleEditBtnText, isEditing && styles.toggleEditBtnTextCancel]}>
-                    {isEditing ? 'Cancel' : 'Edit Profile'}
-                  </Text>
+                  {isEditing ? (
+                    <Text style={[styles.toggleEditBtnText, styles.toggleEditBtnTextCancel]}>
+                      Cancel
+                    </Text>
+                  ) : isSmallScreen ? (
+                    <AppIcon name="pencil" size={16} color="#ffffff" />
+                  ) : (
+                    <Text style={styles.toggleEditBtnText}>
+                      Edit Profile
+                    </Text>
+                  )}
                 </GlassButton>
               )}
             </View>

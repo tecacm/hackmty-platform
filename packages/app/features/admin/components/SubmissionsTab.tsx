@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { View, Text, TextInput, Pressable, ActivityIndicator, Platform } from 'react-native'
+import { View, Text, TextInput, Pressable, ActivityIndicator, Platform, useWindowDimensions } from 'react-native'
 import { PillButton } from '../../../components/pill-button'
 import { AppIcon } from '../../../components/app-icon'
 
@@ -93,6 +93,11 @@ export function SubmissionsTab({
   onOpenMessageModal,
   styles,
 }: SubmissionsTabProps) {
+  const { width } = useWindowDimensions()
+  const [hasMounted, setHasMounted] = React.useState(false)
+  React.useEffect(() => { setHasMounted(true) }, [])
+  const isSmallScreen = hasMounted && width > 0 && width < 640
+
   const normalizedGroupedData = React.useMemo(() => {
     if (!groupedData) return []
     if (Array.isArray(groupedData)) {
@@ -193,8 +198,8 @@ export function SubmissionsTab({
         </View>
 
         {/* Include & Exclude Tag Filter Triggers */}
-        <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
-          <View style={{ flex: 1, minWidth: 260, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+        <View style={{ flexDirection: isSmallScreen ? 'column' : 'row', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
+          <View style={{ flex: isSmallScreen ? undefined : 1, width: isSmallScreen ? '100%' : undefined, minWidth: isSmallScreen ? '100%' : 240, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <TextInput
               style={[styles.searchInput, { flex: 1, height: 38, fontSize: 13 }]}
               placeholder="Include tag (e.g. Python, MIT)..."
@@ -203,10 +208,24 @@ export function SubmissionsTab({
               onChangeText={setIncludeInput}
               onSubmitEditing={addIncludeTag}
             />
-            <PillButton title="+ Must Have" onPress={addIncludeTag} additionalStyle={{ height: 38, width: 'auto', paddingHorizontal: 12, backgroundColor: '#6d28d9' }} fontSize={11} />
+            <PillButton
+              variant="success"
+              title={isSmallScreen ? '+' : '+ Must Have'}
+              onPress={addIncludeTag}
+              additionalStyle={{
+                height: 38,
+                width: isSmallScreen ? 38 : 'auto',
+                minWidth: isSmallScreen ? 38 : undefined,
+                paddingHorizontal: isSmallScreen ? 0 : 12,
+                backgroundColor: '#16a34a',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              fontSize={isSmallScreen ? 16 : 11}
+            />
           </View>
 
-          <View style={{ flex: 1, minWidth: 260, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <View style={{ flex: isSmallScreen ? undefined : 1, width: isSmallScreen ? '100%' : undefined, minWidth: isSmallScreen ? '100%' : 240, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <TextInput
               style={[styles.searchInput, { flex: 1, height: 38, fontSize: 13 }]}
               placeholder="Exclude tag (e.g. Java, High School)..."
@@ -215,7 +234,21 @@ export function SubmissionsTab({
               onChangeText={setExcludeInput}
               onSubmitEditing={addExcludeTag}
             />
-            <PillButton title="- Exclude" onPress={addExcludeTag} additionalStyle={{ height: 38, width: 'auto', paddingHorizontal: 12, backgroundColor: '#dc2626' }} fontSize={11} />
+            <PillButton
+              variant="danger"
+              title={isSmallScreen ? '-' : '- Exclude'}
+              onPress={addExcludeTag}
+              additionalStyle={{
+                height: 38,
+                width: isSmallScreen ? 38 : 'auto',
+                minWidth: isSmallScreen ? 38 : undefined,
+                paddingHorizontal: isSmallScreen ? 0 : 12,
+                backgroundColor: '#dc2626',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              fontSize={isSmallScreen ? 18 : 11}
+            />
           </View>
         </View>
 
@@ -263,22 +296,30 @@ export function SubmissionsTab({
                     <Pressable
                       onPress={() => toggleTeamExpand(teamName)}
                       style={{
-                        padding: 18,
+                        paddingHorizontal: isSmallScreen ? 12 : 18,
+                        paddingVertical: 12,
                         backgroundColor: '#f8fafc',
                         flexDirection: 'row',
                         justifyContent: 'space-between',
                         alignItems: 'center',
+                        gap: 8,
                       }}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>{teamName}</Text>
-                        <View style={{ backgroundColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 }}>
+                        <Text
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                          style={{ fontSize: isSmallScreen ? 14 : 16, fontWeight: '800', color: '#0f172a', flexShrink: 1 }}
+                        >
+                          {teamName}
+                        </Text>
+                        <View style={{ backgroundColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2, flexShrink: 0 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#334155' }}>
                             {teamApps.length} {teamApps.length === 1 ? 'Member' : 'Members'}
                           </Text>
                         </View>
                       </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: isSmallScreen ? 6 : 10, flexShrink: 0 }}>
                         {onOpenMessageModal ? (
                           <Pressable
                             onPress={(e: any) => {
@@ -291,7 +332,7 @@ export function SubmissionsTab({
                               borderColor: '#c084fc',
                               borderWidth: 1,
                               borderRadius: 12,
-                              paddingHorizontal: 10,
+                              paddingHorizontal: isSmallScreen ? 6 : 10,
                               paddingVertical: 5,
                               flexDirection: 'row',
                               alignItems: 'center',
@@ -299,12 +340,16 @@ export function SubmissionsTab({
                             }}
                           >
                             <AppIcon name="message.fill" size={12} color="#7e22ce" />
-                            <Text style={{ color: '#7e22ce', fontSize: 11, fontWeight: '700' }}>Msg Team</Text>
+                            <Text style={{ color: '#7e22ce', fontSize: 11, fontWeight: '700' }}>
+                              {isSmallScreen ? 'Msg' : 'Msg Team'}
+                            </Text>
                           </Pressable>
                         ) : null}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                           <AppIcon name={isExpanded ? 'chevron.up' : 'chevron.down'} size={14} color="#6d28d9" />
-                          <Text style={{ fontSize: 13, fontWeight: '800', color: '#6d28d9' }}>{isExpanded ? 'Hide' : 'Expand'}</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#6d28d9' }}>
+                            {isExpanded ? 'Hide' : 'Expand'}
+                          </Text>
                         </View>
                       </View>
                     </Pressable>

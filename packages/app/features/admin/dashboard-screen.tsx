@@ -812,7 +812,12 @@ export function AdminDashboardScreen() {
     setExpandedTeams(prev => ({ ...prev, [teamName]: !prev[teamName] }))
   }
 
-  const { height: screenHeight } = useWindowDimensions()
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions()
+  const [hasMounted, setHasMounted] = useState(false)
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+  const isSmallScreen = hasMounted && screenWidth > 0 && screenWidth < 768
   const fetchApplications = async () => {
     try {
       setError(null)
@@ -1269,13 +1274,14 @@ export function AdminDashboardScreen() {
     const endItem = Math.min(currentPage * pageSize, totalItems)
 
     return (
-      <View style={styles.paginationCard}>
-        <Text style={styles.paginationInfoText}>
+      <View style={[styles.paginationCard, isSmallScreen && { flexDirection: 'column', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 12 }]}>
+        <Text style={[styles.paginationInfoText, isSmallScreen && { textAlign: 'center' }]}>
           Showing {startItem}–{endItem} of {totalItems} entries
         </Text>
 
-        <View style={styles.paginationControlsRow}>
-          <View style={styles.pageSizeSelector}>
+        <View style={[styles.paginationControlsRow, isSmallScreen && { flexDirection: 'column', alignItems: 'center', width: '100%', gap: 12 }]}>
+          {/* Row 1: Page Size Selector (Centered) */}
+          <View style={[styles.pageSizeSelector, isSmallScreen && { justifyContent: 'center', width: '100%' }]}>
             <Text style={styles.pageSizeLabel}>Rows:</Text>
             {[10, 20, 50, 100].map(sz => (
               <Pressable
@@ -1290,24 +1296,45 @@ export function AdminDashboardScreen() {
             ))}
           </View>
 
-          <View style={styles.pageButtonsRow}>
+          {/* Row 2: Page Navigation Row (Centered on small screens) */}
+          <View style={[styles.pageButtonsRow, isSmallScreen && { justifyContent: 'center', width: '100%', gap: 12 }]}>
             <PillButton
-              title="← Prev"
               onPress={() => onPageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage <= 1}
-              additionalStyle={[styles.pageBtn, currentPage <= 1 && styles.pageBtnDisabled]}
+              additionalStyle={[
+                styles.pageBtn,
+                currentPage <= 1 && styles.pageBtnDisabled,
+                isSmallScreen && { width: 36, height: 36, paddingHorizontal: 0, justifyContent: 'center', alignItems: 'center', borderRadius: 18 }
+              ]}
               fontSize={12}
-            />
+            >
+              {isSmallScreen ? (
+                <AppIcon name="chevron.left" size={14} color="#ffffff" />
+              ) : (
+                "← Prev"
+              )}
+            </PillButton>
+
             <Text style={styles.pageIndicatorText}>
               Page {currentPage} of {totalPages}
             </Text>
+
             <PillButton
-              title="Next →"
               onPress={() => onPageChange(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage >= totalPages}
-              additionalStyle={[styles.pageBtn, currentPage >= totalPages && styles.pageBtnDisabled]}
+              additionalStyle={[
+                styles.pageBtn,
+                currentPage >= totalPages && styles.pageBtnDisabled,
+                isSmallScreen && { width: 36, height: 36, paddingHorizontal: 0, justifyContent: 'center', alignItems: 'center', borderRadius: 18 }
+              ]}
               fontSize={12}
-            />
+            >
+              {isSmallScreen ? (
+                <AppIcon name="chevron.right" size={14} color="#ffffff" />
+              ) : (
+                "Next →"
+              )}
+            </PillButton>
           </View>
         </View>
       </View>
@@ -1317,42 +1344,25 @@ export function AdminDashboardScreen() {
   return (
     <>
         <View style={styles.contentWrapper}>
-          {Platform.OS === 'web' ? (
-            <View style={styles.headerTitleRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.title}>Application Review Portal</Text>
-                <Text style={styles.subtitle}>Review, filter, and manage attendee applications.</Text>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                <PillButton
-                  title="Secret Links"
-                  onPress={() => { setShowInviteModal(true); fetchInviteCodes(); }}
-                  additionalStyle={{ width: 'auto', minWidth: 130, height: 40 }}
-                />
-                <PillButton
-                  title="↻ Refresh"
-                  onPress={fetchApplications}
-                  isLoading={loading}
-                  additionalStyle={styles.refreshBtn}
-                />
-              </View>
+          <View style={[styles.headerTitleRow, isSmallScreen && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
+            <View style={{ flex: isSmallScreen ? undefined : 1, width: isSmallScreen ? '100%' : undefined }}>
+              <Text style={styles.title}>Application Review Portal</Text>
+              <Text style={styles.subtitle}>Review, filter, and manage attendee applications.</Text>
             </View>
-          ) : (
-            <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <PillButton
-                title="Links"
+                title="Secret Links"
                 onPress={() => { setShowInviteModal(true); fetchInviteCodes(); }}
-                additionalStyle={{ width: 90, height: 36 }}
-                fontSize={12}
+                additionalStyle={{ width: 'auto', minWidth: 120, height: 40 }}
               />
               <PillButton
                 title="↻ Refresh"
                 onPress={fetchApplications}
                 isLoading={loading}
-                additionalStyle={{ width: 100, height: 36 }}
+                additionalStyle={styles.refreshBtn}
               />
             </View>
-          )}
+          </View>
 
           <AdminTabBar
             adminTab={adminTab}

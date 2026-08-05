@@ -19,10 +19,12 @@ export type IconName =
   | 'smartphone'
   | 'checkmark'
   | 'chevron.right'
+  | 'chevron.left'
   | 'chevron.up'
   | 'chevron.down'
   | 'ban'
   | 'slash'
+  | 'menu'
 
 interface AppIconProps {
   name: IconName
@@ -41,10 +43,12 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
       if (name === 'smartphone') iosSymbol = 'iphone'
       if (name === 'checkmark') iosSymbol = 'checkmark'
       if (name === 'chevron.right') iosSymbol = 'chevron.right'
+      if (name === 'chevron.left') iosSymbol = 'chevron.left'
       if (name === 'chevron.up') iosSymbol = 'chevron.up'
       if (name === 'chevron.down') iosSymbol = 'chevron.down'
       if (name === 'ban') iosSymbol = 'nosign'
       if (name === 'slash') iosSymbol = 'circle.slash'
+      if (name === 'menu') iosSymbol = 'line.3.horizontal'
       return <SymbolView name={iosSymbol as any} tintColor={color} size={size} />
     } catch (e) {}
   }
@@ -69,9 +73,11 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     else if (name === 'smartphone') ionName = 'phone-portrait'
     else if (name === 'checkmark') ionName = 'checkmark'
     else if (name === 'chevron.right') ionName = 'chevron-forward'
+    else if (name === 'chevron.left') ionName = 'chevron-back'
     else if (name === 'chevron.up') ionName = 'chevron-up'
     else if (name === 'chevron.down') ionName = 'chevron-down'
     else if (name === 'ban' || name === 'slash') ionName = 'ban'
+    else if (name === 'menu') ionName = 'menu'
 
     return <Ionicons name={ionName} size={size} color={color} />
   } catch (e) {
