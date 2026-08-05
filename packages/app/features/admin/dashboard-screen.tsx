@@ -53,6 +53,33 @@ const previewText = (value: any): string => {
   return translated?.parts?.map((part: any) => part.content || '').join('') || ''
 }
 
+const DASHBOARD_CACHE_KEY = 'hackmty_admin_dashboard_state'
+
+let memoryStateCache: Record<string, any> = {}
+
+function getStoredDashboardState(): Record<string, any> {
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    try {
+      const raw = window.sessionStorage.getItem(DASHBOARD_CACHE_KEY)
+      if (raw) return JSON.parse(raw)
+    } catch (e) {
+      // ignore
+    }
+  }
+  return memoryStateCache
+}
+
+function saveStoredDashboardState(state: Record<string, any>) {
+  memoryStateCache = { ...memoryStateCache, ...state }
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    try {
+      window.sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(memoryStateCache))
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
 export function AdminDashboardScreen() {
   const { navigateTo } = useSmartNavigate()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
@@ -62,21 +89,23 @@ export function AdminDashboardScreen() {
   const [error, setError] = useState<string | null>(null)
   const [isReady, setIsReady] = useState(false)
 
+  const initialCache = getStoredDashboardState()
+
   useEffect(() => {
     setIsReady(true)
   }, [])
 
   // Pagination State
-  const [appPage, setAppPage] = useState(1)
-  const [appPageSize, setAppPageSize] = useState(20)
-  const [userPage, setUserPage] = useState(1)
-  const [userPageSize, setUserPageSize] = useState(20)
+  const [appPage, setAppPage] = useState<number>(initialCache.appPage || 1)
+  const [appPageSize, setAppPageSize] = useState<number>(initialCache.appPageSize || 20)
+  const [userPage, setUserPage] = useState<number>(initialCache.userPage || 1)
+  const [userPageSize, setUserPageSize] = useState<number>(initialCache.userPageSize || 20)
 
   // User Directory State
   const [usersList, setUsersList] = useState<any[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
-  const [userSearchQuery, setUserSearchQuery] = useState('')
-  const [userRoleFilter, setUserRoleFilter] = useState('all')
+  const [userSearchQuery, setUserSearchQuery] = useState<string>(initialCache.userSearchQuery || '')
+  const [userRoleFilter, setUserRoleFilter] = useState<string>(initialCache.userRoleFilter || 'all')
 
   // User Edit Modal State
   const [editingUser, setEditingUser] = useState<any | null>(null)
@@ -101,7 +130,7 @@ export function AdminDashboardScreen() {
     })
   }
   // Primary Admin Tab State
-  const [adminTab, setAdminTab] = useState<'applications' | 'users' | 'roles' | 'forms'>('applications')
+  const [adminTab, setAdminTab] = useState<'applications' | 'users' | 'roles' | 'forms'>(initialCache.adminTab || 'applications')
 
   // Roles & Access Management State
   const [rolesList, setRolesList] = useState<any[]>([])
@@ -624,11 +653,11 @@ export function AdminDashboardScreen() {
   }
 
   // Filters and sorting
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedType, setSelectedType] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState<string>(initialCache.searchQuery || '')
+  const [selectedType, setSelectedType] = useState<string>(initialCache.selectedType || 'all')
   const [dbTypes, setDbTypes] = useState<Array<{ id: string; label: string }>>([])
-  const [selectedCountries, setSelectedCountries] = useState<string[]>([])
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [selectedCountries, setSelectedCountries] = useState<string[]>(initialCache.selectedCountries || [])
+  const [selectedStatus, setSelectedStatus] = useState<string>(initialCache.selectedStatus || 'all')
 
   // Secret Links Management Modal State
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -720,7 +749,7 @@ export function AdminDashboardScreen() {
     setTimeout(() => setCopiedCodeId(null), 2000)
   }
   const [includeInput, setIncludeInput] = useState<string>('')
-  const [includeTags, setIncludeTags] = useState<string[]>([])
+  const [includeTags, setIncludeTags] = useState<string[]>(initialCache.includeTags || [])
 
   const addIncludeTag = (text?: string) => {
     const target = typeof text === 'string' ? text : includeInput
@@ -743,7 +772,7 @@ export function AdminDashboardScreen() {
   }
 
   const [excludeInput, setExcludeInput] = useState<string>('')
-  const [excludeTags, setExcludeTags] = useState<string[]>([])
+  const [excludeTags, setExcludeTags] = useState<string[]>(initialCache.excludeTags || [])
 
   const addExcludeTag = (text?: string) => {
     const target = typeof text === 'string' ? text : excludeInput
@@ -765,7 +794,7 @@ export function AdminDashboardScreen() {
     setExcludeTags(prev => prev.filter(t => t !== tagToRemove))
   }
 
-  const [groupByTeams, setGroupByTeams] = useState(false)
+  const [groupByTeams, setGroupByTeams] = useState<boolean>(initialCache.groupByTeams ?? false)
   // Request Changes Modal (Transferred to subscreen detail view)
   // Inline expansion states removed
 
@@ -929,10 +958,45 @@ export function AdminDashboardScreen() {
     })
   }, [usersList, userSearchQuery, userRoleFilter])
 
+  // Auto-save dashboard view state for persistence across candidate navigation
+  useEffect(() => {
+    saveStoredDashboardState({
+      adminTab,
+      groupByTeams,
+      appPage,
+      appPageSize,
+      searchQuery,
+      selectedType,
+      selectedStatus,
+      selectedCountries,
+      includeTags,
+      excludeTags,
+      userPage,
+      userPageSize,
+      userSearchQuery,
+      userRoleFilter,
+    })
+  }, [
+    adminTab,
+    groupByTeams,
+    appPage,
+    appPageSize,
+    searchQuery,
+    selectedType,
+    selectedStatus,
+    selectedCountries,
+    includeTags,
+    excludeTags,
+    userPage,
+    userPageSize,
+    userSearchQuery,
+    userRoleFilter,
+  ])
+
   // Reset pages when search query or filters change
   useEffect(() => {
     setAppPage(1)
-  }, [searchQuery, selectedType, selectedCountries, selectedStatus, excludeTags])
+  }, [searchQuery, selectedType, selectedCountries, selectedStatus, excludeTags, includeTags, groupByTeams])
 
   useEffect(() => {
     setUserPage(1)
@@ -1043,31 +1107,6 @@ export function AdminDashboardScreen() {
     })
   }, [apps, searchQuery, selectedType, selectedCountries, selectedStatus, includeTags, excludeTags])
 
-  // Paginated applications computation
-  const totalAppPages = Math.ceil(filteredApps.length / appPageSize) || 1
-  const displayedApps = useMemo(() => {
-    const start = (appPage - 1) * appPageSize
-    return filteredApps.slice(start, start + appPageSize)
-  }, [filteredApps, appPage, appPageSize])
-
-  // Paginated users computation
-  const totalUserPages = Math.ceil(filteredUsers.length / userPageSize) || 1
-  const displayedUsers = useMemo(() => {
-    const start = (userPage - 1) * userPageSize
-    return filteredUsers.slice(start, start + userPageSize)
-  }, [filteredUsers, userPage, userPageSize])
-
-  // Statistics summaries
-  const stats = useMemo(() => {
-    const total = apps.length
-    const accepted = apps.filter(app => app.status === 'accepted').length
-    const rejected = apps.filter(app => app.status === 'rejected').length
-    const changes = apps.filter(app => app.status === 'changes_requested').length
-    const submitted = apps.filter(app => app.status === 'submitted').length
-    const drafts = apps.filter(app => app.status === 'draft').length
-    return { total, accepted, rejected, changes, submitted, drafts }
-  }, [apps])
-
   // Grouped by Team Map
   const groupedData = useMemo(() => {
     if (!groupByTeams) return []
@@ -1098,6 +1137,37 @@ export function AdminDashboardScreen() {
     }
     return result
   }, [filteredApps, groupByTeams])
+
+  // Paginated applications computation
+  const totalAppPages = useMemo(() => {
+    if (groupByTeams) {
+      return Math.ceil(groupedData.length / appPageSize) || 1
+    }
+    return Math.ceil(filteredApps.length / appPageSize) || 1
+  }, [groupByTeams, groupedData, filteredApps, appPageSize])
+
+  const displayedApps = useMemo(() => {
+    const start = (appPage - 1) * appPageSize
+    return filteredApps.slice(start, start + appPageSize)
+  }, [filteredApps, appPage, appPageSize])
+
+  // Paginated users computation
+  const totalUserPages = Math.ceil(filteredUsers.length / userPageSize) || 1
+  const displayedUsers = useMemo(() => {
+    const start = (userPage - 1) * userPageSize
+    return filteredUsers.slice(start, start + userPageSize)
+  }, [filteredUsers, userPage, userPageSize])
+
+  // Statistics summaries
+  const stats = useMemo(() => {
+    const total = apps.length
+    const accepted = apps.filter(app => app.status === 'accepted').length
+    const rejected = apps.filter(app => app.status === 'rejected').length
+    const changes = apps.filter(app => app.status === 'changes_requested').length
+    const submitted = apps.filter(app => app.status === 'submitted').length
+    const drafts = apps.filter(app => app.status === 'draft').length
+    return { total, accepted, rejected, changes, submitted, drafts }
+  }, [apps])
 
   if (!isReady) {
     return (
