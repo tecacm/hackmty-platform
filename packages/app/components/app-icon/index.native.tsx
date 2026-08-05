@@ -23,6 +23,7 @@ export type IconName =
   | 'chevron.down'
   | 'ban'
   | 'slash'
+  | 'menu'
 
 interface AppIconProps {
   name: IconName
@@ -45,6 +46,7 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
       if (name === 'chevron.down') iosSymbol = 'chevron.down'
       if (name === 'ban') iosSymbol = 'nosign'
       if (name === 'slash') iosSymbol = 'circle.slash'
+      if (name === 'menu') iosSymbol = 'line.3.horizontal'
       return <SymbolView name={iosSymbol as any} tintColor={color} size={size} />
     } catch (e) {}
   }
@@ -72,6 +74,7 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     else if (name === 'chevron.up') ionName = 'chevron-up'
     else if (name === 'chevron.down') ionName = 'chevron-down'
     else if (name === 'ban' || name === 'slash') ionName = 'ban'
+    else if (name === 'menu') ionName = 'menu'
 
     return <Ionicons name={ionName} size={size} color={color} />
   } catch (e) {

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useRef } from 'react'
-import { View, Text, Pressable, StyleSheet, Platform, Image } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Platform, Image, useWindowDimensions } from 'react-native'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
@@ -10,6 +10,7 @@ import logoImage from 'app/assets/images/hackmty-logo.webp'
 import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
 import { SolitoImage } from 'solito/image'
 import { PersonSilhouette } from 'app/components/person-silhouette'
+import { AppIcon } from 'app/components/app-icon'
 
 // Module-level in-memory cache to prevent flashing on component mount / route changes
 let globalProfileCache: { avatarUrl: string | null; initials: string } | null = null
@@ -20,11 +21,20 @@ export function WebNavbar() {
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { hasPermission } = useUserPermissions()
   const pathname = usePathname()
+  const { width } = useWindowDimensions()
+  const [hasMounted, setHasMounted] = useState(false)
+
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  const isMobile = hasMounted && width > 0 && width < 900
 
   const showApplicationTab = hasPermission('applications', 'view')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => globalProfileCache?.avatarUrl ?? null)
   const [initials, setInitials] = useState<string>(() => globalProfileCache?.initials ?? '')
   const [isOpen, setIsOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const dropdownRef = useRef<any>(null)
 
   useEffect(() => {
@@ -151,29 +161,29 @@ export function WebNavbar() {
   }, [])
 
   return (
-    <View style={styles.navbarContainer}>
+    <View style={[styles.navbarContainer, isMobile && { height: 56 }]}>
       <View style={styles.navbarInner}>
         {/* Left Side: Brand Logo */}
         <View style={styles.brandGroup}>
-          <Pressable onPress={() => navigateTo('/home')} style={styles.brandContainer}>
+          <Pressable onPress={() => { setMobileMenuOpen(false); navigateTo('/home') }} style={styles.brandContainer}>
             <SolitoImage
               {...({
                 src: logoImage,
-                height: 35,
-                width: 120,
+                height: isMobile ? 28 : 35,
+                width: isMobile ? 95 : 120,
                 alt: 'The HackMTY Logo',
                 contentFit: 'contain',
                 resizeMode: 'contain',
               } as any)}
             />    
           </Pressable>
-          <View style={{width: 2, height: 35, backgroundColor: "rgba(255,255,255,0.18)"}} />
-          <Pressable onPress={() => navigateTo('https://tec.acm.org')} style={styles.brandContainer}>
+          <View style={{ width: 1.5, height: isMobile ? 24 : 35, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+          <Pressable onPress={() => { setMobileMenuOpen(false); navigateTo('https://tec.acm.org') }} style={styles.brandContainer}>
             <SolitoImage
               {...({
                 src: tecAcm,
-                height: 35,
-                width: 120,
+                height: isMobile ? 28 : 35,
+                width: isMobile ? 95 : 120,
                 alt: 'The TecACM Logo',
                 contentFit: 'contain',
                 resizeMode: 'contain',
@@ -182,159 +192,262 @@ export function WebNavbar() {
           </Pressable>
         </View>
 
-        {/* Center: Main Links */}
-        <View pointerEvents="box-none" style={styles.linksOverlay}>
-          <View style={styles.linksContainer}>
-            {/* 1st Link: Feed / Announcements */}
-            {hasPermission('announcements', 'view') && (
-              <Pressable
-                onPress={() => navigateTo('/home')}
-                style={({ hovered }) => [
-                  styles.navLink,
-                  (pathname === '/home' || pathname === '/announcements') && styles.navLinkActive,
-                ]}
-              >
-                {({ hovered }) => (
-                  <Text
-                    style={[
-                      styles.navLinkText,
-                      hovered && styles.navLinkTextHover,
-                      (pathname === '/home' || pathname === '/announcements') && styles.navLinkTextActive,
-                    ]}
-                  >
-                    Feed
-                  </Text>
-                )}
-              </Pressable>
-            )}
-
-            {/* 2nd Link: Application */}
-            {showApplicationTab && (
-              <Pressable
-                onPress={() => navigateTo('/applications')}
-                style={({ hovered }) => [
-                  styles.navLink,
-                  (pathname === '/applications' || pathname === '/application') && styles.navLinkActive,
-                ]}
-              >
-                {({ hovered }) => (
-                  <Text
-                    style={[
-                      styles.navLinkText,
-                      hovered && styles.navLinkTextHover,
-                      (pathname === '/applications' || pathname === '/application') && styles.navLinkTextActive,
-                    ]}
-                  >
-                    Application
-                  </Text>
-                )}
-              </Pressable>
-            )}
-
-            {/* 3rd Link: My Team */}
-            {hasPermission('teams', 'create') && (
-              <Pressable
-                onPress={() => navigateTo('/teams')}
-                style={({ hovered }) => [
-                  styles.navLink,
-                  pathname === '/teams' && styles.navLinkActive,
-                ]}
-              >
-                {({ hovered }) => (
-                  <Text
-                    style={[
-                      styles.navLinkText,
-                      hovered && styles.navLinkTextHover,
-                      pathname === '/teams' && styles.navLinkTextActive,
-                    ]}
-                  >
-                    My Team
-                  </Text>
-                )}
-              </Pressable>
-            )}
-
-            {/* 4th Link: Profile */}
-            <Pressable
-              onPress={() => navigateTo('/profile')}
-              style={({ hovered }) => [
-                styles.navLink,
-                pathname === '/profile' && styles.navLinkActive,
-              ]}
-            >
-              {({ hovered }) => (
-                <Text
-                  style={[
-                    styles.navLinkText,
-                    hovered && styles.navLinkTextHover,
-                    pathname === '/profile' && styles.navLinkTextActive,
+        {/* Center: Main Links (Desktop Only) */}
+        {!isMobile && (
+          <View pointerEvents="box-none" style={styles.linksOverlay}>
+            <View style={styles.linksContainer}>
+              {/* 1st Link: Feed / Announcements */}
+              {hasPermission('announcements', 'view') && (
+                <Pressable
+                  onPress={() => navigateTo('/home')}
+                  style={({ hovered }) => [
+                    styles.navLink,
+                    (pathname === '/home' || pathname === '/announcements') && styles.navLinkActive,
                   ]}
                 >
-                  Profile
-                </Text>
+                  {({ hovered }) => (
+                    <Text
+                      style={[
+                        styles.navLinkText,
+                        hovered && styles.navLinkTextHover,
+                        (pathname === '/home' || pathname === '/announcements') && styles.navLinkTextActive,
+                      ]}
+                    >
+                      Feed
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+
+              {/* 2nd Link: Application */}
+              {showApplicationTab && (
+                <Pressable
+                  onPress={() => navigateTo('/applications')}
+                  style={({ hovered }) => [
+                    styles.navLink,
+                    (pathname === '/applications' || pathname === '/application') && styles.navLinkActive,
+                  ]}
+                >
+                  {({ hovered }) => (
+                    <Text
+                      style={[
+                        styles.navLinkText,
+                        hovered && styles.navLinkTextHover,
+                        (pathname === '/applications' || pathname === '/application') && styles.navLinkTextActive,
+                      ]}
+                    >
+                      Application
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+
+              {/* 3rd Link: My Team */}
+              {hasPermission('teams', 'create') && (
+                <Pressable
+                  onPress={() => navigateTo('/teams')}
+                  style={({ hovered }) => [
+                    styles.navLink,
+                    pathname === '/teams' && styles.navLinkActive,
+                  ]}
+                >
+                  {({ hovered }) => (
+                    <Text
+                      style={[
+                        styles.navLinkText,
+                        hovered && styles.navLinkTextHover,
+                        pathname === '/teams' && styles.navLinkTextActive,
+                      ]}
+                    >
+                      My Team
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+
+              {/* 4th Link: Profile */}
+              <Pressable
+                onPress={() => navigateTo('/profile')}
+                style={({ hovered }) => [
+                  styles.navLink,
+                  pathname === '/profile' && styles.navLinkActive,
+                ]}
+              >
+                {({ hovered }) => (
+                  <Text
+                    style={[
+                      styles.navLinkText,
+                      hovered && styles.navLinkTextHover,
+                      pathname === '/profile' && styles.navLinkTextActive,
+                    ]}
+                  >
+                    Profile
+                  </Text>
+                )}
+              </Pressable>
+
+              {/* 5th Link: Admin */}
+              {hasPermission('applications', 'view_others') && (
+                <Pressable
+                  onPress={() => navigateTo('/admin')}
+                  style={({ hovered }) => [
+                    styles.navLink,
+                    pathname === '/admin' && styles.navLinkActive,
+                  ]}
+                >
+                  {({ hovered }) => (
+                    <Text
+                      style={[
+                        styles.navLinkText,
+                        hovered && styles.navLinkTextHover,
+                        pathname === '/admin' && styles.navLinkTextActive,
+                      ]}
+                    >
+                      Admin
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Right Side: Avatar Dropdown & Mobile Toggle */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View ref={dropdownRef} style={styles.dropdownWrapper}>
+            <Pressable onPress={() => setIsOpen(!isOpen)} style={styles.avatarButton}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  {initials && initials !== '👤' ? (
+                    <Text style={styles.avatarFallbackText}>{initials}</Text>
+                  ) : (
+                    <PersonSilhouette size={28} color="#ffffff" />
+                  )}
+                </View>
               )}
             </Pressable>
 
-            {/* 5th Link: Admin */}
-            {hasPermission('applications', 'view_others') && (
-              <Pressable
-                onPress={() => navigateTo('/admin')}
-                style={({ hovered }) => [
-                  styles.navLink,
-                  pathname === '/admin' && styles.navLinkActive,
-                ]}
-              >
-                {({ hovered }) => (
-                  <Text
-                    style={[
-                      styles.navLinkText,
-                      hovered && styles.navLinkTextHover,
-                      pathname === '/admin' && styles.navLinkTextActive,
-                    ]}
-                  >
-                    Admin
-                  </Text>
-                )}
-              </Pressable>
-            )}
-          </View>
-        </View>
-
-        {/* Right Side: Avatar Dropdown */}
-        <View ref={dropdownRef} style={styles.dropdownWrapper}>
-          <Pressable onPress={() => setIsOpen(!isOpen)} style={styles.avatarButton}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                {initials && initials !== '👤' ? (
-                  <Text style={styles.avatarFallbackText}>{initials}</Text>
-                ) : (
-                  <PersonSilhouette size={32} color="#ffffff" />
-                )}
+            {isOpen && (
+              <View style={styles.dropdownMenu}>
+                <Pressable
+                  onPress={() => {
+                    setIsOpen(false)
+                    navigateTo('/profile')
+                  }}
+                  style={styles.dropdownItem}
+                >
+                  <Text style={styles.dropdownItemText}>My Profile</Text>
+                </Pressable>
+                <View style={styles.divider} />
+                <Pressable onPress={handleSignOut} style={styles.dropdownItem}>
+                  <Text style={[styles.dropdownItemText, { color: '#ff6b6b' }]}>Sign Out</Text>
+                </Pressable>
               </View>
             )}
-          </Pressable>
+          </View>
 
-          {isOpen && (
-            <View style={styles.dropdownMenu}>
-              <Pressable
-                onPress={() => {
-                  setIsOpen(false)
-                  navigateTo('/profile')
-                }}
-                style={styles.dropdownItem}
-              >
-                <Text style={styles.dropdownItemText}>My Profile</Text>
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable onPress={handleSignOut} style={styles.dropdownItem}>
-                <Text style={[styles.dropdownItemText, { color: '#ff6b6b' }]}>Sign Out</Text>
-              </Pressable>
-            </View>
+          {isMobile && (
+            <Pressable
+              onPress={() => setMobileMenuOpen(!mobileMenuOpen)}
+              style={styles.hamburgerBtn}
+            >
+              <AppIcon name={mobileMenuOpen ? 'xmark' : 'menu'} size={22} color="#ffffff" />
+            </Pressable>
           )}
         </View>
       </View>
+
+      {/* Slide-Down Mobile Drawer Menu */}
+      {isMobile && mobileMenuOpen && (
+        <View style={styles.mobileDrawer}>
+          {hasPermission('announcements', 'view') && (
+            <Pressable
+              onPress={() => {
+                setMobileMenuOpen(false)
+                navigateTo('/home')
+              }}
+              style={[
+                styles.mobileNavLink,
+                (pathname === '/home' || pathname === '/announcements') && styles.mobileNavLinkActive,
+              ]}
+            >
+              <Text style={styles.mobileNavLinkText}>Feed</Text>
+            </Pressable>
+          )}
+
+          {showApplicationTab && (
+            <Pressable
+              onPress={() => {
+                setMobileMenuOpen(false)
+                navigateTo('/applications')
+              }}
+              style={[
+                styles.mobileNavLink,
+                (pathname === '/applications' || pathname === '/application') && styles.mobileNavLinkActive,
+              ]}
+            >
+              <Text style={styles.mobileNavLinkText}>Application</Text>
+            </Pressable>
+          )}
+
+          {hasPermission('teams', 'create') && (
+            <Pressable
+              onPress={() => {
+                setMobileMenuOpen(false)
+                navigateTo('/teams')
+              }}
+              style={[
+                styles.mobileNavLink,
+                pathname === '/teams' && styles.mobileNavLinkActive,
+              ]}
+            >
+              <Text style={styles.mobileNavLinkText}>My Team</Text>
+            </Pressable>
+          )}
+
+          <Pressable
+            onPress={() => {
+              setMobileMenuOpen(false)
+              navigateTo('/profile')
+            }}
+            style={[
+              styles.mobileNavLink,
+              pathname === '/profile' && styles.mobileNavLinkActive,
+            ]}
+          >
+            <Text style={styles.mobileNavLinkText}>Profile</Text>
+          </Pressable>
+
+          {hasPermission('applications', 'view_others') && (
+            <Pressable
+              onPress={() => {
+                setMobileMenuOpen(false)
+                navigateTo('/admin')
+              }}
+              style={[
+                styles.mobileNavLink,
+                pathname === '/admin' && styles.mobileNavLinkActive,
+              ]}
+            >
+              <Text style={styles.mobileNavLinkText}>Admin</Text>
+            </Pressable>
+          )}
+
+          <View style={styles.divider} />
+
+          <Pressable
+            onPress={() => {
+              setMobileMenuOpen(false)
+              handleSignOut()
+            }}
+            style={[styles.mobileNavLink, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}
+          >
+            <Text style={[styles.mobileNavLinkText, { color: '#ff6b6b' }]}>Sign Out</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   )
 }
@@ -432,9 +545,9 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   avatarButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: '#c2b75f',
@@ -501,5 +614,52 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     marginVertical: 4,
+  },
+  hamburgerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  mobileDrawer: {
+    position: 'absolute',
+    top: 56,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(23, 23, 26, 0.98)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+    zIndex: 999,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        boxShadow: '0 12px 24px rgba(0, 0, 0, 0.4)',
+      } as any,
+    }),
+  },
+  mobileNavLink: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  mobileNavLinkActive: {
+    backgroundColor: '#7a47a2',
+  },
+  mobileNavLinkText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    fontFamily: 'Montserrat, "Helvetica Neue", Helvetica, Arial, sans-serif',
   },
 })

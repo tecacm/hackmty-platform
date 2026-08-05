@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Ban,
   Slash,
+  Menu,
 } from 'lucide-react'
 
 export type IconName =
@@ -41,6 +42,7 @@ export type IconName =
   | 'chevron.down'
   | 'ban'
   | 'slash'
+  | 'menu'
 
 interface AppIconProps {
   name: IconName
@@ -148,6 +150,10 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
 
   if (name === 'slash') {
     return <Slash size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'menu') {
+    return <Menu size={size} color={color} strokeWidth={2} />
   }
 
   return <X size={size} color={color} strokeWidth={2.5} />
