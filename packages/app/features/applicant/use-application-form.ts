@@ -341,57 +341,44 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       const phoneVal = profileData?.phone || user?.phone || user?.user_metadata?.phone
       if (phoneVal) {
         profileValues.phone = phoneVal
-        disabled.push('phone')
       }
 
-      // Prefill other profile values
+      // Prefill other profile values (prefill for convenience, but keep editable)
       if (profileData?.gender) {
         profileValues.gender = profileData.gender
-        disabled.push('gender')
       }
       if (profileData?.university) {
         profileValues.university = profileData.university
-        disabled.push('university')
       }
       if (profileData?.major) {
         profileValues.major = profileData.major
-        disabled.push('major')
       }
       if (profileData?.graduation_year) {
         profileValues.year = profileData.graduation_year
-        disabled.push('year')
       }
       if (profileData?.level_of_study) {
         profileValues.levelOfStudy = profileData.level_of_study
-        disabled.push('levelOfStudy')
       }
       if (profileData?.tshirt_size) {
         profileValues.tshirt = profileData.tshirt_size
-        disabled.push('tshirt')
       }
       if (profileData?.dietary_restrictions) {
         profileValues.diet = profileData.dietary_restrictions
-        disabled.push('diet')
       }
       if (profileData?.github) {
         profileValues.github = profileData.github
-        disabled.push('github')
       }
       if (profileData?.devpost) {
         profileValues.devpost = profileData.devpost
-        disabled.push('devpost')
       }
       if (profileData?.linkedin) {
         profileValues.linkedin = profileData.linkedin
-        disabled.push('linkedin')
       }
       if (profileData?.personal_site) {
         profileValues.personalSite = profileData.personal_site
-        disabled.push('personalSite')
       }
       if (profileData?.resume_url) {
         profileValues.resume = profileData.resume_url
-        disabled.push('resume')
       }
 
       // 9. Fetch user's existing application answers/status
