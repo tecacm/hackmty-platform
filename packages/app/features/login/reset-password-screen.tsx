@@ -292,32 +292,37 @@ export function ResetPasswordScreen() {
     }
   }
 
-  const background = (
-    <>
+  return (
+    <View style={{ flex: 1, position: 'relative', width: '100%' }}>
+      {/* Root-level fixed carousel & dark overlay */}
       <Carrousel slideImages={images} mode="crossfade" />
       <LinearGradient
         colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        style={{
+          position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: Platform.OS === 'web' ? -200 : 0,
+          height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
+        }}
       />
-    </>
-  );
 
-  return (
-    <ParallaxScrollView
-      background={background}
-      style={{ backgroundColor: Platform.select({ web: 'oklch(0.16 0.01 280)', default: '#211f26' }) }}
-      contentContainerStyle={{
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: topOffset,
-        paddingBottom: insets.bottom,
-        paddingLeft: insets.left,
-        paddingRight: insets.right,
-        overflow: 'visible',
-      }}
-    >
+      <ParallaxScrollView
+        background={null}
+        style={{ backgroundColor: 'transparent' }}
+        contentContainerStyle={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingTop: topOffset,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+          overflow: 'visible',
+        }}
+      >
         <View style={styles.glassCard}>
           <View style={styles.glassCardGlow} pointerEvents="none" />
           <View style={styles.glassCardRing} pointerEvents="none" />

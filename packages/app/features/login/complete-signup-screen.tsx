@@ -244,10 +244,17 @@ export function CompleteSignupScreen() {
     <>
       <Carrousel slideImages={images} />
       <LinearGradient
-        colors={['rgba(29, 4, 31, 0.5)', 'rgba(55, 27, 58, 0.7)']}
+        colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{
+          position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: Platform.OS === 'web' ? -200 : 0,
+          height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
+        }}
       />
     </>
   )

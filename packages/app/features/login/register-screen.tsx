@@ -247,25 +247,30 @@ export function RegisterScreen() {
 
   const goToLogin = () => navigateTo('/login')
 
-  const background = (
-    <>
+  return (
+    <View style={{ flex: 1, position: 'relative', width: '100%' }}>
+      {/* Root-level fixed carousel & dark overlay - unclipped by sub-container stacking contexts */}
       <Carrousel slideImages={images} mode="crossfade" />
       <LinearGradient
         colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        style={{
+          position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: Platform.OS === 'web' ? -200 : 0,
+          height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
+        }}
       />
-    </>
-  );
 
-  return (
-    <ParallaxScrollView
-      background={background}
-      style={{ backgroundColor: Platform.select({ web: 'oklch(0.16 0.01 280)', default: '#211f26' }) }}
-      contentContainerStyle={{
-        alignItems: 'center',
-        justifyContent: 'center',
+      <ParallaxScrollView
+        background={null}
+        style={{ backgroundColor: 'transparent' }}
+        contentContainerStyle={{
+          alignItems: 'center',
+          justifyContent: 'center',
         paddingTop: topOffset,
         paddingBottom: insets.bottom,
         paddingLeft: insets.left,
@@ -405,30 +410,137 @@ export function RegisterScreen() {
 
         <ConfettiOverlay active={showConfetti} onComplete={() => setShowConfetti(false)} />
 
-        {showSuccessModal && (
+        {/* Modal: Terms & Conditions */}
+        {showTermsModal && (
           <Modal
-            visible={showSuccessModal}
             transparent
             animationType="fade"
+            visible={showTermsModal}
+            onRequestClose={() => setShowTermsModal(false)}
+          >
+            <View style={termsModalOverlayStyle}>
+              <View style={termsModalContentStyle}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', fontFamily: 'Montserrat' }}>
+                    Terms & Conditions
+                  </Text>
+                  <Pressable onPress={() => setShowTermsModal(false)} hitSlop={8}>
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: '#6b7280' }}>✕</Text>
+                  </Pressable>
+                </View>
+
+                <ScrollView style={{ flex: 1, marginBottom: 16 }}>
+                  <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20, fontFamily: 'Montserrat' }}>
+                    Welcome to HackMTY! By registering and participating in our hackathon events, platform, and community, you agree to comply with the following Terms & Conditions:
+                    {'\n\n'}
+                    1. Code of Conduct: All participants must foster an inclusive, respectful, and safe environment. Harassment, discrimination, or offensive behavior of any form will not be tolerated.
+                    {'\n\n'}
+                    2. Original Work: All submissions created during HackMTY must be original work developed during the official hackathon timeframe.
+                    {'\n\n'}
+                    3. Intellectual Property: You retain full ownership of the intellectual property of your project submissions.
+                    {'\n\n'}
+                    4. Eligibility & Registration: You agree to provide accurate and complete information during registration.
+                    {'\n\n'}
+                    5. Liability: HackMTY organizers are not responsible for lost personal property, injuries, or digital data loss during the event.
+                  </Text>
+                </ScrollView>
+
+                <PillButton
+                  title="Close & Accept Terms"
+                  variant="gradient"
+                  onPress={() => {
+                    setAcceptedTerms(true)
+                    setTermsError('')
+                    setShowTermsModal(false)
+                  }}
+                  additionalStyle={{ width: '100%', height: 44 }}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
+
+        {/* Modal: Privacy Policy */}
+        {showPrivacyModal && (
+          <Modal
+            transparent
+            animationType="fade"
+            visible={showPrivacyModal}
+            onRequestClose={() => setShowPrivacyModal(false)}
+          >
+            <View style={termsModalOverlayStyle}>
+              <View style={termsModalContentStyle}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', fontFamily: 'Montserrat' }}>
+                    Privacy Policy
+                  </Text>
+                  <Pressable onPress={() => setShowPrivacyModal(false)} hitSlop={8}>
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: '#6b7280' }}>✕</Text>
+                  </Pressable>
+                </View>
+
+                <ScrollView style={{ flex: 1, marginBottom: 16 }}>
+                  <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20, fontFamily: 'Montserrat' }}>
+                    HackMTY respects your privacy. This Privacy Policy details how we collect, store, and process your personal data:
+                    {'\n\n'}
+                    1. Data Collected: We collect your name, email address, educational institution, role preference, and any profile links or resumes you voluntarily submit.
+                    {'\n\n'}
+                    2. Use of Data: We use your data to manage your event application, communicate event updates, verify attendee identity, and evaluate projects.
+                    {'\n\n'}
+                    3. Sponsor Sharing: If you opt in or submit a resume, your profile information may be shared with official HackMTY sponsor companies for recruitment purposes.
+                    {'\n\n'}
+                    4. Data Protection: We implement strict security measures to protect your credentials and data against unauthorized access.
+                    {'\n\n'}
+                    5. Your Rights: You may request access to, correction of, or deletion of your personal account data at any time by contacting support.
+                  </Text>
+                </ScrollView>
+
+                <PillButton
+                  title="Close & Accept Privacy Policy"
+                  variant="gradient"
+                  onPress={() => {
+                    setAcceptedTerms(true)
+                    setTermsError('')
+                    setShowPrivacyModal(false)
+                  }}
+                  additionalStyle={{ width: '100%', height: 44 }}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
+
+        {/* Modal: Registration Confirmation Success Modal */}
+        {showSuccessModal && (
+          <Modal
+            transparent
+            animationType="fade"
+            visible={showSuccessModal}
             onRequestClose={() => {
               setShowSuccessModal(false)
               navigateTo('/login')
             }}
           >
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <View style={{
+              flex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.65)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 20,
+            }}>
               <View style={{
-                backgroundColor: '#1b0026',
-                borderRadius: 28,
-                borderWidth: 1.5,
-                borderColor: 'rgba(194, 183, 95, 0.45)',
-                padding: 30,
                 width: '100%',
-                maxWidth: 440,
+                maxWidth: 420,
+                backgroundColor: '#1e1b2e',
+                borderRadius: 24,
+                padding: 24,
                 alignItems: 'center',
-                gap: 16,
+                gap: 14,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.15)',
                 ...Platform.select({
                   web: {
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(90,0,97,0.3)',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
                   } as any,
                 }),
               }}>
@@ -452,6 +564,7 @@ export function RegisterScreen() {
             </View>
           </Modal>
         )}
-    </ParallaxScrollView>
+      </ParallaxScrollView>
+    </View>
   )
 }
