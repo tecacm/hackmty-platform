@@ -26,6 +26,25 @@ body {
     Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: -150px;
+  width: 100vw;
+  height: calc(100lvh + 150px);
+  min-height: calc(100lvh + 150px);
+  background-image: var(--numbers-bg-url);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -1;
+  pointer-events: none;
+  -webkit-transform: translateZ(0);
+}
+
 #__next {
   width: 100%;
   flex: 1;

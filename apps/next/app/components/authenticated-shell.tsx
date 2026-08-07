@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect } from 'react'
 import { View, ScrollView, Dimensions, Platform, StyleSheet } from 'react-native'
-import { SolitoImage } from 'solito/image'
 import { WebNavbar } from 'app/components/web-navbar'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import numbersbg from 'app/assets/images/numbers-bg.webp'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
-
+import { Image } from 'react-native'
 /**
  * Persistent shell for all authenticated screens.
  * Renders once and stays mounted during client-side navigation,
@@ -32,32 +31,21 @@ export function AuthenticatedShell({ children }: { children: React.ReactNode }) 
     }
   }, [])
 
-  const background = (
-    <View style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <SolitoImage
-        {...({
-          src: numbersbg,
-          fill: true,
-          contentFit: 'cover',
-          resizeMode: 'cover',
-          transition: 0,
-          alt: 'Abstract numbers background',
-          style: {
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          },
-        } as any)}
-      />
-    </View>
-  ) 
-  
+  const bgUri = (numbersbg as any)?.src || numbersbg
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined' && bgUri) {
+      document.documentElement.style.setProperty('--numbers-bg-url', `url(${bgUri})`)
+    }
+  }, [bgUri])
+
   return (
     <View style={styles.root}>
       <WebNavbar />
+
       <ParallaxScrollView
-        background={background}
-        style={{ backgroundColor: '#5a0061cc' }}
+        background={null}
+        style={{ backgroundColor: 'transparent' }}
         contentContainerStyle={{
           alignItems: 'center',
           gap: 16,
@@ -71,7 +59,6 @@ export function AuthenticatedShell({ children }: { children: React.ReactNode }) 
       >
         {children}
       </ParallaxScrollView>
-
     </View>
   )
 }
@@ -79,7 +66,6 @@ export function AuthenticatedShell({ children }: { children: React.ReactNode }) 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#5a0061cc',
   },
   scroll: {
     flex: 1,

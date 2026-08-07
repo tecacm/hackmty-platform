@@ -703,7 +703,7 @@ export function UserDetailScreen() {
                                 style={styles.fieldItem}
                               >
                                 <Text style={styles.fieldLabel}>{item.label} ↗</Text>
-                                <Text style={styles.linkText}>{item.value}</Text>
+                                <Text style={styles.linkText} numberOfLines={1} ellipsizeMode="tail">{item.value}</Text>
                               </Pressable>
                             )
                           }
@@ -711,7 +711,7 @@ export function UserDetailScreen() {
                           return (
                             <View key={itemIdx} style={styles.fieldItem}>
                               <Text style={styles.fieldLabel}>{item.label}</Text>
-                              <Text style={styles.fieldValue}>{item.value || 'N/A'}</Text>
+                              <Text style={styles.fieldValue} numberOfLines={2} ellipsizeMode="tail">{item.value || 'N/A'}</Text>
                             </View>
                           )
                         })}
@@ -1158,6 +1158,15 @@ const styles = StyleSheet.create({
     color: '#5a0061',
     fontWeight: '600',
     lineHeight: 20,
+    maxWidth: '100%',
+    ...Platform.select({
+      web: {
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        wordBreak: 'break-all',
+      } as any,
+    }),
   },
   noDataText: {
     fontSize: 13,

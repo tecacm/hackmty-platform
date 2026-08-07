@@ -87,7 +87,8 @@ function InfoTile({
           !value && styles.infoTileEmpty,
           isLink && value ? styles.infoTileLink : undefined,
         ]}
-        numberOfLines={2}
+        numberOfLines={1}
+        ellipsizeMode="tail"
       >
         {value || 'Not specified'}
       </Text>
@@ -100,7 +101,7 @@ function InfoTile({
         onPress={onPress}
         accessibilityRole="link"
         accessibilityLabel={`Open ${label}: ${value}`}
-        style={({ pressed }) => [pressed && { opacity: 0.75 }]}
+        style={({ pressed }) => [pressed && { opacity: 0.75 }, { width: '100%', maxWidth: '100%' }]}
       >
         {content}
       </Pressable>
@@ -1152,11 +1153,13 @@ const styles = StyleSheet.create({
   infoTile: {
     flex: 1,
     minWidth: 220,
+    maxWidth: '100%',
     backgroundColor: '#f8f9fa',
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
     borderColor: '#e9ecef',
+    overflow: 'hidden',
   },
   infoTileLabel: {
     fontSize: 12,
@@ -1168,6 +1171,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#212529',
+    maxWidth: '100%',
+    ...Platform.select({
+      web: {
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        wordBreak: 'break-all',
+      } as any,
+    }),
   },
   infoTileEmpty: {
     color: '#adb5bd',
