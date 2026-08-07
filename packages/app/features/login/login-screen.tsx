@@ -287,6 +287,7 @@ export function LoginScreen() {
                   label="Email Address"
                   placeholder="Enter your email"
                   textContentType="emailAddress"
+                  autoComplete="username"
                   keyboardType="email-address"
                   onChangeText={onChange}
                   value={value}
@@ -307,6 +308,7 @@ export function LoginScreen() {
                   label="Password"
                   placeholder="Enter your password"
                   textContentType="password"
+                  autoComplete="current-password"
                   onChangeText={onChange}
                   value={value}
                   error={errors.password?.message}

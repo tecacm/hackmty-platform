@@ -74,7 +74,7 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
   }
 
   return (
-    <View style={[styles.container, { width: '90%', maxWidth: 1000 }]}>      
+    <View style={[styles.container, { width: '100%', maxWidth: 1000, paddingHorizontal: Platform.OS === 'web' ? 16 : 8 }]}>      
       {/* Sticky Top Header Toolbar - Web only. Native platforms use the native navigation header and pencil toolbar item */}
       {Platform.OS === 'web' && (
         <View style={styles.stickyHeaderContainer}>
@@ -166,8 +166,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
     ...Platform.select({
       web: {
-        position: 'sticky',
-        top: 60,
+        position: 'relative',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         boxShadow: '0 6px 24px rgba(34, 0, 44, 0.1)',
