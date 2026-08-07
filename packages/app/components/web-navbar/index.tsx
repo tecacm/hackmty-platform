@@ -161,8 +161,8 @@ export function WebNavbar() {
   }, [])
 
   return (
-    <View style={[styles.navbarContainer, isMobile && { height: 56 }]}>
-      <View style={styles.navbarInner}>
+    <View style={styles.navbarContainer}>
+      <View style={[styles.navbarInner, isMobile && { height: 56 }]}>
         {/* Left Side: Brand Logo */}
         <View style={styles.brandGroup}>
           <Pressable onPress={() => { setMobileMenuOpen(false); navigateTo('/home') }} style={styles.brandContainer}>
@@ -455,16 +455,17 @@ export function WebNavbar() {
 const styles = StyleSheet.create({
   navbarContainer: {
     width: '100%',
-    height: 50,
     backgroundColor: 'rgba(23, 23, 26, 0.91)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 1000,
+    paddingTop: 'env(safe-area-inset-top, 0px)',
     ...Platform.select({
       web: {
         position: 'fixed',
         top: 0,
         left: 0,
+        right: 0,
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
       } as any,
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     maxWidth: 1200,
     width: '100%',
-    height: '100%',
+    height: 50,
     marginHorizontal: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
@@ -627,7 +628,7 @@ const styles = StyleSheet.create({
   },
   mobileDrawer: {
     position: 'absolute',
-    top: 56,
+    top: '100%',
     left: 0,
     right: 0,
     backgroundColor: 'rgba(23, 23, 26, 0.98)',

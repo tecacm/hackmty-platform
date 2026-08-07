@@ -31,7 +31,7 @@ export function ParallaxScrollView({
   }, []);
 
   return (
-    <View style={[{ flex: 1, position: 'relative' }, style]}>
+    <View style={[{ flex: 1, position: 'relative', width: '100%', maxWidth: '100%', overflow: 'hidden' }, style]}>
       {/* Background: fixed in place */}
       <View
         style={{
@@ -40,8 +40,12 @@ export function ParallaxScrollView({
           left: 0,
           right: 0,
           bottom: 0,
-          height: screenHeight,
+          width: '100vw',
+          height: '100vh',
+          maxHeight: '100dvh',
           zIndex: -1,
+          overflow: 'hidden',
+          pointerEvents: 'none',
         } as any}
       >
         {background}
@@ -49,9 +53,10 @@ export function ParallaxScrollView({
 
       {/* Scrollable content on top */}
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[{ minHeight: screenHeight }, contentContainerStyle]}
+        style={{ flex: 1, width: '100%' }}
+        contentContainerStyle={contentContainerStyle}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         {children}
       </ScrollView>

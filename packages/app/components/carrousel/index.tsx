@@ -116,11 +116,11 @@ function CrossfadeCarrousel({ slideImages, secondsPerImage = 6 }: { slideImages:
       </View>
 
       <View style={layerStyle}>
-        <SolitoImage src={resolveSrc(slideImages[currentIndex])} width={width} height={height} contentFit="cover" alt={`Slide image ${currentIndex}`} />
+        <SolitoImage src={resolveSrc(slideImages[currentIndex])} fill contentFit="cover" alt={`Slide image ${currentIndex}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </View>
       {total > 1 && (
         <Animated.View style={[layerStyle, { opacity: incomingOpacity }]}>
-          <SolitoImage src={resolveSrc(slideImages[nextIndex])} width={width} height={height} contentFit="cover" alt={`Slide image ${nextIndex}`} />
+          <SolitoImage src={resolveSrc(slideImages[nextIndex])} fill contentFit="cover" alt={`Slide image ${nextIndex}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </Animated.View>
       )}
     </View>

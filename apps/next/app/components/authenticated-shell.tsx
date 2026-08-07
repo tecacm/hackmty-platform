@@ -32,23 +32,24 @@ export function AuthenticatedShell({ children }: { children: React.ReactNode }) 
     }
   }, [])
 
-  const intrinsicWidth = (numbersbg as any)?.width ?? 1920
-  const intrinsicHeight = (numbersbg as any)?.height ?? 1080
-  const bgWidth = screenWidth > 0 ? screenWidth : intrinsicWidth
-  const bgHeight = screenHeight > 0 ? screenHeight : intrinsicHeight
-
   const background = (
-    <SolitoImage
+    <View style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <SolitoImage
         {...({
           src: numbersbg,
-          width: bgWidth,
-          height: bgHeight,
+          fill: true,
           contentFit: 'cover',
           resizeMode: 'cover',
           transition: 0,
           alt: 'Abstract numbers background',
+          style: {
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          },
         } as any)}
       />
+    </View>
   ) 
   
   return (
@@ -60,7 +61,7 @@ export function AuthenticatedShell({ children }: { children: React.ReactNode }) 
         contentContainerStyle={{
           alignItems: 'center',
           gap: 16,
-          paddingTop: Platform.OS === 'web' ? 104 : Math.max(headerHeight, insets.top) + 16,
+          paddingTop: Platform.OS === 'web' ? ('calc(env(safe-area-inset-top, 0px) + 70px)' as any) : Math.max(headerHeight, insets.top) + 16,
           paddingBottom: insets.bottom + 40,
           paddingLeft: insets.left,
           paddingRight: insets.right,
