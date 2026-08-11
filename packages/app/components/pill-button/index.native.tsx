@@ -94,7 +94,11 @@ export function PillButton({
             {isLoading ? (
               <ActivityIndicator size="small" color={textColor} />
             ) : children ? (
-              children
+              typeof children === 'string' || typeof children === 'number' ? (
+                <Text style={[styles.text, { color: textColor }]}>{children}</Text>
+              ) : (
+                children
+              )
             ) : (
               <Text style={[styles.text, { color: textColor }]}>{title}</Text>
             )}
@@ -109,7 +113,11 @@ export function PillButton({
             {isLoading ? (
               <ActivityIndicator size="small" color={textColor} />
             ) : children ? (
-              children
+              typeof children === 'string' || typeof children === 'number' ? (
+                <Text style={[styles.text, { color: textColor }]}>{children}</Text>
+              ) : (
+                children
+              )
             ) : (
               <Text style={[styles.text, { color: textColor }]}>{title}</Text>
             )}

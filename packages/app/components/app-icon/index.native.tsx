@@ -12,6 +12,7 @@ export type IconName =
   | 'megaphone.fill'
   | 'xmark'
   | 'lock.fill'
+  | 'lock.open.fill'
   | 'pencil'
   | 'mail'
   | 'message'
@@ -25,6 +26,17 @@ export type IconName =
   | 'ban'
   | 'slash'
   | 'menu'
+  | 'plus.circle.fill'
+  | 'magnifyingglass'
+  | 'checkmark.circle.fill'
+  | 'exclamationmark.triangle.fill'
+  | 'xmark.circle.fill'
+  | 'xmark.octagon.fill'
+  | 'leaf.fill'
+  | 'square'
+  | 'checkmark.square.fill'
+  | 'person.3.fill'
+  | 'clock.fill'
 
 interface AppIconProps {
   name: IconName
@@ -66,6 +78,7 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     else if (name === 'megaphone.fill' || name === 'megaphone') ionName = 'megaphone'
     else if (name === 'arrow.up.left.and.arrow.down.right') ionName = 'expand'
     else if (name === 'lock.fill') ionName = 'lock-closed'
+    else if (name === 'lock.open.fill') ionName = 'lock-open'
     else if (name === 'xmark') ionName = 'close'
     else if (name === 'pencil') ionName = 'pencil'
     else if (name === 'mail') ionName = 'mail'
@@ -78,6 +91,17 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     else if (name === 'chevron.down') ionName = 'chevron-down'
     else if (name === 'ban' || name === 'slash') ionName = 'ban'
     else if (name === 'menu') ionName = 'menu'
+    else if (name === 'plus.circle.fill') ionName = 'add-circle'
+    else if (name === 'magnifyingglass') ionName = 'search'
+    else if (name === 'checkmark.circle.fill') ionName = 'checkmark-circle'
+    else if (name === 'exclamationmark.triangle.fill') ionName = 'warning'
+    else if (name === 'xmark.circle.fill') ionName = 'close-circle'
+    else if (name === 'xmark.octagon.fill') ionName = 'alert-circle'
+    else if (name === 'leaf.fill') ionName = 'leaf'
+    else if (name === 'square') ionName = 'square-outline'
+    else if (name === 'checkmark.square.fill') ionName = 'checkbox'
+    else if (name === 'person.3.fill') ionName = 'people'
+    else if (name === 'clock.fill') ionName = 'time'
 
     return <Ionicons name={ionName} size={size} color={color} />
   } catch (e) {

@@ -22,6 +22,7 @@ import { CreateRoleModal } from './components/CreateRoleModal'
 import { AddFieldModal } from './components/AddFieldModal'
 import { SecretInviteModal } from './components/SecretInviteModal'
 import { DirectMessageModal } from './components/DirectMessageModal'
+import { CheckInScannerTab } from './components/CheckInScannerTab'
 import { AppIcon } from 'app/components/app-icon'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
@@ -156,7 +157,7 @@ export function AdminDashboardScreen() {
     })
   }
   // Primary Admin Tab State
-  const [adminTab, setAdminTab] = useState<'applications' | 'users' | 'roles' | 'forms'>(initialCache.adminTab || 'applications')
+  const [adminTab, setAdminTab] = useState<'applications' | 'users' | 'roles' | 'forms' | 'checkin'>(initialCache.adminTab || 'checkin')
 
   // Roles & Access Management State
   const [rolesList, setRolesList] = useState<any[]>([])
@@ -1308,11 +1309,10 @@ export function AdminDashboardScreen() {
               ]}
               fontSize={12}
             >
-              {isSmallScreen ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <AppIcon name="chevron.left" size={14} color="#ffffff" />
-              ) : (
-                "← Prev"
-              )}
+                {!isSmallScreen && <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>Prev</Text>}
+              </View>
             </PillButton>
 
             <Text style={styles.pageIndicatorText}>
@@ -1329,11 +1329,10 @@ export function AdminDashboardScreen() {
               ]}
               fontSize={12}
             >
-              {isSmallScreen ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                {!isSmallScreen && <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>Next</Text>}
                 <AppIcon name="chevron.right" size={14} color="#ffffff" />
-              ) : (
-                "Next →"
-              )}
+              </View>
             </PillButton>
           </View>
         </View>
@@ -1376,7 +1375,9 @@ export function AdminDashboardScreen() {
             }}
           />
 
-          {adminTab === 'roles' ? (
+          {adminTab === 'checkin' ? (
+            <CheckInScannerTab />
+          ) : adminTab === 'roles' ? (
             <RolesAccessTab
               rolesLoading={rolesLoading}
               rolesList={rolesList}

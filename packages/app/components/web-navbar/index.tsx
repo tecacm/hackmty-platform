@@ -340,6 +340,17 @@ export function WebNavbar() {
                 >
                   <Text style={styles.dropdownItemText}>My Profile</Text>
                 </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setIsOpen(false)
+                    navigateTo('/qr')
+                  }}
+                  style={styles.dropdownItem}
+                >
+                  <Text style={[styles.dropdownItemText, { color: '#c2b75f', fontWeight: '800' }]}>
+                    My Event Pass (QR)
+                  </Text>
+                </Pressable>
                 <View style={styles.divider} />
                 <Pressable onPress={handleSignOut} style={styles.dropdownItem}>
                   <Text style={[styles.dropdownItemText, { color: '#ff6b6b' }]}>Sign Out</Text>
@@ -418,6 +429,21 @@ export function WebNavbar() {
             ]}
           >
             <Text style={styles.mobileNavLinkText}>Profile</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              setMobileMenuOpen(false)
+              navigateTo('/qr')
+            }}
+            style={[
+              styles.mobileNavLink,
+              pathname === '/qr' && styles.mobileNavLinkActive,
+            ]}
+          >
+            <Text style={[styles.mobileNavLinkText, { color: '#c2b75f', fontWeight: '800' }]}>
+              My Event Pass (QR)
+            </Text>
           </Pressable>
 
           {hasPermission('applications', 'view_others') && (

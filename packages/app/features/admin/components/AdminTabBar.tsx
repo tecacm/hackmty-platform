@@ -2,11 +2,11 @@ import * as React from 'react'
 import { View, Text, Pressable } from 'react-native'
 
 interface AdminTabBarProps {
-  adminTab: 'applications' | 'users' | 'roles' | 'forms'
-  setAdminTab: (tab: 'applications' | 'users' | 'roles' | 'forms') => void
+  adminTab: 'applications' | 'users' | 'roles' | 'forms' | 'checkin'
+  setAdminTab: (tab: 'applications' | 'users' | 'roles' | 'forms' | 'checkin') => void
   appsCount: number
   usersCount: number | string
-  onTabChange?: (tab: 'applications' | 'users' | 'roles' | 'forms') => void
+  onTabChange?: (tab: 'applications' | 'users' | 'roles' | 'forms' | 'checkin') => void
 }
 
 export function AdminTabBar({
@@ -16,12 +16,13 @@ export function AdminTabBar({
   usersCount,
   onTabChange,
 }: AdminTabBarProps) {
-  const handleSelectTab = (tab: 'applications' | 'users' | 'roles' | 'forms') => {
+  const handleSelectTab = (tab: 'applications' | 'users' | 'roles' | 'forms' | 'checkin') => {
     setAdminTab(tab)
     if (onTabChange) onTabChange(tab)
   }
 
-  const tabs: Array<{ id: 'applications' | 'users' | 'roles' | 'forms'; label: string; badge?: string | number }> = [
+  const tabs: Array<{ id: 'applications' | 'users' | 'roles' | 'forms' | 'checkin'; label: string; badge?: string | number }> = [
+    { id: 'checkin', label: 'Check-In Scanner' },
     { id: 'applications', label: 'Submissions', badge: appsCount },
     { id: 'users', label: 'User Directory', badge: usersCount },
     { id: 'roles', label: 'Roles & Access' },

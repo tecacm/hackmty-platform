@@ -7,6 +7,7 @@ import {
   Maximize2,
   X,
   Lock,
+  Unlock,
   Pencil,
   Mail,
   MessageSquare,
@@ -19,6 +20,17 @@ import {
   Ban,
   Slash,
   Menu,
+  PlusCircle,
+  Search,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Octagon,
+  Leaf,
+  Square,
+  CheckSquare,
+  Users,
+  Clock,
 } from 'lucide-react'
 
 export type IconName =
@@ -32,6 +44,7 @@ export type IconName =
   | 'megaphone.fill'
   | 'xmark'
   | 'lock.fill'
+  | 'lock.open.fill'
   | 'pencil'
   | 'mail'
   | 'message'
@@ -45,6 +58,17 @@ export type IconName =
   | 'ban'
   | 'slash'
   | 'menu'
+  | 'plus.circle.fill'
+  | 'magnifyingglass'
+  | 'checkmark.circle.fill'
+  | 'exclamationmark.triangle.fill'
+  | 'xmark.circle.fill'
+  | 'xmark.octagon.fill'
+  | 'leaf.fill'
+  | 'square'
+  | 'checkmark.square.fill'
+  | 'person.3.fill'
+  | 'clock.fill'
 
 interface AppIconProps {
   name: IconName
@@ -56,25 +80,11 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
   const isFilled = name.endsWith('.fill')
 
   if (name.startsWith('heart')) {
-    return (
-      <Heart
-        size={size}
-        color={color}
-        fill={isFilled ? color : 'none'}
-        strokeWidth={2}
-      />
-    )
+    return <Heart size={size} color={color} fill={isFilled ? color : 'none'} strokeWidth={2} />
   }
 
   if (name.startsWith('camera')) {
-    return (
-      <Camera
-        size={size}
-        color={color}
-        fill={isFilled ? color : 'none'}
-        strokeWidth={2}
-      />
-    )
+    return <Camera size={size} color={color} fill={isFilled ? color : 'none'} strokeWidth={2} />
   }
 
   if (name === 'qrcode') {
@@ -82,29 +92,19 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
   }
 
   if (name.startsWith('megaphone')) {
-    return (
-      <Megaphone
-        size={size}
-        color={color}
-        fill={isFilled ? color : 'none'}
-        strokeWidth={2}
-      />
-    )
+    return <Megaphone size={size} color={color} fill={isFilled ? color : 'none'} strokeWidth={2} />
   }
 
   if (name === 'arrow.up.left.and.arrow.down.right') {
     return <Maximize2 size={size} color={color} strokeWidth={2.5} />
   }
 
+  if (name === 'lock.open.fill') {
+    return <Unlock size={size} color={color} strokeWidth={2} />
+  }
+
   if (name.startsWith('lock')) {
-    return (
-      <Lock
-        size={size}
-        color={color}
-        fill={isFilled ? color : 'none'}
-        strokeWidth={2}
-      />
-    )
+    return <Lock size={size} color={color} fill={isFilled ? color : 'none'} strokeWidth={2} />
   }
 
   if (name === 'pencil') {
@@ -116,14 +116,7 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
   }
 
   if (name.startsWith('message')) {
-    return (
-      <MessageSquare
-        size={size}
-        color={color}
-        fill={isFilled ? color : 'none'}
-        strokeWidth={2}
-      />
-    )
+    return <MessageSquare size={size} color={color} fill={isFilled ? color : 'none'} strokeWidth={2} />
   }
 
   if (name === 'smartphone') {
@@ -160,6 +153,50 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
 
   if (name === 'menu') {
     return <Menu size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'plus.circle.fill') {
+    return <PlusCircle size={size} color={color} fill={color} strokeWidth={2} />
+  }
+
+  if (name === 'magnifyingglass') {
+    return <Search size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'checkmark.circle.fill') {
+    return <CheckCircle size={size} color={color} fill={color} strokeWidth={2} />
+  }
+
+  if (name === 'exclamationmark.triangle.fill') {
+    return <AlertTriangle size={size} color={color} fill={color} strokeWidth={2} />
+  }
+
+  if (name === 'xmark.circle.fill') {
+    return <XCircle size={size} color={color} fill={color} strokeWidth={2} />
+  }
+
+  if (name === 'xmark.octagon.fill') {
+    return <Octagon size={size} color={color} fill={color} strokeWidth={2} />
+  }
+
+  if (name === 'leaf.fill') {
+    return <Leaf size={size} color={color} fill={color} strokeWidth={2} />
+  }
+
+  if (name === 'square') {
+    return <Square size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'checkmark.square.fill') {
+    return <CheckSquare size={size} color={color} fill={color} strokeWidth={2} />
+  }
+
+  if (name === 'person.3.fill') {
+    return <Users size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'clock.fill') {
+    return <Clock size={size} color={color} strokeWidth={2} />
   }
 
   return <X size={size} color={color} strokeWidth={2.5} />
