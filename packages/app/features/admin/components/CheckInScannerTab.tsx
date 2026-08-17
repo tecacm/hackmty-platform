@@ -821,17 +821,17 @@ export function CheckInScannerTab() {
           {/* Search & Category Filter Section */}
           <View style={styles.filterSection}>
             <View style={styles.searchBarRow}>
-              <AppIcon name="magnifyingglass" size={18} color="rgba(255, 255, 255, 0.5)" />
+              <AppIcon name="magnifyingglass" size={16} color="#64748b" />
               <TextInput
                 value={stationSearchQuery}
                 onChangeText={setStationSearchQuery}
                 placeholder="Search stations by name, location, or category..."
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                placeholderTextColor="#94a3b8"
                 style={styles.stationSearchInput}
               />
               {!!stationSearchQuery && (
                 <Pressable onPress={() => setStationSearchQuery('')} style={{ padding: 4 }}>
-                  <AppIcon name="xmark" size={16} color="rgba(255, 255, 255, 0.5)" />
+                  <AppIcon name="xmark" size={16} color="#64748b" />
                 </Pressable>
               )}
             </View>
@@ -1797,6 +1797,11 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      } as any,
+    }),
   },
   historyEmptyBox: {
     padding: 32,
@@ -2017,15 +2022,22 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: '#f8fafc',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    height: 46,
     borderWidth: 1,
     borderColor: '#cbd5e1',
   },
   stationSearchInput: {
     flex: 1,
+    height: '100%',
     color: '#0f172a',
     fontSize: 14,
+    padding: 0,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      } as any,
+    }),
   },
   filterChip: {
     paddingHorizontal: 12,

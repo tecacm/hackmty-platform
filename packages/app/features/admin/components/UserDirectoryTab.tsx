@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Platform } from 'react-native'
 import { PillButton } from '../../../components/pill-button'
+import { AppIcon } from '../../../components/app-icon'
 import { AdminPaginationBar } from './AdminPaginationBar'
 
 interface UserDirectoryTabProps {
@@ -47,13 +48,21 @@ export function UserDirectoryTab({
       {/* User Search & Filter Toolbar */}
       <View style={styles.toolbarCard}>
         <View style={styles.searchRow}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search users by name, email, university, or ID..."
-            placeholderTextColor="rgba(34, 0, 44, 0.4)"
-            value={userSearchQuery}
-            onChangeText={setUserSearchQuery}
-          />
+          <View style={styles.searchCol}>
+            <AppIcon name="magnifyingglass" size={16} color="#64748b" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search users by name, email, university, or ID..."
+              placeholderTextColor="#94a3b8"
+              value={userSearchQuery}
+              onChangeText={setUserSearchQuery}
+            />
+            {!!userSearchQuery && (
+              <Pressable onPress={() => setUserSearchQuery('')} style={{ padding: 4 }}>
+                <AppIcon name="xmark" size={14} color="#64748b" />
+              </Pressable>
+            )}
+          </View>
 
           <View style={styles.dropdownContainer}>
             <Pressable
@@ -242,17 +251,30 @@ const styles = StyleSheet.create({
     gap: 10,
     alignItems: 'center',
   },
-  searchInput: {
+  searchCol: {
     flex: 2,
     minWidth: 240,
     height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: '#f8fafc',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
     color: '#0f172a',
     fontSize: 14,
+    padding: 0,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      } as any,
+    }),
   },
   dropdownContainer: {
     minWidth: 140,

@@ -967,10 +967,11 @@ export function AdminDashboardScreen() {
   }
 
   useEffect(() => {
-    if (hasViewOthersPermission && adminTab === 'applications' && apps.length === 0) {
+    if (hasViewOthersPermission) {
       fetchApplications()
+      fetchUsersDirectory()
     }
-  }, [hasViewOthersPermission, adminTab, apps.length])
+  }, [hasViewOthersPermission])
 
   const dynamicTypeOptions = useMemo(() => {
     const optionsMap = new Map<string, string>()
@@ -992,11 +993,17 @@ export function AdminDashboardScreen() {
       const email = (user.email || '').toLowerCase()
       const id = (user.id || '').toLowerCase()
       const university = (user.university || '').toLowerCase()
+      const major = (user.major || '').toLowerCase()
+      const teamName = (user.team?.name || user.teamName || user.teams?.name || '').toLowerCase()
+      const q = userSearchQuery.toLowerCase().trim()
       const matchesSearch = 
-        fullName.includes(userSearchQuery.toLowerCase()) ||
-        email.includes(userSearchQuery.toLowerCase()) ||
-        id.includes(userSearchQuery.toLowerCase()) ||
-        university.includes(userSearchQuery.toLowerCase())
+        !q ||
+        fullName.includes(q) ||
+        email.includes(q) ||
+        id.includes(q) ||
+        university.includes(q) ||
+        major.includes(q) ||
+        teamName.includes(q)
       const matchesRole = userRoleFilter === 'all' || user.roles.includes(userRoleFilter)
       return matchesSearch && matchesRole
     })
@@ -1064,19 +1071,35 @@ export function AdminDashboardScreen() {
       const email = app.answers?.email || ''
       const university = app.answers?.university || ''
       const city = app.answers?.city || ''
+      const teamName = app.profiles?.teams?.name || app.answers?.teamName || ''
+      const q = searchQuery.toLowerCase().trim()
       const matchesSearch = 
-        fullName.includes(searchQuery.toLowerCase()) ||
-        email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        university.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        city.toLowerCase().includes(searchQuery.toLowerCase())
+        !q ||
+        fullName.includes(q) ||
+        email.toLowerCase().includes(q) ||
+        university.toLowerCase().includes(q) ||
+        city.toLowerCase().includes(q) ||
+        teamName.toLowerCase().includes(q)
+
       const matchesType = selectedType === 'all' || app.application_type_id === selectedType
       const matchesCountry = selectedCountries.length === 0 || selectedCountries.includes(app.answers?.country)
-      const matchesStatus = selectedStatus === 'all' || app.status === selectedStatus
+      
+      const isConfirmed = app.status === 'confirmed' || Boolean(app.confirmed_at)
+      const matchesStatus =
+        selectedStatus === 'all'
+          ? true
+          : selectedStatus === 'confirmed'
+          ? isConfirmed
+          : selectedStatus === 'accepted'
+          ? app.status === 'accepted' && !app.confirmed_at
+          : app.status === selectedStatus
+
       const checkTagMatch = (tag: string) => {
         const queryStr = tag.toLowerCase().trim()
         const country = String(app.answers?.country || '').toLowerCase()
         const major = String(app.answers?.major || '').toLowerCase()
-        const fullContentStr = `${fullName} ${email} ${university} ${city} ${country} ${major} ${JSON.stringify(app.answers || {})}`.toLowerCase()
+        const teamNameStr = String(teamName).toLowerCase()
+        const fullContentStr = `${fullName} ${email} ${university} ${city} ${country} ${major} ${teamNameStr} ${JSON.stringify(app.answers || {})}`.toLowerCase()
         if (queryStr.includes(':')) {
           const parts = queryStr.split(':')
           const prefix = (parts[0] || '').trim()
@@ -1089,6 +1112,8 @@ export function AdminDashboardScreen() {
             return country.includes(val)
           } else if (prefix === 'major') {
             return major.includes(val)
+          } else if (prefix === 'team') {
+            return teamNameStr.includes(val)
           } else if (prefix === 'status') {
             return String(app.status || '').toLowerCase().includes(val)
           } else if (prefix === 'role' || prefix === 'type') {
@@ -1214,7 +1239,7 @@ export function AdminDashboardScreen() {
             adminTab={adminTab}
             setAdminTab={setAdminTab}
             appsCount={apps.length}
-            usersCount={usersList.length ? usersList.length : '...'}
+            usersCount={usersList.length}
             onTabChange={(tab) => {
               if (tab === 'applications') fetchApplications()
               if (tab === 'users') fetchUsersDirectory()

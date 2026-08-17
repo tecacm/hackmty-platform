@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
+  Platform,
 } from 'react-native'
 import { PillButton } from '../../../components/pill-button'
 import { AppIcon } from '../../../components/app-icon'
@@ -154,13 +155,19 @@ export function SubmissionsTab({
       <View style={styles.toolbarCard}>
         <View style={styles.searchRow}>
           <View style={styles.searchCol}>
+            <AppIcon name="magnifyingglass" size={16} color="#64748b" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search candidate, email, university..."
+              placeholder="Search candidate, email, university, team..."
               placeholderTextColor="#94a3b8"
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
+            {!!searchQuery && (
+              <Pressable onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                <AppIcon name="xmark" size={14} color="#64748b" />
+              </Pressable>
+            )}
           </View>
 
           <View style={styles.dropdownContainer}>
@@ -463,17 +470,26 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 240,
     height: 44,
-  },
-  searchInput: {
-    height: 44,
-    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: '#f8fafc',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
     color: '#0f172a',
     fontSize: 14,
+    padding: 0,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      } as any,
+    }),
   },
   dropdownContainer: {
     height: 44,
