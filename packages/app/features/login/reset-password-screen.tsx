@@ -121,6 +121,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Montserrat',
   },
+  initializingText: {
+    color: '#f0d9b0',
+    fontSize: 13.5,
+    fontWeight: '600',
+    marginTop: 10,
+    fontFamily: 'Montserrat',
+  },
   fieldGroup: {
     width: '100%',
     gap: 6,
@@ -140,11 +147,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Montserrat',
   },
-  initializingText: {
-    color: '#e9e3f0',
-    marginTop: 12,
-    fontFamily: 'Montserrat',
-  },
 })
 
 export function ResetPasswordScreen() {
@@ -152,9 +154,9 @@ export function ResetPasswordScreen() {
   const insets = useSafeArea();
   const headerHeight = useHeaderHeightSafe();
   const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
-  const [isInitializing, setIsInitializing] = useState(true);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const images = [rectoria, pavoreal, ciap, photo2024, skyview];
 
@@ -179,7 +181,7 @@ export function ResetPasswordScreen() {
   }, [headerHeight, stableHeaderHeight]);
 
   useEffect(() => {
-    const initializeRecoverySession = async () => {
+    async function initializeRecoverySession() {
       if (Platform.OS !== 'web' || typeof window === 'undefined') {
         setIsInitializing(false)
         return
@@ -187,16 +189,16 @@ export function ResetPasswordScreen() {
 
       try {
         if (!isSupabaseConfigured) {
-          setIsInitializing(false)
+          setErrorMessage('Supabase is not configured.')
           return
         }
 
-        const url = new URL(window.location.href)
-        const code = url.searchParams.get('code')
+        const urlParams = new URLSearchParams(window.location.search)
+        const code = urlParams.get('code')
         const hash = window.location.hash
         let hasSession = false
 
-        // 1. If code exists, exchange code for session (PKCE Flow)
+        // 1. If auth code exists (PKCE Flow), exchange code for session
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) throw error
@@ -292,9 +294,8 @@ export function ResetPasswordScreen() {
     }
   }
 
-  return (
-    <View style={{ flex: 1, position: 'relative', width: '100%' }}>
-      {/* Root-level fixed carousel & dark overlay */}
+  const background = (
+    <>
       <Carrousel slideImages={images} mode="crossfade" />
       <LinearGradient
         colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
@@ -309,128 +310,130 @@ export function ResetPasswordScreen() {
           height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
         }}
       />
+    </>
+  );
 
-      <ParallaxScrollView
-        background={null}
-        style={{ backgroundColor: 'transparent' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingTop: topOffset,
-          paddingBottom: insets.bottom,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
-        <View style={styles.glassCard}>
-          <View style={styles.glassCardGlow} pointerEvents="none" />
-          <View style={styles.glassCardRing} pointerEvents="none" />
-          <View style={{ width: 98, height: 140, flexShrink: 0 }}>
-            {(() => {
-              const ImageComponent = SolitoImage as any
-              return (
-                <ImageComponent
-                  src={logoImage}
-                  height={140}
-                  width={98}
-                  alt="The HackMTY Logo"
-                  contentFit="contain"
-                  resizeMode="contain"
-                />
-              )
-            })()}
-          </View>
-          <View style={styles.wordmarkBlock}>
-            <View style={styles.wordmarkRow}>
-              <Text style={styles.wordmarkHack}>Hack</Text>
-              <Text style={styles.wordmarkMty}>MTY</Text>
-            </View>
-            <LinearGradient
-              colors={['transparent', '#f0d9b0', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.divider}
-            />
-          </View>
-
-          {isInitializing ? (
-            <View style={{ marginVertical: 16, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#f0d9b0" />
-              <Text style={styles.initializingText}>Establishing secure reset session...</Text>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.subtitle}>Enter and confirm your new account password.</Text>
-              <Controller
-                control={control}
-                name="password"
-                rules={{
-                  required: 'Password is required',
-                  minLength: {
-                    value: 6,
-                    message: 'Password must be at least 6 characters long',
-                  },
-                }}
-                render={({ field: { onChange, value } }) => (
-                  <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
-                    <StyledInput
-                      variant="glass"
-                      label="New Password"
-                      placeholder="Enter new password"
-                      textContentType="password"
-                      onChangeText={onChange}
-                      value={value}
-                      error={errors.password?.message}
-                      onSubmitEditing={handleSubmit(onSubmit)}
-                    />
-                  </View>
-                )}
+  return (
+    <ParallaxScrollView
+      background={background}
+      style={{ backgroundColor: Platform.select({ web: 'oklch(0.16 0.01 280)', default: '#211f26' }) }}
+      contentContainerStyle={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: topOffset,
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+        overflow: 'visible',
+      }}
+    >
+      <View style={styles.glassCard}>
+        <View style={styles.glassCardGlow} pointerEvents="none" />
+        <View style={styles.glassCardRing} pointerEvents="none" />
+        <View style={{ width: 98, height: 140, flexShrink: 0 }}>
+          {(() => {
+            const ImageComponent = SolitoImage as any
+            return (
+              <ImageComponent
+                src={logoImage}
+                height={140}
+                width={98}
+                alt="The HackMTY Logo"
+                contentFit="contain"
+                resizeMode="contain"
               />
-
-              <Controller
-                control={control}
-                name="confirmPassword"
-                rules={{
-                  required: 'Please confirm your password',
-                  validate: (value) => value === passwordVal || 'Passwords do not match',
-                }}
-                render={({ field: { onChange, value } }) => (
-                  <View style={styles.fieldGroup}>
-                    <StyledInput
-                      variant="glass"
-                      label="Confirm New Password"
-                      placeholder="Confirm new password"
-                      textContentType="password"
-                      onChangeText={onChange}
-                      value={value}
-                      error={errors.confirmPassword?.message}
-                      onSubmitEditing={handleSubmit(onSubmit)}
-                    />
-                  </View>
-                )}
-              />
-
-              {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
-              {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
-
-              <PillButton
-                variant="gradient"
-                title={isSubmitting ? 'Saving...' : 'Save New Password'}
-                onPress={handleSubmit(onSubmit)}
-                additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
-              />
-
-              <SimpleTextLink
-                text="Back to "
-                accentText="Login"
-                onPress={goToLogin}
-                textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
-              />
-            </>
-          )}
+            )
+          })()}
         </View>
-      </ParallaxScrollView>
-    </View>
+        <View style={styles.wordmarkBlock}>
+          <View style={styles.wordmarkRow}>
+            <Text style={styles.wordmarkHack}>Hack</Text>
+            <Text style={styles.wordmarkMty}>MTY</Text>
+          </View>
+          <LinearGradient
+            colors={['transparent', '#f0d9b0', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.divider}
+          />
+        </View>
+
+        {isInitializing ? (
+          <View style={{ marginVertical: 16, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#f0d9b0" />
+            <Text style={styles.initializingText}>Establishing secure reset session...</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.subtitle}>Enter and confirm your new account password.</Text>
+            <Controller
+              control={control}
+              name="password"
+              rules={{
+                required: 'Password is required',
+                minLength: {
+                  value: 6,
+                  message: 'Password must be at least 6 characters long',
+                },
+              }}
+              render={({ field: { onChange, value } }) => (
+                <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
+                  <StyledInput
+                    variant="glass"
+                    label="New Password"
+                    placeholder="Enter new password"
+                    textContentType="password"
+                    onChangeText={onChange}
+                    value={value}
+                    error={errors.password?.message}
+                    onSubmitEditing={handleSubmit(onSubmit)}
+                  />
+                </View>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="confirmPassword"
+              rules={{
+                required: 'Please confirm your password',
+                validate: (value) => value === passwordVal || 'Passwords do not match',
+              }}
+              render={({ field: { onChange, value } }) => (
+                <View style={styles.fieldGroup}>
+                  <StyledInput
+                    variant="glass"
+                    label="Confirm New Password"
+                    placeholder="Confirm new password"
+                    textContentType="password"
+                    onChangeText={onChange}
+                    value={value}
+                    error={errors.confirmPassword?.message}
+                    onSubmitEditing={handleSubmit(onSubmit)}
+                  />
+                </View>
+              )}
+            />
+
+            {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
+            {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
+
+            <PillButton
+              variant="gradient"
+              title={isSubmitting ? 'Saving...' : 'Save New Password'}
+              onPress={handleSubmit(onSubmit)}
+              additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
+            />
+
+            <SimpleTextLink
+              text="Back to "
+              accentText="Login"
+              onPress={goToLogin}
+              textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+            />
+          </>
+        )}
+      </View>
+    </ParallaxScrollView>
   )
 }

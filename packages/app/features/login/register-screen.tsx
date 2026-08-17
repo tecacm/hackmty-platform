@@ -25,6 +25,8 @@ import { useForm, Controller } from "react-hook-form"
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { ConfettiOverlay } from 'app/components/confetti-overlay'
 
+import { sanitizeEmail, sanitizeName } from 'app/utils/sanitization'
+
 const styles = StyleSheet.create({
   glassCard: {
     position: 'relative',
@@ -130,8 +132,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
   },
 })
-
-import { sanitizeEmail, sanitizeName } from 'app/utils/sanitization'
 
 type RegisterFormValues = {
   firstName: string
@@ -247,9 +247,8 @@ export function RegisterScreen() {
 
   const goToLogin = () => navigateTo('/login')
 
-  return (
-    <View style={{ flex: 1, position: 'relative', width: '100%' }}>
-      {/* Root-level fixed carousel & dark overlay - unclipped by sub-container stacking contexts */}
+  const background = (
+    <>
       <Carrousel slideImages={images} mode="crossfade" />
       <LinearGradient
         colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
@@ -264,13 +263,16 @@ export function RegisterScreen() {
           height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
         }}
       />
+    </>
+  );
 
-      <ParallaxScrollView
-        background={null}
-        style={{ backgroundColor: 'transparent' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          justifyContent: 'center',
+  return (
+    <ParallaxScrollView
+      background={background}
+      style={{ backgroundColor: Platform.select({ web: 'oklch(0.16 0.01 280)', default: '#211f26' }) }}
+      contentContainerStyle={{
+        alignItems: 'center',
+        justifyContent: 'center',
         paddingTop: topOffset,
         paddingBottom: insets.bottom,
         paddingLeft: insets.left,
@@ -278,193 +280,186 @@ export function RegisterScreen() {
         overflow: 'visible',
       }}
     >
-        <View style={styles.glassCard}>
-          <View style={styles.glassCardGlow} pointerEvents="none" />
-          <View style={styles.glassCardRing} pointerEvents="none" />
-          <View style={{ width: 98, height: 140, flexShrink: 0 }}>
-            {(() => {
-              const ImageComponent = SolitoImage as any
-              return (
-                <ImageComponent
-                  src={logoImage}
-                  height={140}
-                  width={98}
-                  alt="The HackMTY Logo"
-                  contentFit="contain"
-                  resizeMode="contain"
-                />
-              )
-            })()}
-          </View>
-          <View style={styles.wordmarkBlock}>
-            <View style={styles.wordmarkRow}>
-              <Text style={styles.wordmarkHack}>Hack</Text>
-              <Text style={styles.wordmarkMty}>MTY</Text>
-            </View>
-            <LinearGradient
-              colors={['transparent', '#f0d9b0', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.divider}
-            />
-          </View>
-          <View style={{ width: '100%', gap: 13, marginTop: 4 }}>
-            <View style={nameRowStyle}>
-              <View style={nameFieldStyle}>
-                <Controller
-                  control={control}
-                  name="firstName"
-                  rules={{ required: 'First name is required' }}
-                  render={({ field: { onChange, value } }) => (
-                    <StyledInput variant="glass" label="First Name" placeholder="Enter your first name" textContentType={"name"} onChangeText={onChange} value={value} error={errors.firstName?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
-                  )}
-                />
-              </View>
-              <View style={nameFieldStyle}>
-                <Controller
-                  control={control}
-                  name="lastName"
-                  rules={{ required: 'Last name is required' }}
-                  render={({ field: { onChange, value } }) => (
-                    <StyledInput variant="glass" label="Last Name" placeholder="Enter your last name" textContentType={"familyName"} onChangeText={onChange} value={value} error={errors.lastName?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
-                  )}
-                />
-              </View>
-            </View>
-            <Controller
-              control={control}
-              name="email"
-              rules={{ required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' } }}
-              render={({ field: { onChange, value } }) => (
-                  <StyledInput variant="glass" label="Email Address" placeholder="Enter your email" textContentType={"emailAddress"} keyboardType="email-address" onChangeText={onChange} value={value} error={errors.email?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
-              )}
-            />
-            <Controller
-              control={control}
-              name="password"
-              rules={{ required: 'Password is required' }}
-              render={({ field: { onChange, value } }) => (
-                  <StyledInput variant="glass" label="Password" placeholder="Enter your password" textContentType={"password"} onChangeText={onChange} value={value} error={errors.password?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
-              )}
-            />
-            <Controller
-              control={control}
-              name="confirmPassword"
-              rules={{
-                required: 'Please confirm your password' ,
-                validate: (value) => value === password || 'The passwords do not match'
-              }}
-              render={({ field: { onChange, value } }) => (
-                  <StyledInput variant="glass" label="Confirm Password" placeholder="Confirm your password" textContentType={"password"} onChangeText={onChange} value={value} error={errors.confirmPassword?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
-              )}
-            />
-            <Controller
-              control={control}
-              name="agreeMLH"
-              rules={{ required: 'You must agree to the MLH Code of Conduct' }}
-              render={({ field: { onChange, value } }) => (
-                <FormCheckbox
-                  variant="glass"
-                  value={value}
-                  onValueChange={onChange}
-                  label={
-                    <Text style={styles.mlhLabel}>
-                      I agree to the{' '}
-                      <TextLink href="https://mlh.io/code-of-conduct" style={{ color: '#f0d9b0', textDecorationLine: 'underline' }}>
-                        MLH Code of Conduct
-                      </TextLink>
-                    </Text>
-                  }
-                  error={errors.agreeMLH?.message}
-                />
-              )}
-            />
-            <Controller
-              control={control}
-              name="subscribeMailingList"
-              render={({ field: { onChange, value } }) => (
-                <FormCheckbox
-                  variant="glass"
-                  value={value}
-                  onValueChange={onChange}
-                  label="Subscribe to our mailing list to receive information about our next event"
-                />
-              )}
-            />
-            {authError ? <Text style={styles.authError}>{authError}</Text> : null}
-            <PillButton
-              variant="gradient"
-              title={isSubmitting ? 'Registering...' : 'Register'}
-              isLoading={isSubmitting}
-              onPress={isSubmitting ? undefined : handleSubmit(onSubmit)}
-              additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
-            />
-            <SimpleTextLink
-              text="Already have an account? "
-              accentText="Login"
-              onPress={goToLogin}
-              textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
-            />
-          </View>
+      <View style={styles.glassCard}>
+        <View style={styles.glassCardGlow} pointerEvents="none" />
+        <View style={styles.glassCardRing} pointerEvents="none" />
+        <View style={{ width: 98, height: 140, flexShrink: 0 }}>
+          {(() => {
+            const ImageComponent = SolitoImage as any
+            return (
+              <ImageComponent
+                src={logoImage}
+                height={140}
+                width={98}
+                alt="The HackMTY Logo"
+                contentFit="contain"
+                resizeMode="contain"
+              />
+            )
+          })()}
         </View>
-
-        <ConfettiOverlay active={showConfetti} onComplete={() => setShowConfetti(false)} />
-
-        {/* Modal: Registration Confirmation Success Modal */}
-        {showSuccessModal && (
-          <Modal
-            transparent
-            animationType="fade"
-            visible={showSuccessModal}
-            onRequestClose={() => {
-              setShowSuccessModal(false)
-              navigateTo('/login')
-            }}
-          >
-            <View style={{
-              flex: 1,
-              backgroundColor: 'rgba(0, 0, 0, 0.65)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: 20,
-            }}>
-              <View style={{
-                width: '100%',
-                maxWidth: 420,
-                backgroundColor: '#1e1b2e',
-                borderRadius: 24,
-                padding: 24,
-                alignItems: 'center',
-                gap: 14,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.15)',
-                ...Platform.select({
-                  web: {
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                  } as any,
-                }),
-              }}>
-                <Text style={{ fontSize: 42 }}>🎉</Text>
-                <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.3, fontFamily: 'Montserrat' }}>
-                  Account Created!
-                </Text>
-                <Text style={{ fontSize: 14, color: '#e2e8f0', textAlign: 'center', lineHeight: 22, fontFamily: 'Montserrat' }}>
-                  We sent a confirmation link to your email. Please check your inbox and confirm your email address before logging in.
-                </Text>
-                <PillButton
-                  title="OK, Go to Login"
-                  variant="gradient"
-                  onPress={() => {
-                    setShowSuccessModal(false)
-                    navigateTo('/login')
-                  }}
-                  additionalStyle={{ width: '100%', height: 46, marginTop: 8 }}
-                />
-              </View>
+        <View style={styles.wordmarkBlock}>
+          <View style={styles.wordmarkRow}>
+            <Text style={styles.wordmarkHack}>Hack</Text>
+            <Text style={styles.wordmarkMty}>MTY</Text>
+          </View>
+          <LinearGradient
+            colors={['transparent', '#f0d9b0', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.divider}
+          />
+        </View>
+        <View style={{ width: '100%', gap: 13, marginTop: 4 }}>
+          <View style={nameRowStyle}>
+            <View style={nameFieldStyle}>
+              <Controller
+                control={control}
+                name="firstName"
+                rules={{ required: 'First name is required' }}
+                render={({ field: { onChange, value } }) => (
+                  <StyledInput variant="glass" label="First Name" placeholder="Enter your first name" textContentType={"name"} onChangeText={onChange} value={value} error={errors.firstName?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
+                )}
+              />
             </View>
-          </Modal>
-        )}
-      </ParallaxScrollView>
-    </View>
+            <View style={nameFieldStyle}>
+              <Controller
+                control={control}
+                name="lastName"
+                rules={{ required: 'Last name is required' }}
+                render={({ field: { onChange, value } }) => (
+                  <StyledInput variant="glass" label="Last Name" placeholder="Enter your last name" textContentType={"familyName"} onChangeText={onChange} value={value} error={errors.lastName?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
+                )}
+              />
+            </View>
+          </View>
+          <Controller
+            control={control}
+            name="email"
+            rules={{ required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' } }}
+            render={({ field: { onChange, value } }) => (
+                <StyledInput variant="glass" label="Email Address" placeholder="Enter your email" textContentType={"emailAddress"} keyboardType="email-address" onChangeText={onChange} value={value} error={errors.email?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
+            )}
+          />
+          <Controller
+            control={control}
+            name="password"
+            rules={{ required: 'Password is required' }}
+            render={({ field: { onChange, value } }) => (
+                <StyledInput variant="glass" label="Password" placeholder="Enter your password" textContentType={"password"} onChangeText={onChange} value={value} error={errors.password?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
+            )}
+          />
+          <Controller
+            control={control}
+            name="confirmPassword"
+            rules={{
+              required: 'Please confirm your password' ,
+              validate: (value) => value === password || 'The passwords do not match'
+            }}
+            render={({ field: { onChange, value } }) => (
+                <StyledInput variant="glass" label="Confirm Password" placeholder="Confirm your password" textContentType={"password"} onChangeText={onChange} value={value} error={errors.confirmPassword?.message} onSubmitEditing={handleSubmit(onSubmit)}/>
+            )}
+          />
+          <Controller
+            control={control}
+            name="agreeMLH"
+            rules={{ required: 'You must agree to the MLH Code of Conduct' }}
+            render={({ field: { onChange, value } }) => (
+              <FormCheckbox
+                variant="glass"
+                value={value}
+                onValueChange={onChange}
+                label={
+                  <Text style={styles.mlhLabel}>
+                    I agree to the{' '}
+                    <TextLink href="https://mlh.io/code-of-conduct" style={{ color: '#f0d9b0', textDecorationLine: 'underline' }}>
+                      MLH Code of Conduct
+                    </TextLink>
+                  </Text>
+                }
+                error={errors.agreeMLH?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="subscribeMailingList"
+            render={({ field: { onChange, value } }) => (
+              <FormCheckbox
+                variant="glass"
+                value={value}
+                onValueChange={onChange}
+                label="Subscribe to our mailing list to receive information about our next event"
+              />
+            )}
+          />
+          {authError ? <Text style={styles.authError}>{authError}</Text> : null}
+          <PillButton
+            variant="gradient"
+            title={isSubmitting ? 'Registering...' : 'Register'}
+            isLoading={isSubmitting}
+            onPress={isSubmitting ? undefined : handleSubmit(onSubmit)}
+            additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
+          />
+          <SimpleTextLink
+            text="Already have an account? "
+            accentText="Login"
+            onPress={goToLogin}
+            textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+          />
+        </View>
+      </View>
+
+      <ConfettiOverlay active={showConfetti} onComplete={() => setShowConfetti(false)} />
+
+      {/* Modal: Registration Confirmation Success Modal */}
+      {showSuccessModal && (
+        <Modal
+          visible={showSuccessModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setShowSuccessModal(false)
+            navigateTo('/login')
+          }}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <View style={{
+              backgroundColor: '#1b0026',
+              borderRadius: 28,
+              borderWidth: 1.5,
+              borderColor: 'rgba(194, 183, 95, 0.45)',
+              padding: 30,
+              width: '100%',
+              maxWidth: 440,
+              alignItems: 'center',
+              gap: 16,
+              ...Platform.select({
+                web: {
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(90,0,97,0.3)',
+                } as any,
+              }),
+            }}>
+              <Text style={{ fontSize: 42 }}>🎉</Text>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.3, fontFamily: 'Montserrat' }}>
+                Account Created!
+              </Text>
+              <Text style={{ fontSize: 14, color: '#e2e8f0', textAlign: 'center', lineHeight: 22, fontFamily: 'Montserrat' }}>
+                We sent a confirmation link to your email. Please check your inbox and confirm your email address before logging in.
+              </Text>
+              <PillButton
+                title="OK, Go to Login"
+                variant="gradient"
+                onPress={() => {
+                  setShowSuccessModal(false)
+                  navigateTo('/login')
+                }}
+                additionalStyle={{ width: '100%', height: 46, marginTop: 8 }}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
+    </ParallaxScrollView>
   )
 }

@@ -209,9 +209,8 @@ export function ForgotPasswordScreen() {
     }
   }
 
-  return (
-    <View style={{ flex: 1, position: 'relative', width: '100%' }}>
-      {/* Root-level fixed carousel & dark overlay */}
+  const background = (
+    <>
       <Carrousel slideImages={images} mode="crossfade" />
       <LinearGradient
         colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
@@ -226,96 +225,98 @@ export function ForgotPasswordScreen() {
           height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
         }}
       />
+    </>
+  );
 
-      <ParallaxScrollView
-        background={null}
-        style={{ backgroundColor: 'transparent' }}
-        contentContainerStyle={{
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingTop: topOffset,
-          paddingBottom: insets.bottom,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          overflow: 'visible',
-        }}
-      >
-        <View style={styles.glassCard}>
-          <View style={styles.glassCardGlow} pointerEvents="none" />
-          <View style={styles.glassCardRing} pointerEvents="none" />
-          <View style={{ width: 98, height: 140, flexShrink: 0 }}>
-            {(() => {
-              const ImageComponent = SolitoImage as any
-              return (
-                <ImageComponent
-                  src={logoImage}
-                  height={140}
-                  width={98}
-                  alt="The HackMTY Logo"
-                  contentFit="contain"
-                  resizeMode="contain"
-                />
-              )
-            })()}
+  return (
+    <ParallaxScrollView
+      background={background}
+      style={{ backgroundColor: Platform.select({ web: 'oklch(0.16 0.01 280)', default: '#211f26' }) }}
+      contentContainerStyle={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: topOffset,
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+        overflow: 'visible',
+      }}
+    >
+      <View style={styles.glassCard}>
+        <View style={styles.glassCardGlow} pointerEvents="none" />
+        <View style={styles.glassCardRing} pointerEvents="none" />
+        <View style={{ width: 98, height: 140, flexShrink: 0 }}>
+          {(() => {
+            const ImageComponent = SolitoImage as any
+            return (
+              <ImageComponent
+                src={logoImage}
+                height={140}
+                width={98}
+                alt="The HackMTY Logo"
+                contentFit="contain"
+                resizeMode="contain"
+              />
+            )
+          })()}
+        </View>
+        <View style={styles.wordmarkBlock}>
+          <View style={styles.wordmarkRow}>
+            <Text style={styles.wordmarkHack}>Hack</Text>
+            <Text style={styles.wordmarkMty}>MTY</Text>
           </View>
-          <View style={styles.wordmarkBlock}>
-            <View style={styles.wordmarkRow}>
-              <Text style={styles.wordmarkHack}>Hack</Text>
-              <Text style={styles.wordmarkMty}>MTY</Text>
-            </View>
-            <LinearGradient
-              colors={['transparent', '#f0d9b0', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.divider}
-            />
-          </View>
-          <Text style={styles.subtitle}>Enter your email address to receive a link to reset your password.</Text>
-          <Controller
-            control={control}
-            name="email"
-            rules={{
-              required: 'Email is required',
-              pattern: {
-                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                message: 'Invalid email',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
-                <StyledInput
-                  variant="glass"
-                  label="Email Address"
-                  placeholder="Enter your email"
-                  textContentType="emailAddress"
-                  keyboardType="email-address"
-                  onChangeText={onChange}
-                  value={value}
-                  error={errors.email?.message}
-                  onSubmitEditing={handleSubmit(onSubmit)}
-                />
-              </View>
-            )}
-          />
-
-          {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
-          {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
-
-          <PillButton
-            variant="gradient"
-            title={isSubmitting ? 'Sending link...' : 'Send Recovery Link'}
-            onPress={handleSubmit(onSubmit)}
-            additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
-          />
-
-          <SimpleTextLink
-            text="Back to "
-            accentText="Login"
-            onPress={goToLogin}
-            textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+          <LinearGradient
+            colors={['transparent', '#f0d9b0', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.divider}
           />
         </View>
-      </ParallaxScrollView>
-    </View>
+        <Text style={styles.subtitle}>Enter your email address to receive a link to reset your password.</Text>
+        <Controller
+          control={control}
+          name="email"
+          rules={{
+            required: 'Email is required',
+            pattern: {
+              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+              message: 'Invalid email',
+            },
+          }}
+          render={({ field: { onChange, value } }) => (
+            <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
+              <StyledInput
+                variant="glass"
+                label="Email Address"
+                placeholder="Enter your email"
+                textContentType="emailAddress"
+                keyboardType="email-address"
+                onChangeText={onChange}
+                value={value}
+                error={errors.email?.message}
+                onSubmitEditing={handleSubmit(onSubmit)}
+              />
+            </View>
+          )}
+        />
+
+        {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
+        {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
+
+        <PillButton
+          variant="gradient"
+          title={isSubmitting ? 'Sending link...' : 'Send Recovery Link'}
+          onPress={handleSubmit(onSubmit)}
+          additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
+        />
+
+        <SimpleTextLink
+          text="Back to "
+          accentText="Login"
+          onPress={goToLogin}
+          textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+        />
+      </View>
+    </ParallaxScrollView>
   )
 }
