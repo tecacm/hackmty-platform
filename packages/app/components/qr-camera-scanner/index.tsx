@@ -72,7 +72,7 @@ export function QRCameraScanner({ onScan, isProcessing = false }: QRCameraScanne
           readerRef.current = reader
 
           reader
-            .decodeFromVideoDevice(undefined, videoRef.current, (result: any, err: any) => {
+            .decodeFromVideoDevice(null, videoRef.current, (result: any, err: any) => {
               if (result) {
                 const rawText = result.getText()
                 if (rawText) {

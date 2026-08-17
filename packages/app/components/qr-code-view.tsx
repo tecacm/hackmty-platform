@@ -33,10 +33,10 @@ export function QRCodeView({
       },
       errorCorrectionLevel: 'H',
     })
-      .then((url) => {
+      .then((url: string) => {
         if (isMounted) setDataUrl(url)
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('QRCode generation error:', err)
       })
 

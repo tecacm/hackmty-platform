@@ -1232,7 +1232,7 @@ export function CheckInScannerTab() {
                 <View style={styles.resultProfileBox}>
                   <View style={styles.resultAvatarWrapper}>
                     {lastResult.avatarUrl ? (
-                      <Image source={{ uri: lastResult.avatarUrl }} style={styles.resultAvatarImage} />
+                      <Image source={{ uri: lastResult.avatarUrl }} style={styles.resultAvatarImage as any} />
                     ) : (
                       <PersonSilhouette size={36} color="#c2b75f" />
                     )}
@@ -1334,7 +1334,7 @@ export function CheckInScannerTab() {
 
                       <View style={styles.historyAvatarCircle}>
                         {item.profiles?.avatar_url ? (
-                          <Image source={{ uri: item.profiles.avatar_url }} style={styles.historyAvatarImg} />
+                          <Image source={{ uri: item.profiles.avatar_url }} style={styles.historyAvatarImg as any} />
                         ) : (
                           <PersonSilhouette size={20} color="#5a0061" />
                         )}
@@ -1486,7 +1486,7 @@ export function CheckInScannerTab() {
                       >
                         <View style={styles.lookupAvatarCircle}>
                           {item.avatar_url ? (
-                            <Image source={{ uri: item.avatar_url }} style={styles.lookupAvatarImg} />
+                            <Image source={{ uri: item.avatar_url }} style={styles.lookupAvatarImg as any} />
                           ) : (
                             <PersonSilhouette size={20} color="#5a0061" />
                           )}
@@ -2772,13 +2772,13 @@ const styles = StyleSheet.create({
     padding: 16,
     ...Platform.select({
       web: {
-        position: 'fixed',
+        position: 'fixed' as any,
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
         zIndex: 9999,
-      },
+      } as any,
     }),
   },
   modalContent: {
@@ -2791,7 +2791,7 @@ const styles = StyleSheet.create({
     maxWidth: 580,
     maxHeight: '90%',
     ...Platform.select({
-      web: { boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' },
+      web: { boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' } as any,
     }),
   },
   modalHeader: {

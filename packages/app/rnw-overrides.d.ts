@@ -7,8 +7,11 @@ declare module 'react-native' {
     focused?: boolean
   }
   interface ViewStyle {
+    position?: 'absolute' | 'relative' | 'static' | 'fixed' | undefined
     transitionProperty?: string
     transitionDuration?: string
+    boxShadow?: string
+    outlineStyle?: string
   }
   interface TextProps {
     accessibilityComponentType?: never
@@ -28,4 +31,9 @@ declare module 'react-native' {
     }
     onClick?: (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void
   }
+}
+
+declare module 'qrcode' {
+  const QRCode: any
+  export default QRCode
 }
