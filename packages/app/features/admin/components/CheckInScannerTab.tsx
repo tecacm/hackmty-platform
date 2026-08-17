@@ -95,6 +95,10 @@ export function CheckInScannerTab() {
   const [stationSearchQuery, setStationSearchQuery] = React.useState('')
   const [selectedCategoryFilter, setSelectedCategoryFilter] = React.useState<string>('all')
 
+  // Station Delete Confirmation State
+  const [stationToDelete, setStationToDelete] = React.useState<Checkpoint | null>(null)
+  const [isDeletingStation, setIsDeletingStation] = React.useState(false)
+
   // Scanner & Search State
   const [scanInput, setScanInput] = React.useState('')
   const [isProcessing, setIsProcessing] = React.useState(false)
@@ -233,6 +237,7 @@ export function CheckInScannerTab() {
           *,
           checkpoint_types (*)
         `)
+        .eq('is_active', true)
         .order('created_at', { ascending: true })
 
       if (data) {
@@ -719,6 +724,35 @@ export function CheckInScannerTab() {
     }
   }
 
+  const handleConfirmDeleteStation = async () => {
+    if (!stationToDelete || !isSupabaseConfigured) return
+    setIsDeletingStation(true)
+    try {
+      const { error } = await supabase
+        .from('checkpoints')
+        .update({ is_active: false })
+        .eq('id', stationToDelete.id)
+
+      if (error) throw error
+
+      if (selectedStationId === stationToDelete.id) {
+        setSelectedStationId(null)
+        setLastResult(null)
+      }
+      if (isManagerOpen) {
+        setIsManagerOpen(false)
+        setEditingStation(null)
+      }
+      setStationToDelete(null)
+      await fetchCheckpoints()
+    } catch (e: any) {
+      console.error('Error soft-deleting station:', e)
+      Alert.alert('Error', e?.message || 'Could not delete station')
+    } finally {
+      setIsDeletingStation(false)
+    }
+  }
+
   const getTimestamp = (val?: string | null) => {
     if (!val) return 0
     try {
@@ -732,6 +766,7 @@ export function CheckInScannerTab() {
   const filteredCheckpoints = React.useMemo(() => {
     return checkpoints
       .filter((cp) => {
+        if (cp.is_active === false) return false
         const title = getLocalizedText(cp.title).toLowerCase()
         const location = (cp.location || '').toLowerCase()
         const typeId = (cp.type_id || '').toLowerCase()
@@ -942,13 +977,23 @@ export function CheckInScannerTab() {
                       </Pressable>
 
                       {canManageStations && (
-                        <Pressable
-                          onPress={() => handleOpenEditModal(cp)}
-                          style={styles.editStationBtn}
-                        >
-                          <AppIcon name="pencil" size={14} color="#475569" />
-                          <Text style={styles.editStationBtnText}>Edit</Text>
-                        </Pressable>
+                        <>
+                          <Pressable
+                            onPress={() => handleOpenEditModal(cp)}
+                            style={styles.editStationBtn}
+                          >
+                            <AppIcon name="pencil" size={14} color="#475569" />
+                            <Text style={styles.editStationBtnText}>Edit</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => setStationToDelete(cp)}
+                            style={styles.deleteStationBtn}
+                          >
+                            <AppIcon name="trash" size={14} color="#dc2626" />
+                            <Text style={styles.deleteStationBtnText}>Delete</Text>
+                          </Pressable>
+                        </>
                       )}
                     </View>
                   </View>
@@ -984,6 +1029,25 @@ export function CheckInScannerTab() {
                 Location: {selectedStation.location || 'Venue'} • {selectedStation.requires_initial_checkin_override ?? selectedStation.checkpoint_types?.requires_initial_checkin ? 'Arrival Check-in Required' : 'Open Access'}
               </Text>
             </View>
+
+            {canManageStations && selectedStation && (
+              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                <Pressable
+                  onPress={() => handleOpenEditModal(selectedStation)}
+                  style={styles.activeHeaderActionBtn}
+                >
+                  <AppIcon name="pencil" size={14} color="#475569" />
+                  <Text style={styles.activeHeaderActionBtnText}>Edit</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setStationToDelete(selectedStation)}
+                  style={styles.activeHeaderDeleteBtn}
+                >
+                  <AppIcon name="trash" size={14} color="#dc2626" />
+                  <Text style={styles.activeHeaderDeleteBtnText}>Delete</Text>
+                </Pressable>
+              </View>
+            )}
 
             <View style={styles.countBadge}>
               <Text style={styles.countNumber}>{stationCheckInCount}</Text>
@@ -1557,17 +1621,28 @@ export function CheckInScannerTab() {
               />
             </View>
 
-            <Pressable
-              onPress={handleSaveStation}
-              disabled={isCreatingStation}
-              style={styles.saveStationBtn}
-            >
-              {isCreatingStation ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.saveStationBtnText}>{editingStation ? 'Save Station Changes' : 'Create Station'}</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              {editingStation && (
+                <Pressable
+                  onPress={() => setStationToDelete(editingStation)}
+                  style={styles.deleteStationModalBtn}
+                >
+                  <AppIcon name="trash" size={16} color="#dc2626" />
+                  <Text style={styles.deleteStationModalBtnText}>Delete Station</Text>
+                </Pressable>
               )}
-            </Pressable>
+              <Pressable
+                onPress={handleSaveStation}
+                disabled={isCreatingStation}
+                style={[styles.saveStationBtn, { flex: 1, marginTop: 0 }]}
+              >
+                {isCreatingStation ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.saveStationBtnText}>{editingStation ? 'Save Changes' : 'Create Station'}</Text>
+                )}
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1720,6 +1795,51 @@ export function CheckInScannerTab() {
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
                     <Text style={styles.revokeSubmitBtnText}>Yes, Revoke Check-In</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Delete Checkpoint Station Confirmation Modal */}
+      {stationToDelete && (
+        <Modal visible animationType="fade" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.revokeConfirmCard}>
+              <View style={styles.revokeWarningIcon}>
+                <AppIcon name="trash" size={30} color="#dc2626" />
+              </View>
+              <Text style={styles.revokeConfirmTitle}>Delete Checkpoint Station?</Text>
+              <Text style={styles.revokeConfirmBody}>
+                Are you sure you want to delete{' '}
+                <Text style={{ fontWeight: '800', color: '#0f172a' }}>
+                  "{getLocalizedText(stationToDelete.title) || 'this station'}"
+                </Text>
+                ?
+              </Text>
+              <Text style={styles.revokeConfirmWarning}>
+                This will soft-delete and remove the station from active scanner lists and attendee timelines. All past check-in records will remain safely preserved.
+              </Text>
+
+              <View style={styles.revokeModalActions}>
+                <Pressable
+                  onPress={() => !isDeletingStation && setStationToDelete(null)}
+                  disabled={isDeletingStation}
+                  style={styles.revokeCancelBtn}
+                >
+                  <Text style={styles.revokeCancelBtnText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleConfirmDeleteStation}
+                  disabled={isDeletingStation}
+                  style={styles.revokeSubmitBtn}
+                >
+                  {isDeletingStation ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.revokeSubmitBtnText}>Confirm Deletion</Text>
                   )}
                 </Pressable>
               </View>
@@ -2159,6 +2279,72 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 13,
     fontWeight: '800',
+  },
+  deleteStationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  deleteStationBtnText: {
+    color: '#dc2626',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  activeHeaderActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  activeHeaderActionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  activeHeaderDeleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  activeHeaderDeleteBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#dc2626',
+  },
+  deleteStationModalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    justifyContent: 'center',
+  },
+  deleteStationModalBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#dc2626',
   },
   emptyStateCard: {
     alignItems: 'center',
