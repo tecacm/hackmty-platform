@@ -3,15 +3,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { View, Text, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native'
 import { AppIcon } from '../app-icon'
-let jsQRModule: any = null
-try {
-  jsQRModule = require('jsqr')
-  if (jsQRModule && jsQRModule.default) {
-    jsQRModule = jsQRModule.default
-  }
-} catch (e) {
-  // Gracefully fallback to BarcodeDetector or manual QR input
-}
 
 interface QRCameraScannerProps {
   onScan: (data: string) => void
@@ -20,112 +11,107 @@ interface QRCameraScannerProps {
 
 export function QRCameraScanner({ onScan, isProcessing = false }: QRCameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [isActive, setIsActive] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const requestRef = useRef<number | null>(null)
+  const readerRef = useRef<any>(null)
   const lastScannedCode = useRef<string | null>(null)
   const lastScanTime = useRef<number>(0)
 
+  const onScanRef = useRef(onScan)
+  useEffect(() => {
+    onScanRef.current = onScan
+  }, [onScan])
+
   const stopCamera = useCallback(() => {
-    if (requestRef.current) {
-      cancelAnimationFrame(requestRef.current)
-      requestRef.current = null
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
+    if (readerRef.current) {
+      try {
+        readerRef.current.reset()
+      } catch (e) {}
+      readerRef.current = null
     }
     setIsActive(false)
+    setIsInitializing(false)
   }, [])
-
-  const scanFrame = useCallback(async () => {
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    if (!video) return
-
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      // 1. Try native browser BarcodeDetector API (fastest, standard in Chrome/Safari Mac)
-      if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
-        try {
-          const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
-          const barcodes = await detector.detect(video)
-          if (barcodes && barcodes.length > 0) {
-            const raw = barcodes[0].rawValue
-            if (raw) {
-              const now = Date.now()
-              if (raw !== lastScannedCode.current || now - lastScanTime.current > 2000) {
-                lastScannedCode.current = raw
-                lastScanTime.current = now
-                onScan(raw)
-              }
-            }
-          }
-        } catch (e) {
-          // Fall through to jsQR fallback
-        }
-      } else if (canvas && jsQRModule) {
-        // 2. jsQR Canvas fallback
-        canvas.height = video.videoHeight
-        canvas.width = video.videoWidth
-        const ctx = canvas.getContext('2d', { willReadFrequently: true })
-
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-          const code = jsQRModule(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'dontInvert',
-          })
-
-          if (code && code.data) {
-            const now = Date.now()
-            if (code.data !== lastScannedCode.current || now - lastScanTime.current > 2000) {
-              lastScannedCode.current = code.data
-              lastScanTime.current = now
-              onScan(code.data)
-            }
-          }
-        }
-      }
-    }
-
-    requestRef.current = requestAnimationFrame(scanFrame)
-  }, [onScan])
 
   const startCamera = async () => {
     setErrorMsg(null)
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setErrorMsg('Camera access requires HTTPS or localhost. Modern browsers disable camera hardware on unencrypted IP addresses (http://...).')
+      return
+    }
+
     if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
       setErrorMsg('Camera access is not available in this browser environment.')
       return
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      })
-      streamRef.current = stream
       setIsActive(true)
     } catch (err: any) {
-      console.error('Camera permission or device error:', err)
-      setErrorMsg(err?.message || 'Permission denied or no camera device found. Please allow browser camera permissions.')
+      console.error('Camera initialization error:', err)
+      setErrorMsg(err?.message || 'Permission denied or camera error.')
       stopCamera()
     }
   }
 
   useEffect(() => {
-    if (isActive && streamRef.current && videoRef.current) {
-      const video = videoRef.current
-      if ('srcObject' in video) {
-        video.srcObject = streamRef.current
-      } else {
-        ;(video as any).src = URL.createObjectURL(streamRef.current as any)
-      }
-      video.setAttribute('playsinline', 'true')
-      video.play().catch((e) => console.error('Video play error:', e))
-      requestRef.current = requestAnimationFrame(scanFrame)
+    let isCancelled = false
+
+    if (isActive && videoRef.current) {
+      setIsInitializing(true)
+      import('@zxing/library')
+        .then((zxingModule) => {
+          if (isCancelled || !videoRef.current) return
+          const ZXingReaderClass = zxingModule.BrowserQRCodeReader
+          if (!ZXingReaderClass) {
+            throw new Error('QR Reader could not be initialized.')
+          }
+
+          const reader = new ZXingReaderClass()
+          readerRef.current = reader
+
+          reader
+            .decodeFromVideoDevice(undefined, videoRef.current, (result: any, err: any) => {
+              if (result) {
+                const rawText = result.getText()
+                if (rawText) {
+                  const now = Date.now()
+                  if (rawText !== lastScannedCode.current || now - lastScanTime.current > 2000) {
+                    lastScannedCode.current = rawText
+                    lastScanTime.current = now
+                    onScanRef.current(rawText)
+                  }
+                }
+              }
+            })
+            .catch((err: any) => {
+              console.error('ZXing camera error:', err)
+              setErrorMsg(err?.message || 'Failed to start camera device.')
+            })
+            .finally(() => {
+              if (!isCancelled) setIsInitializing(false)
+            })
+        })
+        .catch((err: any) => {
+          if (!isCancelled) {
+            console.error('Failed to load camera scanner library:', err)
+            setErrorMsg('Failed to load camera scanner component.')
+            setIsInitializing(false)
+          }
+        })
     }
-  }, [isActive, scanFrame])
+
+    return () => {
+      isCancelled = true
+      if (readerRef.current) {
+        try {
+          readerRef.current.reset()
+        } catch (e) {}
+        readerRef.current = null
+      }
+    }
+  }, [isActive])
 
   useEffect(() => {
     return () => {
@@ -177,7 +163,6 @@ export function QRCameraScanner({ onScan, isProcessing = false }: QRCameraScanne
                     display: 'block',
                   }}
                 />
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
 
                 {/* Target Square Reticle Overlay */}
                 <div

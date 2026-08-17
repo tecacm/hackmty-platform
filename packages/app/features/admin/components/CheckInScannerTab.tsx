@@ -18,6 +18,7 @@ import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 import { AppIcon } from 'app/components/app-icon'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { QRCameraScanner } from 'app/components/qr-camera-scanner'
+import { LinearGradient } from 'app/components/linear-gradient'
 import {
   getLocalizedText,
   formatString,
@@ -26,6 +27,26 @@ import {
   jsonbToTranslations,
   translationsToJsonb,
 } from 'app/utils/i18n-helpers'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
+import { notifyUserOnCheckIn } from 'app/services/notification-service'
+import { AdminPaginationBar } from './AdminPaginationBar'
+
+export interface CheckInHistoryItem {
+  id: string
+  user_id: string
+  checkpoint_id: string
+  checkpoint_type: string
+  created_at: string
+  created_by?: string | null
+  profiles?: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+    university: string | null
+    avatar_url: string | null
+  } | null
+}
 
 interface Checkpoint {
   id: string
@@ -37,6 +58,11 @@ interface Checkpoint {
   not_checked_in_message_override?: any
   requires_initial_checkin_override?: boolean
   location?: string
+  start_time?: string
+  end_time?: string
+  unlocks_at?: string
+  hide_until_unlocked?: boolean
+  created_at?: string
   is_active: boolean
   checkpoint_types?: {
     id: string
@@ -57,6 +83,9 @@ interface ScanResult {
 }
 
 export function CheckInScannerTab() {
+  const { role } = useUserPermissions()
+  const canManageStations = ['admin', 'organizer'].includes((role || '').toLowerCase())
+
   const [checkpoints, setCheckpoints] = React.useState<Checkpoint[]>([])
   const [selectedStationId, setSelectedStationId] = React.useState<string | null>(null)
   const [loadingStations, setLoadingStations] = React.useState(true)
@@ -119,6 +148,11 @@ export function CheckInScannerTab() {
   const [notCheckedInMsgTranslations, setNotCheckedInMsgTranslations] = React.useState<Translation[]>([
     { key: 'en', value: '' },
   ])
+  const [newStartTime, setNewStartTime] = React.useState('')
+  const [newEndTime, setNewEndTime] = React.useState('')
+  const [newUnlocksAt, setNewUnlocksAt] = React.useState('')
+  const [newHideUntilUnlocked, setNewHideUntilUnlocked] = React.useState(false)
+  const [editingStation, setEditingStation] = React.useState<Checkpoint | null>(null)
   const [isCreatingStation, setIsCreatingStation] = React.useState(false)
 
   // Fetch Checkpoint Types from Database
@@ -226,6 +260,97 @@ export function CheckInScannerTab() {
     }
   }, [])
 
+  // Check-In History & Revocation State
+  const [historyList, setHistoryList] = React.useState<CheckInHistoryItem[]>([])
+  const [historyLoading, setHistoryLoading] = React.useState(false)
+  const [historySearch, setHistorySearch] = React.useState('')
+  const [historyPage, setHistoryPage] = React.useState(1)
+  const [historyPageSize, setHistoryPageSize] = React.useState(10)
+  const [revokingId, setRevokingId] = React.useState<string | null>(null)
+  const [revokeModalTarget, setRevokeModalTarget] = React.useState<CheckInHistoryItem | null>(null)
+
+  const fetchStationHistory = React.useCallback(async (stationId: string) => {
+    if (!isSupabaseConfigured || !stationId) return
+    setHistoryLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('check_ins')
+        .select(`
+          id,
+          user_id,
+          checkpoint_id,
+          checkpoint_type,
+          created_at,
+          created_by,
+          profiles:user_id (
+            id,
+            first_name,
+            last_name,
+            university,
+            avatar_url
+          )
+        `)
+        .eq('checkpoint_id', stationId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      // Enrich with auth directory emails if available
+      const { data: directoryEmails } = await supabase.rpc('get_admin_directory_emails')
+      const emailMap: Record<string, string> = {}
+      directoryEmails?.forEach((entry: any) => {
+        if (entry.user_id && entry.email) emailMap[entry.user_id] = entry.email
+      })
+
+      const resolveAvatarUrl = (raw: string | null | undefined): string | null => {
+        if (!raw) return null
+        if (raw.startsWith('http')) return raw
+        const { data: pubUrlData } = supabase.storage.from('avatars').getPublicUrl(raw)
+        return pubUrlData?.publicUrl || null
+      }
+
+      const enrichedData = ((data as any) || []).map((item: any) => ({
+        ...item,
+        profiles: item.profiles
+          ? {
+              ...item.profiles,
+              avatar_url: resolveAvatarUrl(item.profiles.avatar_url),
+              email: emailMap[item.user_id] || null,
+            }
+          : null,
+      }))
+
+      setHistoryList(enrichedData)
+    } catch (e) {
+      console.error('Error fetching station history:', e)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
+
+  const handleRevokeCheckIn = React.useCallback(async (record: CheckInHistoryItem) => {
+    if (!record || !record.id) return
+    setRevokingId(record.id)
+    try {
+      const { error: delErr } = await supabase
+        .from('check_ins')
+        .delete()
+        .eq('id', record.id)
+
+      if (delErr) throw delErr
+
+      setHistoryList((prev) => prev.filter((item) => item.id !== record.id))
+      if (selectedStationId) {
+        updateStationCount(selectedStationId)
+      }
+      setRevokeModalTarget(null)
+    } catch (e: any) {
+      Alert.alert('Revocation Error', e?.message || 'Could not revoke check-in record.')
+    } finally {
+      setRevokingId(null)
+    }
+  }, [selectedStationId, updateStationCount])
+
   React.useEffect(() => {
     fetchCheckpoints()
     fetchCheckpointTypes()
@@ -234,28 +359,65 @@ export function CheckInScannerTab() {
   React.useEffect(() => {
     if (selectedStationId) {
       updateStationCount(selectedStationId)
+      fetchStationHistory(selectedStationId)
+      setHistoryPage(1)
+      setHistorySearch('')
+    } else {
+      setHistoryList([])
     }
-  }, [selectedStationId, updateStationCount])
+  }, [selectedStationId, updateStationCount, fetchStationHistory])
 
   const selectedStation = checkpoints.find((c) => c.id === selectedStationId)
+  const selectedStationRef = React.useRef(selectedStation)
+  React.useEffect(() => {
+    selectedStationRef.current = selectedStation
+  }, [selectedStation])
+
+  const isProcessingRef = React.useRef(isProcessing)
+  React.useEffect(() => {
+    isProcessingRef.current = isProcessing
+  }, [isProcessing])
+
+  const filteredHistory = React.useMemo(() => {
+    const q = historySearch.toLowerCase().trim()
+    if (!q) return historyList
+    return historyList.filter((item) => {
+      const fname = (item.profiles?.first_name || '').toLowerCase()
+      const lname = (item.profiles?.last_name || '').toLowerCase()
+      const name = `${fname} ${lname}`.trim()
+      const email = (item.profiles?.email || '').toLowerCase()
+      const uni = (item.profiles?.university || '').toLowerCase()
+      const uid = (item.user_id || '').toLowerCase()
+      return name.includes(q) || email.includes(q) || uni.includes(q) || uid.includes(q)
+    })
+  }, [historyList, historySearch])
+
+  const totalHistoryPages = Math.max(1, Math.ceil(filteredHistory.length / historyPageSize))
+  const displayedHistory = React.useMemo(() => {
+    const start = (historyPage - 1) * historyPageSize
+    return filteredHistory.slice(start, start + historyPageSize)
+  }, [filteredHistory, historyPage, historyPageSize])
 
   // Handle Scanning or Processing User Check-In
-  const handleProcessCheckIn = async (rawUserIdOrPayload: string) => {
-    if (!rawUserIdOrPayload || !selectedStation) return
+  const handleProcessCheckIn = React.useCallback(async (rawUserIdOrPayload: string) => {
+    const station = selectedStationRef.current
+    if (!rawUserIdOrPayload || !station || isProcessingRef.current) return
     setIsProcessing(true)
     setLastResult(null)
 
     try {
-      // Extract user ID from QR string (e.g. "hackmty:2025:user:<UUID>" or raw UUID)
+      // Extract user ID from QR string (e.g. "hackmty:2026:user:<UUID>" or raw UUID)
       let targetUserId = rawUserIdOrPayload.trim()
-      if (targetUserId.includes('hackmty:2025:user:')) {
+      if (targetUserId.includes('hackmty:2026:user:')) {
+        targetUserId = targetUserId.split('hackmty:2026:user:')[1] || targetUserId
+      } else if (targetUserId.includes('hackmty:2025:user:')) {
         targetUserId = targetUserId.split('hackmty:2025:user:')[1] || targetUserId
       }
 
       // 1. Fetch User Profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*, teams(name)')
+        .select('*, teams!profiles_team_id_fkey(name)')
         .eq('id', targetUserId)
         .maybeSingle()
 
@@ -286,37 +448,38 @@ export function CheckInScannerTab() {
       const rolesList = userRoles && userRoles.length > 0 ? userRoles.map((r) => r.role) : ['user']
 
       // 3. Resolve Messages & Prerequisite rules
-      const typeObj = selectedStation.checkpoint_types
-      const requiresInitialCheckIn = selectedStation.requires_initial_checkin_override ?? typeObj?.requires_initial_checkin ?? true
+      const typeObj = station.checkpoint_types || null
+      const requiresInitialCheckIn = station.requires_initial_checkin_override ?? typeObj?.requires_initial_checkin ?? true
 
       const claimedTemplate = getLocalizedText(
-        selectedStation.already_claimed_message_override || typeObj?.default_already_claimed_message || 'Already processed at %s'
+        station.already_claimed_message_override || typeObj?.default_already_claimed_message || 'Already processed at %s'
       )
       const successTemplate = getLocalizedText(
-        selectedStation.success_message_override || typeObj?.default_success_message || 'Check-in successful at %s'
+        station.success_message_override || typeObj?.default_success_message || 'Check-in successful at %s'
       )
       const notCheckedInTemplate = getLocalizedText(
-        selectedStation.not_checked_in_message_override || typeObj?.default_not_checked_in_message || 'User has not completed initial event check-in'
+        station.not_checked_in_message_override || typeObj?.default_not_checked_in_message || 'User has not completed initial event check-in'
       )
 
       // 3b. Verify Application Status for Initial Entrance Check-in
       const isStaffRole = rolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r.toLowerCase()))
 
-      if (selectedStation.type_id === 'checkin' && !isStaffRole) {
-        const { data: userApp } = await supabase
+      if (station.type_id === 'checkin' && !isStaffRole) {
+        const { data: userApps } = await supabase
           .from('applications')
           .select('status, confirmed_at')
           .eq('user_id', targetUserId)
-          .maybeSingle()
 
-        const isConfirmed = userApp && (userApp.status === 'confirmed' || userApp.confirmed_at !== null)
+        const isConfirmed = Array.isArray(userApps) && userApps.some(
+          (app) => app.status === 'confirmed' || app.confirmed_at !== null
+        )
 
         if (!isConfirmed) {
           setLastResult({
             status: 'error',
             userProfile: { ...profile, roles: rolesList },
             avatarUrl: avatarDisplayUrl,
-            message: 'Check-in blocked: Participant has not confirmed attendance for HackMTY 2025.',
+            message: 'Check-in blocked: Participant has not confirmed attendance for HackMTY 2026.',
           })
           setIsProcessing(false)
           return
@@ -324,13 +487,15 @@ export function CheckInScannerTab() {
       }
 
       // 4. Check Initial Arrival Check-in (if required)
-      if (requiresInitialCheckIn && selectedStation.type_id !== 'checkin') {
-        const { data: initialCheckIn } = await supabase
+      if (requiresInitialCheckIn && station.type_id !== 'checkin') {
+        const { data: checkInRows } = await supabase
           .from('check_ins')
           .select('id')
           .eq('user_id', targetUserId)
           .eq('checkpoint_type', 'checkin')
-          .maybeSingle()
+          .limit(1)
+
+        const initialCheckIn = Array.isArray(checkInRows) && checkInRows.length > 0
 
         if (!initialCheckIn) {
           setLastResult({
@@ -345,12 +510,14 @@ export function CheckInScannerTab() {
       }
 
       // 5. Check if user already claimed this specific station
-      const { data: existingCheckIn } = await supabase
+      const { data: existingCheckIns } = await supabase
         .from('check_ins')
         .select('created_at')
         .eq('user_id', targetUserId)
-        .eq('checkpoint_id', selectedStation.id)
-        .maybeSingle()
+        .eq('checkpoint_id', station.id)
+        .limit(1)
+
+      const existingCheckIn = Array.isArray(existingCheckIns) && existingCheckIns.length > 0 ? existingCheckIns[0] : null
 
       if (existingCheckIn) {
         const claimTime = formatTime(existingCheckIn.created_at)
@@ -375,9 +542,9 @@ export function CheckInScannerTab() {
         .from('check_ins')
         .insert({
           user_id: targetUserId,
-          checkpoint_id: selectedStation.id,
-          checkpoint_type: selectedStation.type_id,
-          event_year: '2025',
+          checkpoint_id: station.id,
+          checkpoint_type: station.type_id,
+          event_year: '2026',
           created_by: staffUserId,
         })
         .select('created_at')
@@ -398,10 +565,21 @@ export function CheckInScannerTab() {
         timestamp: nowTime,
       })
 
-      // Update count & clear input
-      updateStationCount(selectedStation.id)
+      // Update count & clear input & refresh history
+      updateStationCount(station.id)
+      fetchStationHistory(station.id)
       setScanInput('')
+
+      // Dispatch push notification to attendee (push only, no email)
+      notifyUserOnCheckIn({
+        userId: targetUserId,
+        stationTitle: getLocalizedText(station.title) || 'Event Check-In',
+        isEntrance: station.type_id === 'checkin',
+      }).catch((pushErr) => {
+        console.warn('[CheckInScanner] Push notification error:', pushErr)
+      })
     } catch (e: any) {
+      console.error('[CheckInScanner] Check-in processing error:', e)
       setLastResult({
         status: 'error',
         message: e?.message || 'Error processing check-in',
@@ -409,7 +587,7 @@ export function CheckInScannerTab() {
     } finally {
       setIsProcessing(false)
     }
-  }
+  }, [updateStationCount, fetchStationHistory])
 
   // Lookup Search
   const handleSearchLookup = async () => {
@@ -419,7 +597,7 @@ export function CheckInScannerTab() {
       const q = lookupQuery.trim()
       const { data } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, tshirt_size, dietary_restrictions, teams(name)')
+        .select('id, first_name, last_name, avatar_url, tshirt_size, dietary_restrictions, teams!profiles_team_id_fkey(name)')
         .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
         .limit(10)
 
@@ -431,8 +609,54 @@ export function CheckInScannerTab() {
     }
   }
 
-  // Create New Dynamic Station
-  const handleCreateStation = async () => {
+  const toDatetimeLocal = (isoStr?: string | null) => {
+    if (!isoStr) return ''
+    try {
+      const d = new Date(isoStr)
+      if (isNaN(d.getTime())) return ''
+      const pad = (n: number) => (n < 10 ? '0' + n : n)
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    } catch (e) {
+      return ''
+    }
+  }
+
+  const handleOpenCreateModal = () => {
+    setEditingStation(null)
+    setTitleTranslations([{ key: 'en', value: '' }, { key: 'es', value: '' }])
+    setDescTranslations([{ key: 'en', value: '' }])
+    setNewTypeId(checkpointTypes[0]?.id || 'station')
+    setNewLocation('')
+    setNewRequiresCheckin(true)
+    setNewStartTime('')
+    setNewEndTime('')
+    setNewUnlocksAt('')
+    setNewHideUntilUnlocked(false)
+    setClaimedMsgTranslations([{ key: 'en', value: '' }])
+    setSuccessMsgTranslations([{ key: 'en', value: '' }])
+    setNotCheckedInMsgTranslations([{ key: 'en', value: '' }])
+    setIsManagerOpen(true)
+  }
+
+  const handleOpenEditModal = (station: Checkpoint) => {
+    setEditingStation(station)
+    setTitleTranslations(jsonbToTranslations(station.title))
+    setDescTranslations(jsonbToTranslations(station.description))
+    setNewTypeId(station.type_id)
+    setNewLocation(station.location || '')
+    setNewRequiresCheckin(station.requires_initial_checkin_override ?? station.checkpoint_types?.requires_initial_checkin ?? true)
+    setNewStartTime(toDatetimeLocal(station.start_time))
+    setNewEndTime(toDatetimeLocal(station.end_time))
+    setNewUnlocksAt(toDatetimeLocal(station.unlocks_at))
+    setNewHideUntilUnlocked(station.hide_until_unlocked ?? false)
+    setClaimedMsgTranslations(jsonbToTranslations(station.already_claimed_message_override))
+    setSuccessMsgTranslations(jsonbToTranslations(station.success_message_override))
+    setNotCheckedInMsgTranslations(jsonbToTranslations(station.not_checked_in_message_override))
+    setIsManagerOpen(true)
+  }
+
+  // Create or Update Dynamic Station
+  const handleSaveStation = async () => {
     const titleObj = translationsToJsonb(titleTranslations)
     if (!titleObj || Object.keys(titleObj).length === 0 || !Object.values(titleObj).some(Boolean)) {
       Alert.alert('Validation Error', 'Station title is required in at least one language')
@@ -450,52 +674,128 @@ export function CheckInScannerTab() {
       const hasSuccess = Object.values(successObj).some(Boolean)
       const hasNotChecked = Object.values(notCheckedObj).some(Boolean)
 
-      const { data, error } = await supabase
-        .from('checkpoints')
-        .insert({
-          type_id: newTypeId,
-          title: titleObj,
-          description: Object.values(descObj).some(Boolean) ? descObj : undefined,
-          location: newLocation.trim() || 'Venue',
-          requires_initial_checkin_override: newRequiresCheckin,
-          already_claimed_message_override: hasClaimed ? claimedObj : undefined,
-          success_message_override: hasSuccess ? successObj : undefined,
-          not_checked_in_message_override: hasNotChecked ? notCheckedObj : undefined,
-          is_active: true,
-          event_year: '2025',
-        })
-        .select()
-        .single()
+      const payload: any = {
+        type_id: newTypeId,
+        title: titleObj,
+        description: Object.values(descObj).some(Boolean) ? descObj : null,
+        location: newLocation.trim() || 'Venue',
+        requires_initial_checkin_override: newRequiresCheckin,
+        already_claimed_message_override: hasClaimed ? claimedObj : null,
+        success_message_override: hasSuccess ? successObj : null,
+        not_checked_in_message_override: hasNotChecked ? notCheckedObj : null,
+        start_time: newStartTime ? new Date(newStartTime).toISOString() : null,
+        end_time: newEndTime ? new Date(newEndTime).toISOString() : null,
+        unlocks_at: newUnlocksAt ? new Date(newUnlocksAt).toISOString() : (newStartTime ? new Date(newStartTime).toISOString() : null),
+        hide_until_unlocked: newHideUntilUnlocked,
+        is_active: true,
+        event_year: '2026',
+      }
 
-      if (error) throw error
+      if (editingStation) {
+        const { error } = await supabase
+          .from('checkpoints')
+          .update(payload)
+          .eq('id', editingStation.id)
+
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase
+          .from('checkpoints')
+          .insert(payload)
+          .select()
+          .single()
+
+        if (error) throw error
+        if (data) setSelectedStationId(data.id)
+      }
 
       setIsManagerOpen(false)
-      setTitleTranslations([{ key: 'en', value: '' }, { key: 'es', value: '' }])
-      setDescTranslations([{ key: 'en', value: '' }])
-      setNewLocation('')
-      setClaimedMsgTranslations([{ key: 'en', value: '' }])
-      setSuccessMsgTranslations([{ key: 'en', value: '' }])
-      setNotCheckedInMsgTranslations([{ key: 'en', value: '' }])
+      setEditingStation(null)
       fetchCheckpoints()
-      if (data) setSelectedStationId(data.id)
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Could not create station')
+      Alert.alert('Error', e?.message || 'Could not save station')
     } finally {
       setIsCreatingStation(false)
     }
   }
 
-  const filteredCheckpoints = checkpoints.filter((cp) => {
-    const title = getLocalizedText(cp.title).toLowerCase()
-    const location = (cp.location || '').toLowerCase()
-    const typeId = (cp.type_id || '').toLowerCase()
-    const q = stationSearchQuery.trim().toLowerCase()
+  const getTimestamp = (val?: string | null) => {
+    if (!val) return 0
+    try {
+      const t = new Date(val).getTime()
+      return isNaN(t) ? 0 : t
+    } catch {
+      return 0
+    }
+  }
 
-    const matchesQuery = !q || title.includes(q) || location.includes(q) || typeId.includes(q)
-    const matchesCategory = selectedCategoryFilter === 'all' || typeId === selectedCategoryFilter.toLowerCase()
+  const filteredCheckpoints = React.useMemo(() => {
+    return checkpoints
+      .filter((cp) => {
+        const title = getLocalizedText(cp.title).toLowerCase()
+        const location = (cp.location || '').toLowerCase()
+        const typeId = (cp.type_id || '').toLowerCase()
+        const q = stationSearchQuery.trim().toLowerCase()
 
-    return matchesQuery && matchesCategory
-  })
+        const matchesQuery = !q || title.includes(q) || location.includes(q) || typeId.includes(q)
+        const matchesCategory = selectedCategoryFilter === 'all' || typeId === selectedCategoryFilter.toLowerCase()
+
+        return matchesQuery && matchesCategory
+      })
+      .sort((a, b) => {
+        const timeA = getTimestamp(a.unlocks_at || a.start_time)
+        const timeB = getTimestamp(b.unlocks_at || b.start_time)
+
+        if (timeA !== timeB) {
+          if (timeA === 0) return 1
+          if (timeB === 0) return -1
+          return timeA - timeB
+        }
+
+        return getTimestamp(a.created_at) - getTimestamp(b.created_at)
+      })
+  }, [checkpoints, stationSearchQuery, selectedCategoryFilter])
+
+  const formatStationSchedule = React.useCallback((cp: Checkpoint) => {
+    const unlockTime = cp.unlocks_at || cp.start_time
+    const endTime = cp.end_time
+
+    if (!unlockTime) {
+      return { dateDisplay: 'Always Available', isLockedNow: false }
+    }
+
+    try {
+      const startD = new Date(unlockTime)
+      if (isNaN(startD.getTime())) {
+        return { dateDisplay: 'Always Available', isLockedNow: false }
+      }
+
+      const now = new Date()
+      const isLockedNow = now < startD
+
+      const startStr = startD.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+
+      if (endTime) {
+        const endD = new Date(endTime)
+        if (!isNaN(endD.getTime())) {
+          const endStr = endD.toLocaleTimeString(undefined, {
+            hour: 'numeric',
+            minute: '2-digit',
+          })
+          return { dateDisplay: `${startStr} - ${endStr}`, isLockedNow }
+        }
+      }
+
+      return { dateDisplay: `Opens ${startStr}`, isLockedNow }
+    } catch {
+      return { dateDisplay: 'Always Available', isLockedNow: false }
+    }
+  }, [])
 
   return (
     <View style={styles.container}>
@@ -510,10 +810,12 @@ export function CheckInScannerTab() {
               </Text>
             </View>
 
-            <Pressable onPress={() => setIsManagerOpen(true)} style={styles.createStationPrimaryBtn}>
-              <AppIcon name="plus.circle.fill" size={18} color="#ffffff" />
-              <Text style={styles.createStationPrimaryBtnText}>+ Create New Station</Text>
-            </Pressable>
+            {canManageStations && (
+              <Pressable onPress={() => setIsManagerOpen(true)} style={styles.createStationPrimaryBtn}>
+                <AppIcon name="plus.circle.fill" size={18} color="#ffffff" />
+                <Text style={styles.createStationPrimaryBtnText}>+ Create New Station</Text>
+              </Pressable>
+            )}
           </View>
 
           {/* Search & Category Filter Section */}
@@ -581,7 +883,7 @@ export function CheckInScannerTab() {
                   ? 'Try adjusting your search query or category filter.'
                   : 'Create your first checkpoint station to start scanning event passes.'}
               </Text>
-              <Pressable onPress={() => setIsManagerOpen(true)} style={styles.createStationPrimaryBtn}>
+              <Pressable onPress={handleOpenCreateModal} style={styles.createStationPrimaryBtn}>
                 <Text style={styles.createStationPrimaryBtnText}>+ Create Station</Text>
               </Pressable>
             </View>
@@ -614,18 +916,41 @@ export function CheckInScannerTab() {
                           {requiresArrival ? 'Arrival Check-in Required' : 'Open Access'}
                         </Text>
                       </View>
+                      {(() => {
+                        const { dateDisplay, isLockedNow } = formatStationSchedule(cp)
+                        return (
+                          <View style={styles.metaItem}>
+                            <Text style={styles.metaLabel}>SCHEDULE / LOCK:</Text>
+                            <Text style={[styles.metaValue, { color: isLockedNow ? '#F59E0B' : '#0f172a' }]}>
+                              {dateDisplay} {cp.hide_until_unlocked ? '(Hidden)' : ''}
+                            </Text>
+                          </View>
+                        )
+                      })()}
                     </View>
 
-                    <Pressable
-                      onPress={() => {
-                        setSelectedStationId(cp.id)
-                        setLastResult(null)
-                      }}
-                      style={styles.openStationBtn}
-                    >
-                      <Text style={styles.openStationBtnText}>Open Station Scanner</Text>
-                      <AppIcon name="chevron.right" size={14} color="#ffffff" />
-                    </Pressable>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                      <Pressable
+                        onPress={() => {
+                          setSelectedStationId(cp.id)
+                          setLastResult(null)
+                        }}
+                        style={[styles.openStationBtn, { flex: 1 }]}
+                      >
+                        <Text style={styles.openStationBtnText}>Open Scanner</Text>
+                        <AppIcon name="chevron.right" size={14} color="#ffffff" />
+                      </Pressable>
+
+                      {canManageStations && (
+                        <Pressable
+                          onPress={() => handleOpenEditModal(cp)}
+                          style={styles.editStationBtn}
+                        >
+                          <AppIcon name="pencil" size={14} color="#475569" />
+                          <Text style={styles.editStationBtnText}>Edit</Text>
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
                 )
               })}
@@ -674,7 +999,7 @@ export function CheckInScannerTab() {
               <TextInput
                 value={scanInput}
                 onChangeText={setScanInput}
-                placeholder="Scan QR Code or paste User ID (hackmty:2025:user:...)"
+                placeholder="Scan QR Code or paste User ID (hackmty:2026:user:...)"
                 placeholderTextColor="#94a3b8"
                 style={styles.scanTextInput}
                 onSubmitEditing={() => handleProcessCheckIn(scanInput)}
@@ -728,10 +1053,13 @@ export function CheckInScannerTab() {
                   }
                 />
                 <Text style={styles.resultMessageTitle}>
-                  {lastResult.status === 'success' && 'SUCCESSFUL CHECK-IN'}
-                  {lastResult.status === 'already_claimed' && 'ALREADY CLAIMED'}
-                  {lastResult.status === 'not_checked_in' && 'INITIAL CHECK-IN REQUIRED'}
-                  {lastResult.status === 'error' && 'CHECK-IN BLOCKED'}
+                  {lastResult.status === 'success'
+                    ? 'SUCCESSFUL CHECK-IN'
+                    : lastResult.status === 'already_claimed'
+                    ? 'ALREADY CLAIMED'
+                    : lastResult.status === 'not_checked_in'
+                    ? 'INITIAL CHECK-IN REQUIRED'
+                    : 'CHECK-IN BLOCKED'}
                 </Text>
               </View>
 
@@ -777,17 +1105,138 @@ export function CheckInScannerTab() {
               )}
             </View>
           )}
+
+          {/* Station Check-In History Log & Revocation Management */}
+          <View style={styles.historyCard}>
+            <View style={styles.historyHeader}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={styles.historyTitle}>Station Check-In Log</Text>
+                  <View style={styles.historyCountBadge}>
+                    <Text style={styles.historyCountText}>{filteredHistory.length}</Text>
+                  </View>
+                </View>
+                <Text style={styles.historySubtitle}>
+                  Attendees processed at this station in chronological order. Admins can revoke records if needed.
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={() => selectedStationId && fetchStationHistory(selectedStationId)}
+                style={styles.historyRefreshBtn}
+              >
+                <Text style={styles.historyRefreshBtnText}>↻ Refresh</Text>
+              </Pressable>
+            </View>
+
+            {/* Filter Search Input */}
+            <View style={styles.historySearchRow}>
+              <TextInput
+                value={historySearch}
+                onChangeText={(val) => {
+                  setHistorySearch(val)
+                  setHistoryPage(1)
+                }}
+                placeholder="Filter attendees by name, email, university..."
+                placeholderTextColor="#94a3b8"
+                style={styles.historySearchInput}
+              />
+            </View>
+
+            {/* Attendees Log List */}
+            {historyLoading && historyList.length === 0 ? (
+              <View style={{ padding: 28, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#5a0061" />
+                <Text style={{ color: '#64748b', marginTop: 8, fontSize: 13 }}>Loading check-in history...</Text>
+              </View>
+            ) : filteredHistory.length === 0 ? (
+              <View style={styles.historyEmptyBox}>
+                <Text style={styles.historyEmptyText}>
+                  {historySearch ? 'No attendees match your search query.' : 'No attendees checked into this station yet.'}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.historyListContainer}>
+                {displayedHistory.map((item, idx) => {
+                  const globalIdx = filteredHistory.length - ((historyPage - 1) * historyPageSize + idx)
+                  const fname = item.profiles?.first_name || ''
+                  const lname = item.profiles?.last_name || ''
+                  const fullName = `${fname} ${lname}`.trim() || item.profiles?.email?.split('@')[0] || `User #${item.user_id.slice(0, 8)}`
+                  const timeFormatted = formatTime(item.created_at)
+
+                  return (
+                    <View key={item.id} style={styles.historyRow}>
+                      <View style={styles.historyIndexBadge}>
+                        <Text style={styles.historyIndexText}>#{globalIdx}</Text>
+                      </View>
+
+                      <View style={styles.historyAvatarCircle}>
+                        {item.profiles?.avatar_url ? (
+                          <Image source={{ uri: item.profiles.avatar_url }} style={styles.historyAvatarImg} />
+                        ) : (
+                          <PersonSilhouette size={20} color="#5a0061" />
+                        )}
+                      </View>
+
+                      <View style={{ flex: 1, minWidth: 160 }}>
+                        <Text style={styles.historyItemName}>{fullName}</Text>
+                        <Text style={styles.historyItemEmail}>{item.profiles?.email || item.user_id}</Text>
+                        {item.profiles?.university ? (
+                          <Text style={styles.historyItemUni}>{item.profiles.university}</Text>
+                        ) : null}
+                      </View>
+
+                      <View style={styles.historyTimeCol}>
+                        <AppIcon name="clock.fill" size={12} color="#64748b" />
+                        <Text style={styles.historyTimeText}>{timeFormatted}</Text>
+                      </View>
+
+                      {canManageStations ? (
+                        <Pressable
+                          onPress={() => setRevokeModalTarget(item)}
+                          disabled={revokingId === item.id}
+                          style={[styles.revokeBtn, revokingId === item.id && { opacity: 0.5 }]}
+                        >
+                          {revokingId === item.id ? (
+                            <ActivityIndicator size="small" color="#dc2626" />
+                          ) : (
+                            <>
+                              <AppIcon name="xmark" size={12} color="#dc2626" />
+                              <Text style={styles.revokeBtnText}>Revoke</Text>
+                            </>
+                          )}
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  )
+                })}
+
+                {/* Pagination */}
+                <AdminPaginationBar
+                  currentPage={historyPage}
+                  totalPages={totalHistoryPages}
+                  pageSize={historyPageSize}
+                  onPageChange={setHistoryPage}
+                  onPageSizeChange={(size) => {
+                    setHistoryPageSize(size)
+                    setHistoryPage(1)
+                  }}
+                  totalItems={filteredHistory.length}
+                />
+              </View>
+            )}
+          </View>
         </View>
       )}
 
       {/* Search Participant Lookup Modal */}
-      <Modal visible={isLookupOpen} animationType="slide" transparent>
+      <Modal visible={isLookupOpen} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Search Participant</Text>
               <Pressable onPress={() => setIsLookupOpen(false)}>
-                <AppIcon name="xmark" size={20} color="#ffffff" />
+                <AppIcon name="xmark" size={20} color="#64748b" />
               </Pressable>
             </View>
 
@@ -808,140 +1257,315 @@ export function CheckInScannerTab() {
             {isSearchingLookup ? (
               <ActivityIndicator size="small" color="#c2b75f" style={{ marginVertical: 20 }} />
             ) : (
-              <ScrollView style={{ maxHeight: 300 }}>
-                {lookupResults.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => {
-                      setIsLookupOpen(false)
-                      handleProcessCheckIn(item.id)
-                    }}
-                    style={styles.lookupItem}
-                  >
-                    <Text style={styles.lookupItemName}>{item.first_name} {item.last_name}</Text>
-                    {item.dietary_restrictions && item.dietary_restrictions !== 'none' && (
-                      <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>
-                        Diet: {item.dietary_restrictions}
-                      </Text>
-                    )}
-                  </Pressable>
-                ))}
-              </ScrollView>
+              <View style={{ position: 'relative', width: '100%', maxHeight: 300, overflow: 'hidden' }}>
+                <LinearGradient
+                  colors={['#ffffff', 'rgba(255, 255, 255, 0)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    height: 16,
+                    zIndex: 10,
+                    pointerEvents: 'none',
+                  }}
+                />
+                <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ paddingTop: 12, paddingBottom: 20, paddingHorizontal: 4 }} showsVerticalScrollIndicator={false}>
+                  {lookupResults.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => {
+                        setIsLookupOpen(false)
+                        handleProcessCheckIn(item.id)
+                      }}
+                      style={styles.lookupItem}
+                    >
+                      <Text style={styles.lookupItemName}>{item.first_name} {item.last_name}</Text>
+                      {item.dietary_restrictions && item.dietary_restrictions !== 'none' && (
+                        <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>
+                          Diet: {item.dietary_restrictions}
+                        </Text>
+                      )}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0)', '#ffffff']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 20,
+                    zIndex: 10,
+                    pointerEvents: 'none',
+                  }}
+                />
+              </View>
             )}
           </View>
         </View>
       </Modal>
 
       {/* Dynamic Station Manager Modal */}
-      <Modal visible={isManagerOpen} animationType="slide" transparent>
+      <Modal visible={isManagerOpen} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create New Checkpoint Station</Text>
+              <Text style={styles.modalTitle}>{editingStation ? 'Edit Checkpoint Station' : 'Create New Checkpoint Station'}</Text>
               <Pressable onPress={() => setIsManagerOpen(false)}>
-                <AppIcon name="xmark" size={20} color="#ffffff" />
+                <AppIcon name="xmark" size={20} color="#64748b" />
               </Pressable>
             </View>
 
-            <ScrollView style={{ maxHeight: 460 }}>
-              <TranslationsEditor
-                title="STATION TITLE"
-                translations={titleTranslations}
-                setTranslations={setTitleTranslations}
-                placeholder="e.g. Saturday Lunch"
+            <View style={{ position: 'relative', width: '100%', maxHeight: 460, overflow: 'hidden' }}>
+              {/* Top Vertical White Fade */}
+              <LinearGradient
+                colors={['#ffffff', 'rgba(255, 255, 255, 0)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: 18,
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                }}
               />
 
-              <TranslationsEditor
-                title="DESCRIPTION (OPTIONAL)"
-                translations={descTranslations}
-                setTranslations={setDescTranslations}
-                placeholder="Helpful details or instructions for attendees"
-              />
+              <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 28, paddingHorizontal: 4 }} showsVerticalScrollIndicator={false}>
+                <TranslationsEditor
+                  title="STATION TITLE"
+                  translations={titleTranslations}
+                  setTranslations={setTitleTranslations}
+                  placeholder="e.g. Saturday Lunch"
+                />
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 6 }}>
-                <Text style={styles.fieldLabel}>Category Type:</Text>
-                <Pressable onPress={() => setIsCreateTypeOpen(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ color: '#c2b75f', fontSize: 12, fontWeight: '800' }}>+ Create New Type</Text>
-                </Pressable>
-              </View>
+                <TranslationsEditor
+                  title="DESCRIPTION (OPTIONAL)"
+                  translations={descTranslations}
+                  setTranslations={setDescTranslations}
+                  placeholder="Helpful details or instructions for attendees"
+                />
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                <View style={styles.typeSelectorRow}>
-                  {checkpointTypes.map((t) => {
-                    const typeName = getLocalizedText(t.name) || t.id
-                    const isSel = newTypeId === t.id
-                    return (
-                      <Pressable
-                        key={t.id}
-                        onPress={() => {
-                          setNewTypeId(t.id)
-                          if (t.requires_initial_checkin !== undefined) {
-                            setNewRequiresCheckin(t.requires_initial_checkin)
-                          }
-                        }}
-                        style={[styles.typeChip, isSel && styles.typeChipActive]}
-                      >
-                        <Text style={[styles.typeChipText, isSel && styles.typeChipTextActive]}>
-                          {typeName.toUpperCase()}
-                        </Text>
-                      </Pressable>
-                    )
-                  })}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 6 }}>
+                  <Text style={styles.fieldLabel}>Category Type:</Text>
+                  <Pressable onPress={() => setIsCreateTypeOpen(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ color: '#5a0061', fontSize: 12, fontWeight: '800' }}>+ Create New Type</Text>
+                  </Pressable>
                 </View>
+
+                <View style={{ position: 'relative', width: '100%', marginBottom: 16 }}>
+                  {/* Left White Fade */}
+                  <LinearGradient
+                    colors={['#ffffff', 'rgba(255, 255, 255, 0)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 24,
+                      zIndex: 10,
+                      pointerEvents: 'none',
+                    }}
+                  />
+
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ width: '100%' }}
+                    contentContainerStyle={{ gap: 10, paddingHorizontal: 16, paddingVertical: 6 }}
+                  >
+                    <View style={styles.typeSelectorRow}>
+                      {checkpointTypes.map((t) => {
+                        const typeName = getLocalizedText(t.name) || t.id
+                        const isSel = newTypeId === t.id
+                        return (
+                          <Pressable
+                            key={t.id}
+                            onPress={() => {
+                              setNewTypeId(t.id)
+                              if (t.requires_initial_checkin !== undefined) {
+                                setNewRequiresCheckin(t.requires_initial_checkin)
+                              }
+                            }}
+                            style={[styles.typeChip, isSel && styles.typeChipActive]}
+                          >
+                            <Text numberOfLines={1} style={[styles.typeChipText, isSel && styles.typeChipTextActive]}>
+                              {typeName.toUpperCase()}
+                            </Text>
+                          </Pressable>
+                        )
+                      })}
+                    </View>
+                  </ScrollView>
+
+                  {/* Right White Fade */}
+                  <LinearGradient
+                    colors={['rgba(255, 255, 255, 0)', '#ffffff']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 32,
+                      zIndex: 10,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </View>
+
+                <Text style={styles.fieldLabel}>Location:</Text>
+                <TextInput
+                  value={newLocation}
+                  onChangeText={setNewLocation}
+                  placeholder="e.g. Central Cafeteria"
+                  placeholderTextColor="#94a3b8"
+                  style={styles.modalInput}
+                />
+
+                <Text style={styles.fieldLabel}>Opening / Unlock Date & Time (Optional):</Text>
+                {Platform.OS === 'web' ? (
+                  <input
+                    type="datetime-local"
+                    value={newUnlocksAt}
+                    onChange={(e: any) => setNewUnlocksAt(e.target.value)}
+                    style={{
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 10,
+                      padding: '9px 12px',
+                      fontSize: 14,
+                      color: '#0f172a',
+                      backgroundColor: '#ffffff',
+                      fontFamily: 'inherit',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      outline: 'none',
+                      marginBottom: 10,
+                    } as any}
+                  />
+                ) : (
+                  <TextInput
+                    value={newUnlocksAt}
+                    onChangeText={setNewUnlocksAt}
+                    placeholder="YYYY-MM-DDTHH:mm"
+                    placeholderTextColor="#94a3b8"
+                    style={styles.modalInput}
+                  />
+                )}
+
+                <Text style={styles.fieldLabel}>Closing / End Date & Time (Optional):</Text>
+                {Platform.OS === 'web' ? (
+                  <input
+                    type="datetime-local"
+                    value={newEndTime}
+                    onChange={(e: any) => setNewEndTime(e.target.value)}
+                    style={{
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 10,
+                      padding: '9px 12px',
+                      fontSize: 14,
+                      color: '#0f172a',
+                      backgroundColor: '#ffffff',
+                      fontFamily: 'inherit',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      outline: 'none',
+                      marginBottom: 10,
+                    } as any}
+                  />
+                ) : (
+                  <TextInput
+                    value={newEndTime}
+                    onChangeText={setNewEndTime}
+                    placeholder="YYYY-MM-DDTHH:mm"
+                    placeholderTextColor="#94a3b8"
+                    style={styles.modalInput}
+                  />
+                )}
+
+                <Pressable
+                  onPress={() => setNewRequiresCheckin(!newRequiresCheckin)}
+                  style={styles.checkinToggleRow}
+                >
+                  <AppIcon
+                    name={newRequiresCheckin ? 'checkmark.square.fill' : 'square'}
+                    size={20}
+                    color="#5a0061"
+                  />
+                  <Text style={styles.checkinToggleText}>Requires Initial Event Arrival Check-in</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setNewHideUntilUnlocked(!newHideUntilUnlocked)}
+                  style={styles.checkinToggleRow}
+                >
+                  <AppIcon
+                    name={newHideUntilUnlocked ? 'checkmark.square.fill' : 'square'}
+                    size={20}
+                    color="#5a0061"
+                  />
+                  <Text style={styles.checkinToggleText}>Hide Station from Timeline Until Opening Time</Text>
+                </Pressable>
+
+                <TranslationsEditor
+                  title="CUSTOM %s CLAIMED MESSAGE OVERRIDE (OPTIONAL)"
+                  translations={claimedMsgTranslations}
+                  setTranslations={setClaimedMsgTranslations}
+                  placeholder="e.g. Meal already claimed at %s"
+                />
+
+                <TranslationsEditor
+                  title="CUSTOM %s SUCCESS MESSAGE OVERRIDE (OPTIONAL)"
+                  translations={successMsgTranslations}
+                  setTranslations={setSuccessMsgTranslations}
+                  placeholder="e.g. Meal granted successfully at %s"
+                />
+
+                <TranslationsEditor
+                  title="CUSTOM %s NOT CHECKED IN MESSAGE OVERRIDE (OPTIONAL)"
+                  translations={notCheckedInMsgTranslations}
+                  setTranslations={setNotCheckedInMsgTranslations}
+                  placeholder="e.g. User didn't check in to the event yet"
+                />
               </ScrollView>
 
-              <Text style={styles.fieldLabel}>Location:</Text>
-              <TextInput
-                value={newLocation}
-                onChangeText={setNewLocation}
-                placeholder="e.g. Central Cafeteria"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                style={styles.modalInput}
+              {/* Bottom Vertical White Fade */}
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0)', '#ffffff']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 24,
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                }}
               />
-
-              <Pressable
-                onPress={() => setNewRequiresCheckin(!newRequiresCheckin)}
-                style={styles.checkinToggleRow}
-              >
-                <AppIcon
-                  name={newRequiresCheckin ? 'checkmark.square.fill' : 'square'}
-                  size={20}
-                  color="#c2b75f"
-                />
-                <Text style={styles.checkinToggleText}>Requires Initial Event Arrival Check-in</Text>
-              </Pressable>
-
-              <TranslationsEditor
-                title="CUSTOM %s CLAIMED MESSAGE OVERRIDE (OPTIONAL)"
-                translations={claimedMsgTranslations}
-                setTranslations={setClaimedMsgTranslations}
-                placeholder="e.g. Meal already claimed at %s"
-              />
-
-              <TranslationsEditor
-                title="CUSTOM %s SUCCESS MESSAGE OVERRIDE (OPTIONAL)"
-                translations={successMsgTranslations}
-                setTranslations={setSuccessMsgTranslations}
-                placeholder="e.g. Meal granted successfully at %s"
-              />
-
-              <TranslationsEditor
-                title="CUSTOM %s NOT CHECKED IN MESSAGE OVERRIDE (OPTIONAL)"
-                translations={notCheckedInMsgTranslations}
-                setTranslations={setNotCheckedInMsgTranslations}
-                placeholder="e.g. User didn't check in to the event yet"
-              />
-            </ScrollView>
+            </View>
 
             <Pressable
-              onPress={handleCreateStation}
+              onPress={handleSaveStation}
               disabled={isCreatingStation}
               style={styles.saveStationBtn}
             >
               {isCreatingStation ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Text style={styles.saveStationBtnText}>Create Station</Text>
+                <Text style={styles.saveStationBtnText}>{editingStation ? 'Save Station Changes' : 'Create Station'}</Text>
               )}
             </Pressable>
           </View>
@@ -949,67 +1573,101 @@ export function CheckInScannerTab() {
       </Modal>
 
       {/* Create New Station Category Type Sub-Modal */}
-      <Modal visible={isCreateTypeOpen} animationType="slide" transparent>
+      <Modal visible={isCreateTypeOpen} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Station Type</Text>
               <Pressable onPress={() => setIsCreateTypeOpen(false)}>
-                <AppIcon name="xmark" size={20} color="#ffffff" />
+                <AppIcon name="xmark" size={20} color="#64748b" />
               </Pressable>
             </View>
 
-            <ScrollView style={{ maxHeight: 420 }}>
-              <Text style={styles.fieldLabel}>Type ID Key (Slug):</Text>
-              <TextInput
-                value={newTypeIdKey}
-                onChangeText={setNewTypeIdKey}
-                placeholder="e.g. swag, booth, karaoke, game"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                style={styles.modalInput}
-                autoCapitalize="none"
+            <View style={{ position: 'relative', width: '100%', maxHeight: 420, overflow: 'hidden' }}>
+              {/* Top Vertical White Fade */}
+              <LinearGradient
+                colors={['#ffffff', 'rgba(255, 255, 255, 0)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: 18,
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                }}
               />
 
-              <TranslationsEditor
-                title="TYPE NAME"
-                translations={typeNameTranslations}
-                setTranslations={setTypeNameTranslations}
-                placeholder="e.g. Swag Station"
-              />
-
-              <Pressable
-                onPress={() => setTypeRequiresCheckin(!typeRequiresCheckin)}
-                style={styles.checkinToggleRow}
-              >
-                <AppIcon
-                  name={typeRequiresCheckin ? 'checkmark.square.fill' : 'square'}
-                  size={20}
-                  color="#c2b75f"
+              <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 28, paddingHorizontal: 4 }} showsVerticalScrollIndicator={false}>
+                <Text style={styles.fieldLabel}>Type ID Key (Slug):</Text>
+                <TextInput
+                  value={newTypeIdKey}
+                  onChangeText={setNewTypeIdKey}
+                  placeholder="e.g. swag, booth, karaoke, game"
+                  placeholderTextColor="#94a3b8"
+                  style={styles.modalInput}
+                  autoCapitalize="none"
                 />
-                <Text style={styles.checkinToggleText}>Requires Initial Event Arrival Check-in by Default</Text>
-              </Pressable>
 
-              <TranslationsEditor
-                title="DEFAULT %s CLAIMED MESSAGE"
-                translations={typeClaimedTranslations}
-                setTranslations={setTypeClaimedTranslations}
-                placeholder="e.g. Item already claimed at %s"
-              />
+                <TranslationsEditor
+                  title="TYPE NAME"
+                  translations={typeNameTranslations}
+                  setTranslations={setTypeNameTranslations}
+                  placeholder="e.g. Swag Station"
+                />
 
-              <TranslationsEditor
-                title="DEFAULT %s SUCCESS MESSAGE"
-                translations={typeSuccessTranslations}
-                setTranslations={setTypeSuccessTranslations}
-                placeholder="e.g. Item delivered successfully at %s"
-              />
+                <Pressable
+                  onPress={() => setTypeRequiresCheckin(!typeRequiresCheckin)}
+                  style={styles.checkinToggleRow}
+                >
+                  <AppIcon
+                    name={typeRequiresCheckin ? 'checkmark.square.fill' : 'square'}
+                    size={20}
+                    color="#5a0061"
+                  />
+                  <Text style={styles.checkinToggleText}>Requires Initial Event Arrival Check-in by Default</Text>
+                </Pressable>
 
-              <TranslationsEditor
-                title="DEFAULT %s NOT CHECKED IN MESSAGE"
-                translations={typeNotCheckedInTranslations}
-                setTranslations={setTypeNotCheckedInTranslations}
-                placeholder="e.g. User has not completed initial event check-in"
+                <TranslationsEditor
+                  title="DEFAULT %s CLAIMED MESSAGE"
+                  translations={typeClaimedTranslations}
+                  setTranslations={setTypeClaimedTranslations}
+                  placeholder="e.g. Item already claimed at %s"
+                />
+
+                <TranslationsEditor
+                  title="DEFAULT %s SUCCESS MESSAGE"
+                  translations={typeSuccessTranslations}
+                  setTranslations={setTypeSuccessTranslations}
+                  placeholder="e.g. Item delivered successfully at %s"
+                />
+
+                <TranslationsEditor
+                  title="DEFAULT %s NOT CHECKED IN MESSAGE"
+                  translations={typeNotCheckedInTranslations}
+                  setTranslations={setTypeNotCheckedInTranslations}
+                  placeholder="e.g. User has not completed initial event check-in"
+                />
+              </ScrollView>
+
+              {/* Bottom Vertical White Fade */}
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0)', '#ffffff']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 24,
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                }}
               />
-            </ScrollView>
+            </View>
 
             <Pressable
               onPress={handleCreateType}
@@ -1025,11 +1683,280 @@ export function CheckInScannerTab() {
           </View>
         </View>
       </Modal>
+
+      {/* Revoke Check-in Confirmation Modal */}
+      {revokeModalTarget && (
+        <Modal visible animationType="fade" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.revokeConfirmCard}>
+              <View style={styles.revokeWarningIcon}>
+                <AppIcon name="xmark.octagon.fill" size={32} color="#dc2626" />
+              </View>
+              <Text style={styles.revokeConfirmTitle}>Revoke Check-In?</Text>
+              <Text style={styles.revokeConfirmBody}>
+                Are you sure you want to revoke check-in for{' '}
+                <Text style={{ fontWeight: '800', color: '#0f172a' }}>
+                  {`${revokeModalTarget.profiles?.first_name || ''} ${revokeModalTarget.profiles?.last_name || ''}`.trim() || revokeModalTarget.profiles?.email || 'this attendee'}
+                </Text>
+                ?
+              </Text>
+              <Text style={styles.revokeConfirmWarning}>
+                This will delete their check-in record for this station and remove their event/station access.
+              </Text>
+
+              <View style={styles.revokeModalActions}>
+                <Pressable
+                  onPress={() => setRevokeModalTarget(null)}
+                  style={styles.revokeCancelBtn}
+                >
+                  <Text style={styles.revokeCancelBtnText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleRevokeCheckIn(revokeModalTarget)}
+                  disabled={revokingId === revokeModalTarget.id}
+                  style={styles.revokeSubmitBtn}
+                >
+                  {revokingId === revokeModalTarget.id ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.revokeSubmitBtnText}>Yes, Revoke Check-In</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  // Check-In History Styles
+  historyCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
+    gap: 16,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  historyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  historyCountBadge: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  historyCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  historySubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  historyRefreshBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  historyRefreshBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5a0061',
+  },
+  historySearchRow: {
+    width: '100%',
+  },
+  historySearchInput: {
+    width: '100%',
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  historyEmptyBox: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyEmptyText: {
+    fontSize: 14,
+    color: '#94a3b8',
+    textAlign: 'center',
+  },
+  historyListContainer: {
+    width: '100%',
+    gap: 8,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    flexWrap: 'wrap',
+  },
+  historyIndexBadge: {
+    backgroundColor: '#e2e8f0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  historyIndexText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+  },
+  historyAvatarCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(90, 0, 97, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  historyAvatarImg: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
+  historyItemName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  historyItemEmail: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  historyItemUni: {
+    fontSize: 11,
+    color: '#94a3b8',
+  },
+  historyTimeCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  historyTimeText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  revokeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  revokeBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#dc2626',
+  },
+  revokeConfirmCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: 12,
+  },
+  revokeWarningIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fef2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  revokeConfirmTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0f172a',
+    textAlign: 'center',
+  },
+  revokeConfirmBody: {
+    fontSize: 14,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  revokeConfirmWarning: {
+    fontSize: 13,
+    color: '#dc2626',
+    backgroundColor: '#fef2f2',
+    padding: 10,
+    borderRadius: 8,
+    textAlign: 'center',
+    width: '100%',
+  },
+  revokeModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    marginTop: 8,
+  },
+  revokeCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+  },
+  revokeCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  revokeSubmitBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#dc2626',
+    alignItems: 'center',
+  },
+  revokeSubmitBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
   container: {
     width: '100%',
     gap: 16,
@@ -1049,11 +1976,11 @@ const styles = StyleSheet.create({
   hubTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#ffffff',
+    color: '#eaeaea',
   },
   hubSubtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#d2d3d5',
     marginTop: 2,
   },
   createStationPrimaryBtn: {
@@ -1201,6 +2128,23 @@ const styles = StyleSheet.create({
   },
   openStationBtnText: {
     color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  editStationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  editStationBtnText: {
+    color: '#475569',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -1453,30 +2397,48 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  // Modal Styles (Platform Standard White Cards)
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+    ...Platform.select({
+      web: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+      },
+    }),
   },
   modalContent: {
-    width: '100%',
-    maxWidth: 480,
-    backgroundColor: '#1d041f',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#c2b75f',
-    padding: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 24,
+    width: '95%',
+    maxWidth: 580,
+    maxHeight: '90%',
+    ...Platform.select({
+      web: { boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' },
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   modalTitle: {
-    color: '#ffffff',
+    color: '#0f172a',
     fontSize: 18,
     fontWeight: '800',
   },
@@ -1487,10 +2449,12 @@ const styles = StyleSheet.create({
   },
   modalSearchInput: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#f8fafc',
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
     paddingHorizontal: 12,
-    color: '#ffffff',
+    color: '#0f172a',
     height: 40,
   },
   modalSearchBtn: {
@@ -1506,50 +2470,56 @@ const styles = StyleSheet.create({
   lookupItem: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: '#f1f5f9',
   },
   lookupItemName: {
-    color: '#ffffff',
+    color: '#0f172a',
     fontSize: 14,
     fontWeight: '700',
   },
   fieldLabel: {
-    color: '#c2b75f',
+    color: '#475569',
     fontSize: 12,
     fontWeight: '700',
     marginTop: 10,
     marginBottom: 4,
   },
   modalInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#f8fafc',
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    color: '#ffffff',
+    paddingVertical: 10,
+    color: '#0f172a',
     fontSize: 14,
     marginBottom: 6,
   },
   typeSelectorRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
+    gap: 10,
+    alignItems: 'center',
   },
   typeChip: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
     alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
   },
   typeChipActive: {
     backgroundColor: '#5a0061',
-    borderWidth: 1,
-    borderColor: '#c2b75f',
+    borderColor: '#5a0061',
   },
   typeChipText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 10,
-    fontWeight: '800',
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   typeChipTextActive: {
     color: '#ffffff',
@@ -1561,7 +2531,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   checkinToggleText: {
-    color: '#ffffff',
+    color: '#0f172a',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1662,7 +2632,7 @@ function TranslationsEditor({
 
   return (
     <View style={{ gap: 6, marginBottom: 12 }}>
-      <Text style={{ fontSize: compact ? 11 : 12, fontWeight: '800', color: '#c2b75f', letterSpacing: 0.5 }}>
+      <Text style={{ fontSize: compact ? 11 : 12, fontWeight: '800', color: '#475569', letterSpacing: 0.5 }}>
         {title}
       </Text>
       {translations.map((translation, index) => (
@@ -1673,7 +2643,7 @@ function TranslationsEditor({
               { width: 68, textAlign: 'center', fontWeight: '700' },
             ]}
             placeholder="key"
-            placeholderTextColor="rgba(255, 255, 255, 0.4)"
+            placeholderTextColor="#94a3b8"
             value={translation.key}
             onChangeText={(value) => update(index, 'key', value)}
             autoCapitalize="none"
@@ -1681,7 +2651,7 @@ function TranslationsEditor({
           <TextInput
             style={[styles.modalInput, { flex: 1 }]}
             placeholder={placeholder}
-            placeholderTextColor="rgba(255, 255, 255, 0.4)"
+            placeholderTextColor="#94a3b8"
             value={translation.value}
             onChangeText={(value) => update(index, 'value', value)}
           />
@@ -1696,7 +2666,7 @@ function TranslationsEditor({
         </View>
       ))}
       <Pressable onPress={() => setTranslations([...translations, { key: 'es', value: '' }])}>
-        <Text style={{ fontSize: 12, color: '#c2b75f', fontWeight: '800' }}>+ Add translation key</Text>
+        <Text style={{ fontSize: 12, color: '#5a0061', fontWeight: '800' }}>+ Add translation key</Text>
       </Pressable>
     </View>
   )

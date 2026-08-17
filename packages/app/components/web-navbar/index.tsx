@@ -11,6 +11,7 @@ import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
 import { SolitoImage } from 'solito/image'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AppIcon } from 'app/components/app-icon'
+import { checkEventPassUnlocked } from 'app/utils/event-config'
 
 // Module-level in-memory cache to prevent flashing on component mount / route changes
 let globalProfileCache: { avatarUrl: string | null; initials: string } | null = null
@@ -33,6 +34,7 @@ export function WebNavbar() {
   const showApplicationTab = hasPermission('applications', 'view')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => globalProfileCache?.avatarUrl ?? null)
   const [initials, setInitials] = useState<string>(() => globalProfileCache?.initials ?? '')
+  const [isPassAllowed, setIsPassAllowed] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const dropdownRef = useRef<any>(null)
@@ -109,6 +111,27 @@ export function WebNavbar() {
             avatarUrl: resolvedAvatar
           }))
         }
+
+        // Check staff roles & confirmed applications to gate QR pass link display
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+
+        const rolesList = rolesData ? rolesData.map((r) => r.role.toLowerCase()) : ['user']
+        const isStaff = rolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r))
+
+        const { data: userApps } = await supabase
+          .from('applications')
+          .select('status, confirmed_at')
+          .eq('user_id', user.id)
+
+        const isConfirmed = Array.isArray(userApps) && userApps.some(
+          (app) => app.status === 'confirmed' || app.confirmed_at !== null
+        )
+
+        const isUnlocked = await checkEventPassUnlocked(rolesList)
+        setIsPassAllowed((isStaff || isConfirmed) && isUnlocked)
       } catch (err) {
         console.error('Failed to load user profile in WebNavbar:', err)
       }
@@ -340,17 +363,19 @@ export function WebNavbar() {
                 >
                   <Text style={styles.dropdownItemText}>My Profile</Text>
                 </Pressable>
-                <Pressable
-                  onPress={() => {
-                    setIsOpen(false)
-                    navigateTo('/qr')
-                  }}
-                  style={styles.dropdownItem}
-                >
-                  <Text style={[styles.dropdownItemText, { color: '#c2b75f', fontWeight: '800' }]}>
-                    My Event Pass (QR)
-                  </Text>
-                </Pressable>
+                {isPassAllowed && (
+                  <Pressable
+                    onPress={() => {
+                      setIsOpen(false)
+                      navigateTo('/qr')
+                    }}
+                    style={styles.dropdownItem}
+                  >
+                    <Text style={[styles.dropdownItemText, { color: '#c2b75f', fontWeight: '800' }]}>
+                      My Event Pass (QR)
+                    </Text>
+                  </Pressable>
+                )}
                 <View style={styles.divider} />
                 <Pressable onPress={handleSignOut} style={styles.dropdownItem}>
                   <Text style={[styles.dropdownItemText, { color: '#ff6b6b' }]}>Sign Out</Text>
@@ -431,20 +456,22 @@ export function WebNavbar() {
             <Text style={styles.mobileNavLinkText}>Profile</Text>
           </Pressable>
 
-          <Pressable
-            onPress={() => {
-              setMobileMenuOpen(false)
-              navigateTo('/qr')
-            }}
-            style={[
-              styles.mobileNavLink,
-              pathname === '/qr' && styles.mobileNavLinkActive,
-            ]}
-          >
-            <Text style={[styles.mobileNavLinkText, { color: '#c2b75f', fontWeight: '800' }]}>
-              My Event Pass (QR)
-            </Text>
-          </Pressable>
+          {isPassAllowed && (
+            <Pressable
+              onPress={() => {
+                setMobileMenuOpen(false)
+                navigateTo('/qr')
+              }}
+              style={[
+                styles.mobileNavLink,
+                pathname === '/qr' && styles.mobileNavLinkActive,
+              ]}
+            >
+              <Text style={[styles.mobileNavLinkText, { color: '#c2b75f', fontWeight: '800' }]}>
+                My Event Pass (QR)
+              </Text>
+            </Pressable>
+          )}
 
           {hasPermission('applications', 'view_others') && (
             <Pressable

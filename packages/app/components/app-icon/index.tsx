@@ -31,6 +31,8 @@ import {
   CheckSquare,
   Users,
   Clock,
+  MapPin,
+  Landmark,
 } from 'lucide-react'
 
 export type IconName =
@@ -47,6 +49,9 @@ export type IconName =
   | 'lock.open.fill'
   | 'pencil'
   | 'mail'
+  | 'mail.fill'
+  | 'envelope'
+  | 'envelope.fill'
   | 'message'
   | 'message.fill'
   | 'smartphone'
@@ -69,9 +74,13 @@ export type IconName =
   | 'checkmark.square.fill'
   | 'person.3.fill'
   | 'clock.fill'
+  | 'mappin.and.ellipse'
+  | 'mappin'
+  | 'building.columns.fill'
+  | 'building'
 
 interface AppIconProps {
-  name: IconName
+  name: IconName | string
   color?: string
   size?: number
 }
@@ -111,8 +120,8 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     return <Pencil size={size} color={color} strokeWidth={2} />
   }
 
-  if (name === 'mail') {
-    return <Mail size={size} color={color} strokeWidth={2} />
+  if (name.startsWith('mail') || name.startsWith('envelope')) {
+    return <Mail size={size} color={color} fill={isFilled ? color : 'none'} strokeWidth={2} />
   }
 
   if (name.startsWith('message')) {
@@ -197,6 +206,18 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
 
   if (name === 'clock.fill') {
     return <Clock size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name.startsWith('mappin')) {
+    return <MapPin size={size} color={color} fill={isFilled ? color : 'none'} strokeWidth={2} />
+  }
+
+  if (name.startsWith('building')) {
+    return <Landmark size={size} color={color} strokeWidth={2} />
+  }
+
+  if (name === 'xmark') {
+    return <X size={size} color={color} strokeWidth={2.5} />
   }
 
   return <X size={size} color={color} strokeWidth={2.5} />

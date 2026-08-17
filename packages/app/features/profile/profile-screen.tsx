@@ -26,6 +26,7 @@ import { formFieldColors } from 'app/components/form-field-styles'
 import { dataReferences } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
+import { checkEventPassUnlocked } from 'app/utils/event-config'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AppIcon } from 'app/components/app-icon'
 
@@ -125,6 +126,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
   const [isUploading, setIsUploading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
+  const [isPassAllowed, setIsPassAllowed] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; isError: boolean } | null>(null)
 
   const handleToggleEdit = React.useCallback(() => {
@@ -270,6 +272,27 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             }
           }
         }
+
+        // Check permissions for QR event pass display
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+
+        const rolesList = rolesData ? rolesData.map((r) => r.role.toLowerCase()) : ['user']
+        const isStaff = rolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r))
+
+        const { data: userAppsData } = await supabase
+          .from('applications')
+          .select('status, confirmed_at')
+          .eq('user_id', user.id)
+
+        const isConfirmed = Array.isArray(userAppsData) && userAppsData.some(
+          (app) => app.status === 'confirmed' || app.confirmed_at !== null
+        )
+
+        const isUnlocked = await checkEventPassUnlocked(rolesList)
+        setIsPassAllowed((isStaff || isConfirmed) && isUnlocked)
 
         // Fetch dynamic form field choices
         const { data: fieldsData } = await supabase
@@ -641,21 +664,23 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             <Text style={styles.floatingRole}>{formattedRole}</Text>
 
             {/* Quick Action Slot: My Event Pass (QR Code) */}
-            <View style={styles.quickActionsContainer}>
-              <GlassButton
-                glassEffectStyle="regular"
-                colorScheme="dark"
-                accessibilityRole="button"
-                accessibilityLabel="Show My Event QR Pass"
-                style={styles.quickActionButton}
-                onPress={() => {
-                  navigateTo('/qr')
-                }}
-              >
-                <AppIcon name="qrcode" color="#ffffff" size={18} />
-                <Text style={styles.quickActionText}>My Event Pass (QR)</Text>
-              </GlassButton>
-            </View>
+            {isPassAllowed && (
+              <View style={styles.quickActionsContainer}>
+                <GlassButton
+                  glassEffectStyle="regular"
+                  colorScheme="dark"
+                  accessibilityRole="button"
+                  accessibilityLabel="Show My Event QR Pass"
+                  style={styles.quickActionButton}
+                  onPress={() => {
+                    navigateTo('/qr')
+                  }}
+                >
+                  <AppIcon name="qrcode" color="#ffffff" size={18} />
+                  <Text style={styles.quickActionText}>My Event Pass (QR)</Text>
+                </GlassButton>
+              </View>
+            )}
           </View>
 
           {/* Profile Content Card - Material Container */}

@@ -882,7 +882,7 @@ const mockDetailApplications: Application[] = [
       country: 'United Kingdom',
       university: 'University of London',
       major: 'Analytical Systems',
-      year: '2025',
+      year: '2026',
       tshirt: 'S',
       diet: 'Gluten-Free',
       resume: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'

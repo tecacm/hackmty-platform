@@ -1,3 +1,7 @@
 'use client'
 
-export { RoleApplicationScreen as default } from 'app/features/role-application/role-application-screen'
+import { RoleApplicationScreen } from 'app/features/role-application/role-application-screen'
+
+export default function RoleApplicationsPage() {
+  return <RoleApplicationScreen />
+}

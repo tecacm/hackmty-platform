@@ -1,15 +1,28 @@
+'use client'
+
 import * as React from 'react'
-import { View, Text, TextInput, Pressable, ActivityIndicator, Platform, useWindowDimensions } from 'react-native'
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native'
 import { PillButton } from '../../../components/pill-button'
 import { AppIcon } from '../../../components/app-icon'
+import { AdminPaginationBar } from './AdminPaginationBar'
+import { ApplicationRow } from './ApplicationRow'
 
 interface SubmissionsTabProps {
   stats: {
     total: number
-    submitted: number
+    confirmed: number
     accepted: number
+    submitted: number
+    changesRequested: number
     rejected: number
-    inReview: number
   }
   searchQuery: string
   setSearchQuery: (val: string) => void
@@ -37,22 +50,14 @@ interface SubmissionsTabProps {
   groupedData: any
   expandedTeams: Record<string, boolean>
   toggleTeamExpand: (teamName: string) => void
-  renderApplicationRow: (app: any) => React.ReactNode
-  renderPaginationBar: (
-    currentPage: number,
-    totalPages: number,
-    pageSize: number,
-    totalItems: number,
-    onPageChange: (page: number) => void,
-    onPageSizeChange: (size: number) => void
-  ) => React.ReactNode
   appPage: number
   totalAppPages: number
   appPageSize: number
   setAppPage: (page: number) => void
   setAppPageSize: (size: number) => void
   onOpenMessageModal?: (targetType: 'team' | 'user', targetId: string, targetName: string, memberUserIds?: string[]) => void
-  styles: any
+  onOpenSecretLinks?: () => void
+  onRefresh?: () => void
 }
 
 export function SubmissionsTab({
@@ -83,20 +88,17 @@ export function SubmissionsTab({
   groupedData,
   expandedTeams,
   toggleTeamExpand,
-  renderApplicationRow,
-  renderPaginationBar,
   appPage,
   totalAppPages,
   appPageSize,
   setAppPage,
   setAppPageSize,
   onOpenMessageModal,
-  styles,
+  onOpenSecretLinks,
+  onRefresh,
 }: SubmissionsTabProps) {
   const { width } = useWindowDimensions()
-  const [hasMounted, setHasMounted] = React.useState(false)
-  React.useEffect(() => { setHasMounted(true) }, [])
-  const isSmallScreen = hasMounted && width > 0 && width < 640
+  const isSmallScreen = width > 0 && width < 640
 
   const normalizedGroupedData = React.useMemo(() => {
     if (!groupedData) return []
@@ -108,7 +110,7 @@ export function SubmissionsTab({
     }
     return Object.entries(groupedData).map(([teamName, apps]: [string, any]) => ({
       teamName,
-      applications: Array.isArray(apps) ? apps : (Array.isArray(apps?.applications) ? apps.applications : []),
+      applications: Array.isArray(apps) ? apps : Array.isArray(apps?.applications) ? apps.applications : [],
     }))
   }, [groupedData])
 
@@ -119,37 +121,41 @@ export function SubmissionsTab({
   }, [normalizedGroupedData, appPage, appPageSize])
 
   return (
-    <View style={{ width: '100%', gap: 18 }}>
+    <View style={styles.container}>
       {/* Stats Overview Grid */}
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
-          <Text style={styles.statCount}>{stats.total}</Text>
+          <Text style={styles.statCount}>{stats?.total ?? 0}</Text>
           <Text style={styles.statLabel}>Total</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={[styles.statCount, { color: '#2563eb' }]}>{stats.submitted}</Text>
-          <Text style={styles.statLabel}>Submitted</Text>
+          <Text style={[styles.statCount, { color: '#7c3aed' }]}>{stats?.confirmed ?? 0}</Text>
+          <Text style={styles.statLabel}>Confirmed</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={[styles.statCount, { color: '#16a34a' }]}>{stats.accepted}</Text>
+          <Text style={[styles.statCount, { color: '#16a34a' }]}>{stats?.accepted ?? 0}</Text>
           <Text style={styles.statLabel}>Accepted</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={[styles.statCount, { color: '#dc2626' }]}>{stats.rejected}</Text>
-          <Text style={styles.statLabel}>Rejected</Text>
+          <Text style={[styles.statCount, { color: '#2563eb' }]}>{stats?.submitted ?? 0}</Text>
+          <Text style={styles.statLabel}>Submitted</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={[styles.statCount, { color: '#d97706' }]}>{stats.inReview}</Text>
-          <Text style={styles.statLabel}>In Review</Text>
+          <Text style={[styles.statCount, { color: '#d97706' }]}>{stats?.changesRequested ?? 0}</Text>
+          <Text style={styles.statLabel}>Changes Req</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={[styles.statCount, { color: '#dc2626' }]}>{stats?.rejected ?? 0}</Text>
+          <Text style={styles.statLabel}>Rejected</Text>
         </View>
       </View>
 
       {/* Advanced Filter Toolbar */}
       <View style={styles.toolbarCard}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <View style={{ flex: 1, minWidth: 260, height: 44 }}>
+        <View style={styles.searchRow}>
+          <View style={styles.searchCol}>
             <TextInput
-              style={[styles.searchInput, { height: 44, width: '100%' }]}
+              style={styles.searchInput}
               placeholder="Search candidate, email, university..."
               placeholderTextColor="#94a3b8"
               value={searchQuery}
@@ -157,7 +163,7 @@ export function SubmissionsTab({
             />
           </View>
 
-          <View style={[styles.dropdownContainer, { height: 44 }]}>
+          <View style={styles.dropdownContainer}>
             <Pressable
               onPress={() => {
                 const types = Array.from(new Set(['all', ...(dynamicTypeOptions || []).map((t: any) => typeof t === 'string' ? t : t.id)]))
@@ -165,7 +171,7 @@ export function SubmissionsTab({
                 const nextIdx = currentIdx < 0 ? 0 : (currentIdx + 1) % types.length
                 setSelectedType(types[nextIdx] || 'all')
               }}
-              style={[styles.dropdownBtn, { height: 44 }]}
+              style={styles.dropdownBtn}
             >
               <Text style={styles.dropdownBtnText}>
                 ROLE: {(selectedType || 'all').toUpperCase()}
@@ -173,17 +179,17 @@ export function SubmissionsTab({
             </Pressable>
           </View>
 
-          <View style={[styles.dropdownContainer, { height: 44 }]}>
+          <View style={styles.dropdownContainer}>
             <Pressable
               onPress={() => {
-                const statuses = ['all', 'submitted', 'accepted', 'rejected', 'in_review', 'draft']
+                const statuses = ['all', 'confirmed', 'accepted', 'submitted', 'changes_requested', 'rejected', 'draft']
                 const nextIdx = (statuses.indexOf(selectedStatus) + 1) % statuses.length
                 setSelectedStatus(statuses[nextIdx] || 'all')
               }}
-              style={[styles.dropdownBtn, { height: 44 }]}
+              style={styles.dropdownBtn}
             >
               <Text style={styles.dropdownBtnText}>
-                STATUS: {(selectedStatus || 'all').toUpperCase()}
+                STATUS: {(selectedStatus || 'all').toUpperCase().replace('_', ' ')}
               </Text>
             </Pressable>
           </View>
@@ -192,16 +198,37 @@ export function SubmissionsTab({
             title={groupByTeams ? '✓ Grouped Teams' : 'Group by Teams'}
             onPress={() => setGroupByTeams(!groupByTeams)}
             variant={groupByTeams ? 'primary' : 'outline-primary'}
-            additionalStyle={{ height: 44, paddingHorizontal: 14, width: 'auto' }}
+            additionalStyle={styles.groupBtn}
             fontSize={12}
           />
+
+          {onOpenSecretLinks ? (
+            <PillButton
+              title="Secret Links"
+              onPress={onOpenSecretLinks}
+              variant="outline-primary"
+              additionalStyle={{ height: 44, paddingHorizontal: 14, width: 'auto' }}
+              fontSize={12}
+            />
+          ) : null}
+
+          {onRefresh ? (
+            <PillButton
+              title="↻ Refresh"
+              onPress={onRefresh}
+              isLoading={loading}
+              variant="outline-primary"
+              additionalStyle={{ height: 44, paddingHorizontal: 14, width: 'auto' }}
+              fontSize={12}
+            />
+          ) : null}
         </View>
 
         {/* Include & Exclude Tag Filter Triggers */}
-        <View style={{ flexDirection: isSmallScreen ? 'column' : 'row', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
-          <View style={{ flex: isSmallScreen ? undefined : 1, width: isSmallScreen ? '100%' : undefined, minWidth: isSmallScreen ? '100%' : 240, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+        <View style={[styles.tagsInputRow, isSmallScreen && styles.flexCol]}>
+          <View style={[styles.tagInputWrapper, isSmallScreen && styles.fullWidth]}>
             <TextInput
-              style={[styles.searchInput, { flex: 1, height: 38, fontSize: 13 }]}
+              style={styles.tagTextInput}
               placeholder="Include tag (e.g. Python, MIT)..."
               placeholderTextColor="#94a3b8"
               value={includeInput}
@@ -212,22 +239,14 @@ export function SubmissionsTab({
               variant="success"
               title={isSmallScreen ? '+' : '+ Must Have'}
               onPress={addIncludeTag}
-              additionalStyle={{
-                height: 38,
-                width: isSmallScreen ? 38 : 'auto',
-                minWidth: isSmallScreen ? 38 : undefined,
-                paddingHorizontal: isSmallScreen ? 0 : 12,
-                backgroundColor: '#16a34a',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
+              additionalStyle={[styles.tagActionBtn, isSmallScreen && styles.tagActionBtnSmall, { backgroundColor: '#16a34a' }]}
               fontSize={isSmallScreen ? 16 : 11}
             />
           </View>
 
-          <View style={{ flex: isSmallScreen ? undefined : 1, width: isSmallScreen ? '100%' : undefined, minWidth: isSmallScreen ? '100%' : 240, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <View style={[styles.tagInputWrapper, isSmallScreen && styles.fullWidth]}>
             <TextInput
-              style={[styles.searchInput, { flex: 1, height: 38, fontSize: 13 }]}
+              style={styles.tagTextInput}
               placeholder="Exclude tag (e.g. Java, High School)..."
               placeholderTextColor="#94a3b8"
               value={excludeInput}
@@ -238,42 +257,34 @@ export function SubmissionsTab({
               variant="danger"
               title={isSmallScreen ? '-' : '- Exclude'}
               onPress={addExcludeTag}
-              additionalStyle={{
-                height: 38,
-                width: isSmallScreen ? 38 : 'auto',
-                minWidth: isSmallScreen ? 38 : undefined,
-                paddingHorizontal: isSmallScreen ? 0 : 12,
-                backgroundColor: '#dc2626',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
+              additionalStyle={[styles.tagActionBtn, isSmallScreen && styles.tagActionBtnSmall, { backgroundColor: '#dc2626' }]}
               fontSize={isSmallScreen ? 18 : 11}
             />
           </View>
         </View>
 
         {/* Render Tag Chips */}
-        {(includeTags.length > 0 || excludeTags.length > 0) && (
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-            {includeTags.map(t => (
-              <Pressable key={t} onPress={() => removeIncludeTag(t)} style={{ backgroundColor: '#dcfce7', borderColor: '#86efac', borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803d' }}>+ {t} ✕</Text>
+        {includeTags.length > 0 || excludeTags.length > 0 ? (
+          <View style={styles.chipsRow}>
+            {includeTags.map((t) => (
+              <Pressable key={t} onPress={() => removeIncludeTag(t)} style={styles.includeChip}>
+                <Text style={styles.includeChipText}>+ {t} ✕</Text>
               </Pressable>
             ))}
-            {excludeTags.map(t => (
-              <Pressable key={t} onPress={() => removeExcludeTag(t)} style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#dc2626' }}>- {t} ✕</Text>
+            {excludeTags.map((t) => (
+              <Pressable key={t} onPress={() => removeExcludeTag(t)} style={styles.excludeChip}>
+                <Text style={styles.excludeChipText}>- {t} ✕</Text>
               </Pressable>
             ))}
           </View>
-        )}
+        ) : null}
       </View>
 
       {/* Content List & Groupings */}
       <View style={styles.listContainer}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#7c3aed" />
+            <ActivityIndicator size="large" color="#5a0061" />
             <Text style={styles.loadingText}>Fetching candidate applications...</Text>
           </View>
         ) : error ? (
@@ -286,40 +297,29 @@ export function SubmissionsTab({
           </View>
         ) : groupByTeams ? (
           <>
-            <View style={{ gap: 16 }}>
-              {displayedGroupedData.map(group => {
+            <View style={styles.teamsGrid}>
+              {displayedGroupedData.map((group) => {
                 const teamName = group.teamName
                 const teamApps = group.applications
                 const isExpanded = !!expandedTeams[teamName]
                 return (
-                  <View key={teamName} style={{ backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' }}>
+                  <View key={teamName} style={styles.teamCard}>
                     <Pressable
                       onPress={() => toggleTeamExpand(teamName)}
-                      style={{
-                        paddingHorizontal: isSmallScreen ? 12 : 18,
-                        paddingVertical: 12,
-                        backgroundColor: '#f8fafc',
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 8,
-                      }}
+                      style={[styles.teamHeaderRow, isSmallScreen && { paddingHorizontal: 12 }]}
                     >
-                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 }}>
-                        <Text
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                          style={{ fontSize: isSmallScreen ? 14 : 16, fontWeight: '800', color: '#0f172a', flexShrink: 1 }}
-                        >
+                      <View style={styles.teamTitleRow}>
+                        <Text numberOfLines={1} ellipsizeMode="tail" style={styles.teamNameText}>
                           {teamName}
                         </Text>
-                        <View style={{ backgroundColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2, flexShrink: 0 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#334155' }}>
+                        <View style={styles.memberBadge}>
+                          <Text style={styles.memberBadgeText}>
                             {teamApps.length} {teamApps.length === 1 ? 'Member' : 'Members'}
                           </Text>
                         </View>
                       </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: isSmallScreen ? 6 : 10, flexShrink: 0 }}>
+
+                      <View style={styles.teamActionsRow}>
                         {onOpenMessageModal ? (
                           <Pressable
                             onPress={(e: any) => {
@@ -327,67 +327,369 @@ export function SubmissionsTab({
                               const memberIds = teamApps.map((a: any) => a.user_id).filter(Boolean)
                               onOpenMessageModal('team', teamName, teamName, memberIds)
                             }}
-                            style={{
-                              backgroundColor: '#f3e8ff',
-                              borderColor: '#c084fc',
-                              borderWidth: 1,
-                              borderRadius: 12,
-                              paddingHorizontal: isSmallScreen ? 6 : 10,
-                              paddingVertical: 5,
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
+                            style={styles.teamMsgBtn}
                           >
-                            <AppIcon name="message.fill" size={12} color="#7e22ce" />
-                            <Text style={{ color: '#7e22ce', fontSize: 11, fontWeight: '700' }}>
+                            <AppIcon name="envelope.fill" size={12} color="#5a0061" />
+                            <Text style={styles.teamMsgBtnText}>
                               {isSmallScreen ? 'Msg' : 'Msg Team'}
                             </Text>
                           </Pressable>
                         ) : null}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                          <AppIcon name={isExpanded ? 'chevron.up' : 'chevron.down'} size={14} color="#6d28d9" />
-                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#6d28d9' }}>
+
+                        <View style={styles.expandToggleRow}>
+                          <AppIcon name={isExpanded ? 'chevron.up' : 'chevron.down'} size={14} color="#5a0061" />
+                          <Text style={styles.expandToggleText}>
                             {isExpanded ? 'Hide' : 'Expand'}
                           </Text>
                         </View>
                       </View>
                     </Pressable>
 
-                    {isExpanded && (
-                      <View style={{ padding: 14, gap: 10 }}>
-                        {teamApps.map((app: any) => renderApplicationRow(app))}
+                    {isExpanded ? (
+                      <View style={styles.teamAppsList}>
+                        {teamApps.map((app: any) => (
+                          <ApplicationRow
+                            key={app.id}
+                            app={app}
+                            onOpenMessageModal={onOpenMessageModal}
+                          />
+                        ))}
                       </View>
-                    )}
+                    ) : null}
                   </View>
                 )
               })}
             </View>
-            {renderPaginationBar(
-              appPage,
-              totalTeamPages,
-              appPageSize,
-              normalizedGroupedData.length,
-              setAppPage,
-              setAppPageSize
-            )}
+
+            <AdminPaginationBar
+              currentPage={appPage}
+              totalPages={totalTeamPages}
+              pageSize={appPageSize}
+              totalItems={normalizedGroupedData.length}
+              onPageChange={setAppPage}
+              onPageSizeChange={setAppPageSize}
+            />
           </>
         ) : (
           <>
-            <View style={{ gap: 12 }}>
-              {displayedApps.map(app => renderApplicationRow(app))}
+            <View style={styles.appsList}>
+              {displayedApps.map((app) => (
+                <ApplicationRow
+                  key={app.id}
+                  app={app}
+                  onOpenMessageModal={onOpenMessageModal}
+                />
+              ))}
             </View>
-            {renderPaginationBar(
-              appPage,
-              totalAppPages,
-              appPageSize,
-              filteredApps.length,
-              setAppPage,
-              setAppPageSize
-            )}
+
+            <AdminPaginationBar
+              currentPage={appPage}
+              totalPages={totalAppPages}
+              pageSize={appPageSize}
+              totalItems={filteredApps.length}
+              onPageChange={setAppPage}
+              onPageSizeChange={setAppPageSize}
+            />
           </>
         )}
       </View>
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+    gap: 18,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    width: '100%',
+    marginBottom: 4,
+  },
+  statBox: {
+    flex: 1,
+    minWidth: 120,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  statCount: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  toolbarCard: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 16,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  searchCol: {
+    flex: 1,
+    minWidth: 240,
+    height: 44,
+  },
+  searchInput: {
+    height: 44,
+    width: '100%',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingHorizontal: 14,
+    color: '#0f172a',
+    fontSize: 14,
+  },
+  dropdownContainer: {
+    height: 44,
+  },
+  dropdownBtn: {
+    height: 44,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+  },
+  dropdownBtnText: {
+    color: '#0f172a',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  groupBtn: {
+    height: 44,
+    paddingHorizontal: 14,
+    width: 'auto',
+  },
+  tagsInputRow: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
+    marginTop: 4,
+  },
+  tagInputWrapper: {
+    flex: 1,
+    minWidth: 240,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  tagTextInput: {
+    flex: 1,
+    height: 38,
+    fontSize: 13,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingHorizontal: 12,
+    color: '#0f172a',
+  },
+  tagActionBtn: {
+    height: 38,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 'auto',
+  },
+  tagActionBtnSmall: {
+    width: 38,
+    paddingHorizontal: 0,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginTop: 4,
+  },
+  includeChip: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#86efac',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  includeChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  excludeChip: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#fca5a5',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  excludeChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#dc2626',
+  },
+  listContainer: {
+    width: '100%',
+  },
+  loadingContainer: {
+    marginVertical: 40,
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    color: '#475569',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: '#ef4444',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+  },
+  errorText: {
+    color: '#ef4444',
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  teamsGrid: {
+    gap: 16,
+  },
+  teamCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+  },
+  teamHeaderRow: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    backgroundColor: '#f8fafc',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  teamTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  teamNameText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+    flexShrink: 1,
+  },
+  memberBadge: {
+    backgroundColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    flexShrink: 0,
+  },
+  memberBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#334155',
+  },
+  teamActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,
+  },
+  teamMsgBtn: {
+    backgroundColor: 'rgba(90, 0, 97, 0.08)',
+    borderColor: 'rgba(90, 0, 97, 0.2)',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  teamMsgBtnText: {
+    color: '#5a0061',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  expandToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
+  },
+  expandToggleText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#5a0061',
+  },
+  teamAppsList: {
+    padding: 14,
+    gap: 10,
+  },
+  appsList: {
+    gap: 10,
+  },
+  flexCol: {
+    flexDirection: 'column',
+  },
+  fullWidth: {
+    width: '100%',
+  },
+})

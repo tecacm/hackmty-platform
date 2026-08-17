@@ -50,7 +50,8 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { SymbolView } = require('expo-symbols') as { SymbolView: any }
       let iosSymbol = name === 'pencil' ? 'pencil' : name
-      if (name === 'mail') iosSymbol = 'envelope'
+      if (name === 'mail' || name === 'envelope') iosSymbol = 'envelope'
+      if (name === 'mail.fill' || name === 'envelope.fill') iosSymbol = 'envelope.fill'
       if (name.startsWith('message')) iosSymbol = 'message.fill'
       if (name === 'smartphone') iosSymbol = 'iphone'
       if (name === 'checkmark') iosSymbol = 'checkmark'
@@ -61,6 +62,8 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
       if (name === 'ban') iosSymbol = 'nosign'
       if (name === 'slash') iosSymbol = 'circle.slash'
       if (name === 'menu') iosSymbol = 'line.3.horizontal'
+      if (name.startsWith('mappin')) iosSymbol = 'mappin.and.ellipse'
+      if (name.startsWith('building')) iosSymbol = 'building.columns.fill'
       return <SymbolView name={iosSymbol as any} tintColor={color} size={size} />
     } catch (e) {}
   }
@@ -81,7 +84,7 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     else if (name === 'lock.open.fill') ionName = 'lock-open'
     else if (name === 'xmark') ionName = 'close'
     else if (name === 'pencil') ionName = 'pencil'
-    else if (name === 'mail') ionName = 'mail'
+    else if (name.startsWith('mail') || name.startsWith('envelope')) ionName = 'mail'
     else if (name.startsWith('message')) ionName = 'chatbubble'
     else if (name === 'smartphone') ionName = 'phone-portrait'
     else if (name === 'checkmark') ionName = 'checkmark'
@@ -102,6 +105,8 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     else if (name === 'checkmark.square.fill') ionName = 'checkbox'
     else if (name === 'person.3.fill') ionName = 'people'
     else if (name === 'clock.fill') ionName = 'time'
+    else if (name.startsWith('mappin')) ionName = 'location'
+    else if (name.startsWith('building')) ionName = 'business'
 
     return <Ionicons name={ionName} size={size} color={color} />
   } catch (e) {

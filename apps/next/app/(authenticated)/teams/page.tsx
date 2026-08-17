@@ -2,4 +2,6 @@
 
 import { TeamsScreen } from 'app/features/teams/teams-screen'
 
-export default TeamsScreen
+export default function TeamsPage() {
+  return <TeamsScreen />
+}
