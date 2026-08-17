@@ -26,6 +26,7 @@ import { formFieldColors } from 'app/components/form-field-styles'
 import { dataReferences } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
+import { checkEventPassUnlocked } from 'app/utils/event-config'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AppIcon } from 'app/components/app-icon'
 
@@ -125,6 +126,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
   const [isUploading, setIsUploading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
+  const [isPassAllowed, setIsPassAllowed] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; isError: boolean } | null>(null)
 
   const handleToggleEdit = React.useCallback(() => {
@@ -216,9 +218,36 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
           .eq('id', user.id)
           .maybeSingle()
 
+        let fname = profile?.first_name || user.user_metadata?.first_name || user.user_metadata?.given_name || ''
+        let lname = profile?.last_name || user.user_metadata?.last_name || user.user_metadata?.family_name || ''
+
+        if (!fname && (user.user_metadata?.full_name || user.user_metadata?.name)) {
+          const rawName = user.user_metadata?.full_name || user.user_metadata?.name
+          const parts = String(rawName).trim().split(' ')
+          fname = parts[0] || ''
+          lname = parts.slice(1).join(' ') || ''
+        }
+
+        // Fallback: check latest submitted application answers
+        if (!fname) {
+          const { data: appData } = await supabase
+            .from('applications')
+            .select('answers')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (appData?.answers) {
+            fname = appData.answers.firstName || appData.answers.first_name || ''
+            lname = appData.answers.lastName || appData.answers.last_name || ''
+          }
+        }
+
+        setFirstName(fname)
+        setLastName(lname)
+
         if (profile) {
-          setFirstName(profile.first_name || '')
-          setLastName(profile.last_name || '')
           setPhone(profile.phone || '')
           setGender(profile.gender || '')
           setUniversity(profile.university || '')
@@ -243,6 +272,27 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             }
           }
         }
+
+        // Check permissions for QR event pass display
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+
+        const rolesList = rolesData ? rolesData.map((r) => r.role.toLowerCase()) : ['user']
+        const isStaff = rolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r))
+
+        const { data: userAppsData } = await supabase
+          .from('applications')
+          .select('status, confirmed_at')
+          .eq('user_id', user.id)
+
+        const isConfirmed = Array.isArray(userAppsData) && userAppsData.some(
+          (app) => app.status === 'confirmed' || app.confirmed_at !== null
+        )
+
+        const isUnlocked = await checkEventPassUnlocked(rolesList)
+        setIsPassAllowed((isStaff || isConfirmed) && isUnlocked)
 
         // Fetch dynamic form field choices
         const { data: fieldsData } = await supabase
@@ -582,7 +632,11 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             >
               <View style={styles.avatarCircle}>
                 {avatarDisplayUrl ? (
-                  <Image source={{ uri: avatarDisplayUrl }} style={styles.avatarImage} />
+                  <Image
+                    source={{ uri: avatarDisplayUrl }}
+                    style={styles.avatarImage}
+                    onError={() => setAvatarDisplayUrl(null)}
+                  />
                 ) : (
                   <View style={styles.avatarFallback}>
                     <PersonSilhouette size={110} />
@@ -609,24 +663,24 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             {/* Role label directly under the name without a pill box */}
             <Text style={styles.floatingRole}>{formattedRole}</Text>
 
-            {/* Quick Action Slot */}
-            <View style={styles.quickActionsContainer}>
-              {false &&
-              <GlassButton
-                glassEffectStyle="clear"
-                colorScheme="dark"
-                accessibilityRole="button"
-                accessibilityLabel="Show My QR Code"
-                style={styles.quickActionButton}
-                onPress={() => {
-                  Alert.alert('My QR', 'QR Code check-in and info sharing features coming soon!')
-                }}
-              >
-                <AppIcon name="qrcode" color="#ffffff" size={16} />
-                <Text style={styles.quickActionText}>My QR</Text>
-              </GlassButton>
-              }
-            </View>
+            {/* Quick Action Slot: My Event Pass (QR Code) */}
+            {isPassAllowed && (
+              <View style={styles.quickActionsContainer}>
+                <GlassButton
+                  glassEffectStyle="regular"
+                  colorScheme="dark"
+                  accessibilityRole="button"
+                  accessibilityLabel="Show My Event QR Pass"
+                  style={styles.quickActionButton}
+                  onPress={() => {
+                    navigateTo('/qr')
+                  }}
+                >
+                  <AppIcon name="qrcode" color="#ffffff" size={18} />
+                  <Text style={styles.quickActionText}>My Event Pass (QR)</Text>
+                </GlassButton>
+              </View>
+            )}
           </View>
 
           {/* Profile Content Card - Material Container */}
@@ -897,7 +951,11 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
               <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
                 <View style={styles.modalAvatarCircle}>
                   {avatarDisplayUrl ? (
-                    <Image source={{ uri: avatarDisplayUrl }} style={styles.modalAvatarImage} />
+                    <Image
+                      source={{ uri: avatarDisplayUrl }}
+                      style={styles.modalAvatarImage}
+                      onError={() => setAvatarDisplayUrl(null)}
+                    />
                   ) : (
                     <View style={styles.modalAvatarFallback}>
                       <PersonSilhouette size={200} />
@@ -1293,6 +1351,34 @@ const styles = StyleSheet.create({
   closeModalBtnText: {
     color: '#ffffff',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  qrPassPillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#5a0061',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#c2b75f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+    marginTop: 8,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      } as any,
+    }),
+  },
+  qrPassPillText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 })

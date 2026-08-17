@@ -12,6 +12,7 @@ export type IconName =
   | 'megaphone.fill'
   | 'xmark'
   | 'lock.fill'
+  | 'lock.open.fill'
   | 'pencil'
   | 'mail'
   | 'message'
@@ -25,6 +26,17 @@ export type IconName =
   | 'ban'
   | 'slash'
   | 'menu'
+  | 'plus.circle.fill'
+  | 'magnifyingglass'
+  | 'checkmark.circle.fill'
+  | 'exclamationmark.triangle.fill'
+  | 'xmark.circle.fill'
+  | 'xmark.octagon.fill'
+  | 'leaf.fill'
+  | 'square'
+  | 'checkmark.square.fill'
+  | 'person.3.fill'
+  | 'clock.fill'
 
 interface AppIconProps {
   name: IconName
@@ -38,7 +50,8 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { SymbolView } = require('expo-symbols') as { SymbolView: any }
       let iosSymbol = name === 'pencil' ? 'pencil' : name
-      if (name === 'mail') iosSymbol = 'envelope'
+      if (name === 'mail' || name === 'envelope') iosSymbol = 'envelope'
+      if (name === 'mail.fill' || name === 'envelope.fill') iosSymbol = 'envelope.fill'
       if (name.startsWith('message')) iosSymbol = 'message.fill'
       if (name === 'smartphone') iosSymbol = 'iphone'
       if (name === 'checkmark') iosSymbol = 'checkmark'
@@ -49,6 +62,8 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
       if (name === 'ban') iosSymbol = 'nosign'
       if (name === 'slash') iosSymbol = 'circle.slash'
       if (name === 'menu') iosSymbol = 'line.3.horizontal'
+      if (name.startsWith('mappin')) iosSymbol = 'mappin.and.ellipse'
+      if (name.startsWith('building')) iosSymbol = 'building.columns.fill'
       return <SymbolView name={iosSymbol as any} tintColor={color} size={size} />
     } catch (e) {}
   }
@@ -66,9 +81,10 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     else if (name === 'megaphone.fill' || name === 'megaphone') ionName = 'megaphone'
     else if (name === 'arrow.up.left.and.arrow.down.right') ionName = 'expand'
     else if (name === 'lock.fill') ionName = 'lock-closed'
+    else if (name === 'lock.open.fill') ionName = 'lock-open'
     else if (name === 'xmark') ionName = 'close'
     else if (name === 'pencil') ionName = 'pencil'
-    else if (name === 'mail') ionName = 'mail'
+    else if (name.startsWith('mail') || name.startsWith('envelope')) ionName = 'mail'
     else if (name.startsWith('message')) ionName = 'chatbubble'
     else if (name === 'smartphone') ionName = 'phone-portrait'
     else if (name === 'checkmark') ionName = 'checkmark'
@@ -78,6 +94,19 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
     else if (name === 'chevron.down') ionName = 'chevron-down'
     else if (name === 'ban' || name === 'slash') ionName = 'ban'
     else if (name === 'menu') ionName = 'menu'
+    else if (name === 'plus.circle.fill') ionName = 'add-circle'
+    else if (name === 'magnifyingglass') ionName = 'search'
+    else if (name === 'checkmark.circle.fill') ionName = 'checkmark-circle'
+    else if (name === 'exclamationmark.triangle.fill') ionName = 'warning'
+    else if (name === 'xmark.circle.fill') ionName = 'close-circle'
+    else if (name === 'xmark.octagon.fill') ionName = 'alert-circle'
+    else if (name === 'leaf.fill') ionName = 'leaf'
+    else if (name === 'square') ionName = 'square-outline'
+    else if (name === 'checkmark.square.fill') ionName = 'checkbox'
+    else if (name === 'person.3.fill') ionName = 'people'
+    else if (name === 'clock.fill') ionName = 'time'
+    else if (name.startsWith('mappin')) ionName = 'location'
+    else if (name.startsWith('building')) ionName = 'business'
 
     return <Ionicons name={ionName} size={size} color={color} />
   } catch (e) {

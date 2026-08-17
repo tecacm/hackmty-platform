@@ -1,12 +1,14 @@
 import * as React from 'react'
 import { View, Text, Pressable } from 'react-native'
 
+export type AdminTabType = 'applications' | 'users' | 'roles' | 'forms' | 'checkin' | 'config'
+
 interface AdminTabBarProps {
-  adminTab: 'applications' | 'users' | 'roles' | 'forms'
-  setAdminTab: (tab: 'applications' | 'users' | 'roles' | 'forms') => void
+  adminTab: AdminTabType
+  setAdminTab: (tab: AdminTabType) => void
   appsCount: number
   usersCount: number | string
-  onTabChange?: (tab: 'applications' | 'users' | 'roles' | 'forms') => void
+  onTabChange?: (tab: AdminTabType) => void
 }
 
 export function AdminTabBar({
@@ -16,16 +18,18 @@ export function AdminTabBar({
   usersCount,
   onTabChange,
 }: AdminTabBarProps) {
-  const handleSelectTab = (tab: 'applications' | 'users' | 'roles' | 'forms') => {
+  const handleSelectTab = (tab: AdminTabType) => {
     setAdminTab(tab)
     if (onTabChange) onTabChange(tab)
   }
 
-  const tabs: Array<{ id: 'applications' | 'users' | 'roles' | 'forms'; label: string; badge?: string | number }> = [
+  const tabs: Array<{ id: AdminTabType; label: string; badge?: string | number }> = [
+    { id: 'checkin', label: 'Check-In Scanner' },
     { id: 'applications', label: 'Submissions', badge: appsCount },
     { id: 'users', label: 'User Directory', badge: usersCount },
     { id: 'roles', label: 'Roles & Access' },
     { id: 'forms', label: 'Form Builder' },
+    { id: 'config', label: 'Global Config' },
   ]
 
   return (

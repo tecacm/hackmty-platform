@@ -1,3 +1,7 @@
 'use client'
 
-export { AnnouncementsScreen as default } from 'app/features/announcements/announcements-screen'
+import { AnnouncementsScreen } from 'app/features/announcements/announcements-screen'
+
+export default function HomePage() {
+  return <AnnouncementsScreen />
+}

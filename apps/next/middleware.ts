@@ -2,9 +2,9 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const PROTECTED_ROUTES = ['/home', '/application']
+const PROTECTED_ROUTES = ['/home', '/application', '/admin', '/qr', '/profile', '/teams', '/applications']
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (!PROTECTED_ROUTES.some((route) => pathname.startsWith(route))) {
@@ -40,5 +40,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/home/:path*', '/application/:path*'],
+  matcher: ['/home/:path*', '/application/:path*', '/admin/:path*', '/qr/:path*', '/profile/:path*', '/teams/:path*', '/applications/:path*'],
 }

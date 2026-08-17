@@ -131,7 +131,11 @@ export function PillButton({
       {isLoading ? (
         <ActivityIndicator size="small" color={effectiveTextColor} />
       ) : children ? (
-        children
+        typeof children === 'string' || typeof children === 'number' ? (
+          <Text style={[styles.text, { color: effectiveTextColor }, fontSize ? { fontSize } : null, textStyle]}>{children}</Text>
+        ) : (
+          children
+        )
       ) : (
         <Text style={[styles.text, { color: effectiveTextColor }, fontSize ? { fontSize } : null, textStyle]}>{title}</Text>
       )}

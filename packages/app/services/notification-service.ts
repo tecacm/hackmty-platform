@@ -124,3 +124,50 @@ export async function notifyApplicantOnStatusChanged({
     return null
   }
 }
+
+export interface CheckInPushParams {
+  userId: string
+  stationTitle: string
+  isEntrance?: boolean
+}
+
+/**
+ * Dispatch a push notification to the attendee upon check-in (push-only, no email).
+ */
+export async function notifyUserOnCheckIn({
+  userId,
+  stationTitle,
+  isEntrance = false,
+}: CheckInPushParams) {
+  if (!isSupabaseConfigured || !userId) return
+
+  const title = isEntrance
+    ? '🎉 Welcome to HackMTY 2026!'
+    : `✅ Checked into ${stationTitle}`
+  const message = isEntrance
+    ? 'Your attendee badge is officially active. Enjoy the event!'
+    : `Your check-in for ${stationTitle} was verified successfully.`
+
+  try {
+    const { data, error } = await supabase.functions.invoke('dispatch-notification', {
+      body: {
+        category: 'announcement',
+        title: sanitizeString(title),
+        message: sanitizeString(message),
+        badge: 'Check-In',
+        targetUserIds: [userId],
+        channel: 'push', // strictly push notification only, no email
+      },
+    })
+
+    if (error) {
+      console.warn('[PushNotification] Check-in push dispatch warning:', error.message)
+      return null
+    }
+
+    return data
+  } catch (err: any) {
+    console.warn('[PushNotification] Could not send check-in push notification:', err?.message || err)
+    return null
+  }
+}
