@@ -243,6 +243,13 @@ export function ForgotPasswordScreen() {
         <View style={styles.glassCard}>
           <View style={styles.glassCardGlow} pointerEvents="none" />
           <View style={styles.glassCardRing} pointerEvents="none" />
+          <View style={{ width: 98, height: 140, flexShrink: 0 }}>
+            {(() => {
+              const ImageComponent = SolitoImage as any
+              return (
+                <ImageComponent
+                  src={logoImage}
+                  height={140}
                   width={98}
                   alt="The HackMTY Logo"
                   contentFit="contain"
@@ -308,6 +315,7 @@ export function ForgotPasswordScreen() {
             textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
           />
         </View>
-    </ParallaxScrollView>
+      </ParallaxScrollView>
+    </View>
   )
 }

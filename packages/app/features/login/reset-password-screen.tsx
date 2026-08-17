@@ -430,6 +430,7 @@ export function ResetPasswordScreen() {
             </>
           )}
         </View>
-    </ParallaxScrollView>
+      </ParallaxScrollView>
+    </View>
   )
 }
