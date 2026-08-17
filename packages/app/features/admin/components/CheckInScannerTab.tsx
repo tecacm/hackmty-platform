@@ -45,7 +45,47 @@ export interface CheckInHistoryItem {
     email: string | null
     university: string | null
     avatar_url: string | null
+    tshirt_size?: string | null
+    dietary_restrictions?: string | null
   } | null
+}
+
+const defaultDietOptions = [
+  { label: { en: 'None', es: 'Ninguna' }, value: 'none' },
+  { label: { en: 'Vegetarian', es: 'Vegetariano' }, value: 'vegetarian' },
+  { label: { en: 'Vegan', es: 'Vegano' }, value: 'vegan' },
+  { label: { en: 'No pork', es: 'Sin cerdo' }, value: 'no_pork' },
+  { label: { en: 'Gluten-Free', es: 'Sin gluten' }, value: 'gluten_free' },
+]
+
+export function formatDietLabel(raw?: string | null): { label: string; isSpecial: boolean } {
+  if (!raw) return { label: '', isSpecial: false }
+  const clean = String(raw).trim()
+  const lower = clean.toLowerCase()
+  if (['none', 'no', 'n/a', 'standard', 'ninguna', 'ninguno', 'regular', ''].includes(lower)) {
+    return { label: '', isSpecial: false }
+  }
+
+  const opt = defaultDietOptions.find((o) => o.value === lower || o.value === clean)
+  if (opt) {
+    return { label: getLocalizedText(opt.label) || opt.value, isSpecial: true }
+  }
+
+  return { label: clean, isSpecial: true }
+}
+
+export function formatShirtSize(raw?: string | null): string | null {
+  if (!raw) return null
+  const clean = String(raw).trim()
+  if (['none', 'n/a', '', 'null', 'undefined'].includes(clean.toLowerCase())) return null
+  const map: Record<string, string> = {
+    small: 'S',
+    medium: 'M',
+    large: 'L',
+    xlarge: 'XL',
+    xxl: 'XXL',
+  }
+  return map[clean.toLowerCase()] || clean.toUpperCase()
 }
 
 interface Checkpoint {
@@ -292,7 +332,9 @@ export function CheckInScannerTab() {
             first_name,
             last_name,
             university,
-            avatar_url
+            avatar_url,
+            tshirt_size,
+            dietary_restrictions
           )
         `)
         .eq('checkpoint_id', stationId)
@@ -594,25 +636,81 @@ export function CheckInScannerTab() {
     }
   }, [updateStationCount, fetchStationHistory])
 
-  // Lookup Search
-  const handleSearchLookup = async () => {
-    if (!lookupQuery.trim()) return
+  // Lookup Search (searches both name and email with live debouncing)
+  const handleSearchLookup = React.useCallback(async (queryOverride?: string) => {
+    const q = (queryOverride !== undefined ? queryOverride : lookupQuery).trim()
+    if (!q || !isSupabaseConfigured) {
+      setLookupResults([])
+      setIsSearchingLookup(false)
+      return
+    }
     setIsSearchingLookup(true)
     try {
-      const q = lookupQuery.trim()
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, avatar_url, tshirt_size, dietary_restrictions, teams!profiles_team_id_fkey(name)')
-        .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
-        .limit(10)
+      // 1. Load directory emails
+      const { data: directoryEmails } = await supabase.rpc('get_admin_directory_emails')
+      const emailMap: Record<string, string> = {}
+      const matchingEmailUserIds: string[] = []
 
-      setLookupResults(data || [])
+      directoryEmails?.forEach((entry: any) => {
+        if (entry.user_id && entry.email) {
+          emailMap[entry.user_id] = entry.email
+          if (entry.email.toLowerCase().includes(q.toLowerCase())) {
+            matchingEmailUserIds.push(entry.user_id)
+          }
+        }
+      })
+
+      // 2. Query profiles matching first_name, last_name, or user_id matching email
+      let query = supabase
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url, tshirt_size, dietary_restrictions, university, teams!profiles_team_id_fkey(name)')
+
+      if (matchingEmailUserIds.length > 0) {
+        query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,id.in.(${matchingEmailUserIds.slice(0, 50).join(',')})`)
+      } else {
+        query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
+      }
+
+      const { data, error } = await query.limit(20)
+      if (error) throw error
+
+      const resolveAvatarUrl = (raw: string | null | undefined): string | null => {
+        if (!raw) return null
+        if (raw.startsWith('http')) return raw
+        const { data: pubUrlData } = supabase.storage.from('avatars').getPublicUrl(raw)
+        return pubUrlData?.publicUrl || null
+      }
+
+      const enriched = (data || []).map((item: any) => ({
+        ...item,
+        avatar_url: resolveAvatarUrl(item.avatar_url),
+        email: emailMap[item.id] || null,
+      }))
+
+      setLookupResults(enriched)
     } catch (e) {
-      console.error(e)
+      console.error('[SearchParticipant] Lookup error:', e)
     } finally {
       setIsSearchingLookup(false)
     }
-  }
+  }, [lookupQuery])
+
+  // Real-time live search debounce as user types
+  React.useEffect(() => {
+    if (!isLookupOpen) return
+    const trimmed = lookupQuery.trim()
+    if (!trimmed) {
+      setLookupResults([])
+      setIsSearchingLookup(false)
+      return
+    }
+
+    const timer = setTimeout(() => {
+      handleSearchLookup(trimmed)
+    }, 250)
+
+    return () => clearTimeout(timer)
+  }, [lookupQuery, isLookupOpen, handleSearchLookup])
 
   const toDatetimeLocal = (isoStr?: string | null) => {
     if (!isoStr) return ''
@@ -1242,12 +1340,33 @@ export function CheckInScannerTab() {
                         )}
                       </View>
 
-                      <View style={{ flex: 1, minWidth: 160 }}>
+                      <View style={{ flex: 1, minWidth: 160, gap: 2 }}>
                         <Text style={styles.historyItemName}>{fullName}</Text>
                         <Text style={styles.historyItemEmail}>{item.profiles?.email || item.user_id}</Text>
                         {item.profiles?.university ? (
                           <Text style={styles.historyItemUni}>{item.profiles.university}</Text>
                         ) : null}
+
+                        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                          {(() => {
+                            const dietInfo = formatDietLabel(item.profiles?.dietary_restrictions)
+                            const shirt = formatShirtSize(item.profiles?.tshirt_size)
+                            return (
+                              <>
+                                {dietInfo.isSpecial && (
+                                  <View style={styles.dietPillBadge}>
+                                    <Text style={styles.dietPillBadgeText}>{dietInfo.label}</Text>
+                                  </View>
+                                )}
+                                {shirt ? (
+                                  <View style={styles.shirtPillBadge}>
+                                    <Text style={styles.shirtPillBadgeText}>Size: {shirt}</Text>
+                                  </View>
+                                ) : null}
+                              </>
+                            )
+                          })()}
+                        </View>
                       </View>
 
                       <View style={styles.historyTimeCol}>
@@ -1305,23 +1424,32 @@ export function CheckInScannerTab() {
             </View>
 
             <View style={styles.modalSearchRow}>
-              <TextInput
-                value={lookupQuery}
-                onChangeText={setLookupQuery}
-                placeholder="Search first or last name..."
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                style={styles.modalSearchInput}
-                onSubmitEditing={handleSearchLookup}
-              />
-              <Pressable onPress={handleSearchLookup} style={styles.modalSearchBtn}>
+              <View style={styles.modalSearchInputWrapper}>
+                <AppIcon name="magnifyingglass" size={16} color="#64748b" />
+                <TextInput
+                  value={lookupQuery}
+                  onChangeText={setLookupQuery}
+                  placeholder="Search participant by name or email..."
+                  placeholderTextColor="#94a3b8"
+                  style={styles.modalSearchInput}
+                  onSubmitEditing={() => handleSearchLookup()}
+                  autoCapitalize="none"
+                />
+                {!!lookupQuery && (
+                  <Pressable onPress={() => { setLookupQuery(''); setLookupResults([]); }} style={{ padding: 4 }}>
+                    <AppIcon name="xmark" size={14} color="#64748b" />
+                  </Pressable>
+                )}
+              </View>
+              <Pressable onPress={() => handleSearchLookup()} style={styles.modalSearchBtn}>
                 <Text style={styles.modalSearchBtnText}>Search</Text>
               </Pressable>
             </View>
 
             {isSearchingLookup ? (
-              <ActivityIndicator size="small" color="#c2b75f" style={{ marginVertical: 20 }} />
+              <ActivityIndicator size="small" color="#5a0061" style={{ marginVertical: 20 }} />
             ) : (
-              <View style={{ position: 'relative', width: '100%', maxHeight: 300, overflow: 'hidden' }}>
+              <View style={{ position: 'relative', width: '100%', maxHeight: 340, overflow: 'hidden' }}>
                 <LinearGradient
                   colors={['#ffffff', 'rgba(255, 255, 255, 0)']}
                   start={{ x: 0, y: 0 }}
@@ -1336,24 +1464,64 @@ export function CheckInScannerTab() {
                     pointerEvents: 'none',
                   }}
                 />
-                <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ paddingTop: 12, paddingBottom: 20, paddingHorizontal: 4 }} showsVerticalScrollIndicator={false}>
-                  {lookupResults.map((item) => (
-                    <Pressable
-                      key={item.id}
-                      onPress={() => {
-                        setIsLookupOpen(false)
-                        handleProcessCheckIn(item.id)
-                      }}
-                      style={styles.lookupItem}
-                    >
-                      <Text style={styles.lookupItemName}>{item.first_name} {item.last_name}</Text>
-                      {item.dietary_restrictions && item.dietary_restrictions !== 'none' && (
-                        <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>
-                          Diet: {item.dietary_restrictions}
-                        </Text>
-                      )}
-                    </Pressable>
-                  ))}
+                <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={{ paddingTop: 12, paddingBottom: 20, paddingHorizontal: 4 }} showsVerticalScrollIndicator={false}>
+                  {lookupResults.length === 0 && !!lookupQuery && !isSearchingLookup && (
+                    <Text style={{ textAlign: 'center', color: '#94a3b8', padding: 20, fontSize: 13 }}>
+                      No participants found matching "{lookupQuery}".
+                    </Text>
+                  )}
+                  {lookupResults.map((item) => {
+                    const dietInfo = formatDietLabel(item.dietary_restrictions)
+                    const shirt = formatShirtSize(item.tshirt_size)
+                    const fullName = `${item.first_name || ''} ${item.last_name || ''}`.trim() || item.email?.split('@')[0] || `User #${item.id.slice(0, 8)}`
+
+                    return (
+                      <Pressable
+                        key={item.id}
+                        onPress={() => {
+                          setIsLookupOpen(false)
+                          handleProcessCheckIn(item.id)
+                        }}
+                        style={styles.lookupItem}
+                      >
+                        <View style={styles.lookupAvatarCircle}>
+                          {item.avatar_url ? (
+                            <Image source={{ uri: item.avatar_url }} style={styles.lookupAvatarImg} />
+                          ) : (
+                            <PersonSilhouette size={20} color="#5a0061" />
+                          )}
+                        </View>
+
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text style={styles.lookupItemName}>{fullName}</Text>
+                          {item.email ? (
+                            <Text style={styles.lookupItemEmail}>{item.email}</Text>
+                          ) : null}
+                          {item.university ? (
+                            <Text style={styles.lookupItemUni}>{item.university}</Text>
+                          ) : null}
+
+                          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                            {dietInfo.isSpecial && (
+                              <View style={styles.dietPillBadge}>
+                                <Text style={styles.dietPillBadgeText}>{dietInfo.label}</Text>
+                              </View>
+                            )}
+                            {shirt ? (
+                              <View style={styles.shirtPillBadge}>
+                                <Text style={styles.shirtPillBadgeText}>Size: {shirt}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+
+                        <View style={styles.lookupCheckInAction}>
+                          <Text style={styles.lookupCheckInActionText}>Select</Text>
+                          <AppIcon name="chevron.right" size={12} color="#5a0061" />
+                        </View>
+                      </Pressable>
+                    )
+                  })}
                 </ScrollView>
                 <LinearGradient
                   colors={['rgba(255, 255, 255, 0)', '#ffffff']}
@@ -2642,38 +2810,128 @@ const styles = StyleSheet.create({
   },
   modalSearchRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
     marginBottom: 16,
+    height: 44,
   },
-  modalSearchInput: {
+  modalSearchInputWrapper: {
     flex: 1,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: '#f8fafc',
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#cbd5e1',
     paddingHorizontal: 12,
+  },
+  modalSearchInput: {
+    flex: 1,
+    height: '100%',
     color: '#0f172a',
-    height: 40,
+    fontSize: 14,
+    padding: 0,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      } as any,
+    }),
   },
   modalSearchBtn: {
+    height: 44,
     backgroundColor: '#5a0061',
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    paddingHorizontal: 18,
+    borderRadius: 12,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   modalSearchBtnText: {
     color: '#ffffff',
     fontWeight: '800',
+    fontSize: 14,
   },
   lookupItem: {
-    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
+  },
+  lookupAvatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(90, 0, 97, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  lookupAvatarImg: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   lookupItemName: {
     color: '#0f172a',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  lookupItemEmail: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  lookupItemUni: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  dietPillBadge: {
+    backgroundColor: '#ecfdf5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    alignSelf: 'flex-start',
+  },
+  dietPillBadgeText: {
+    color: '#065f46',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  shirtPillBadge: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    alignSelf: 'flex-start',
+  },
+  shirtPillBadgeText: {
+    color: '#334155',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  lookupCheckInAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(90, 0, 97, 0.08)',
+  },
+  lookupCheckInActionText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#5a0061',
   },
   fieldLabel: {
     color: '#475569',
