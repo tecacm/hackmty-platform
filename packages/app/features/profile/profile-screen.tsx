@@ -26,7 +26,7 @@ import { formFieldColors } from 'app/components/form-field-styles'
 import { dataReferences, getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
-import { checkEventPassUnlocked } from 'app/utils/event-config'
+import { checkEventPassUnlocked, selectActiveRoles } from 'app/utils/event-config'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AppIcon } from 'app/components/app-icon'
 
@@ -280,10 +280,10 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
         // Check permissions for QR event pass display
         const { data: rolesData } = await supabase
           .from('user_roles')
-          .select('role')
+          .select('role, event_year')
           .eq('user_id', user.id)
 
-        const rolesList = rolesData ? rolesData.map((r) => r.role.toLowerCase()) : ['user']
+        const rolesList = selectActiveRoles(rolesData).map((r) => r.toLowerCase())
         const isStaff = rolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r))
 
         const { data: userAppsData } = await supabase

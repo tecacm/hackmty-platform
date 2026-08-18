@@ -21,7 +21,7 @@ import { StyledSegmented } from 'app/components/styled-segmented'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { getLocalizedText, formatString, formatTime } from 'app/utils/i18n-helpers'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
-import { EVENT_YEAR, checkEventPassUnlocked } from 'app/utils/event-config'
+import { EVENT_YEAR, checkEventPassUnlocked, selectActiveRoles } from 'app/utils/event-config'
 import hackmtyLogo from 'app/assets/images/hackmty-logo.webp'
 import { useTranslation } from 'app/i18n'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
@@ -243,13 +243,13 @@ export function QRScreen() {
         setAvatarDisplayUrl(resolvedAvatar)
       }
 
-      // 1b. Load User Roles Array
+      // 1b. Load User Roles Array (active for the current event year only)
       const { data: rolesData } = await supabase
         .from('user_roles')
-        .select('role')
+        .select('role, event_year')
         .eq('user_id', user.id)
 
-      const resolvedRolesList = rolesData && rolesData.length > 0 ? rolesData.map((r) => r.role) : ['user']
+      const resolvedRolesList = selectActiveRoles(rolesData)
       setUserRolesList(resolvedRolesList)
 
       const unlocked = await checkEventPassUnlocked(resolvedRolesList)

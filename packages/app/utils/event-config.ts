@@ -53,6 +53,28 @@ export async function getGlobalConfigMap(): Promise<Record<string, string>> {
 }
 
 /**
+ * Filters raw `user_roles` rows down to the roles that are active for the current
+ * event year, matching the logic in `use-user-permissions.ts`. This prevents stale
+ * roles from previous event years (e.g. a past volunteer/judge) from being treated
+ * as current staff. Falls back to `['user']` when no active roles remain.
+ */
+export function selectActiveRoles(
+  rows: Array<{ role: string; event_year?: string | null }> | null | undefined
+): string[] {
+  const currentYear = new Date().getFullYear().toString()
+  const active = (rows || [])
+    .filter(
+      (r) =>
+        r.event_year === currentYear ||
+        r.event_year === null ||
+        r.event_year === 'NULL' ||
+        r.event_year === 'null'
+    )
+    .map((r) => r.role)
+  return active.length > 0 ? active : ['user']
+}
+
+/**
  * Checks whether the Event Pass is active based on database global_config table and user role.
  * Staff members (admin, organizer, mentor, volunteer, judge, sponsor) always bypass date locks.
  */

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
+import { selectActiveRoles } from 'app/utils/event-config'
 
 let cachedPermissions: string[] | null = null
 let cachedRole: string | null = null
@@ -53,7 +54,6 @@ async function loadPermissions() {
 
       if (user.id === currentUserId && cachedPermissions !== null) return
 
-      const currentYear = new Date().getFullYear().toString()
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('role, event_year')
@@ -62,10 +62,7 @@ async function loadPermissions() {
       if (generation !== cacheGeneration) return
       if (rolesError) throw rolesError
 
-      const userRoles = (rolesData || [])
-        .filter(r => r.event_year === currentYear || r.event_year === null || r.event_year === 'NULL' || r.event_year === 'null')
-        .map(r => r.role)
-      const activeRoles = userRoles.length > 0 ? userRoles : ['user']
+      const activeRoles = selectActiveRoles(rolesData)
 
       const { data: mapping, error: mappingError } = await supabase
         .from('role_permissions')

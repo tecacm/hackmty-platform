@@ -11,7 +11,7 @@ import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
 import { SolitoImage } from 'solito/image'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AppIcon } from 'app/components/app-icon'
-import { checkEventPassUnlocked } from 'app/utils/event-config'
+import { checkEventPassUnlocked, selectActiveRoles } from 'app/utils/event-config'
 import { useTranslation } from 'app/i18n'
 
 // Module-level in-memory cache to prevent flashing on component mount / route changes
@@ -128,8 +128,38 @@ export function WebNavbar() {
     })
 
     async function checkPass() {
-      const allowed = await checkEventPassUnlocked()
-      setIsPassAllowed(allowed)
+      if (!isSupabaseConfigured) return
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user
+        if (!user) {
+          setIsPassAllowed(false)
+          return
+        }
+
+        // Resolve roles (staff bypass) and confirmation status, matching the
+        // gating used by the profile and QR screens.
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('role, event_year')
+          .eq('user_id', user.id)
+        const rolesList = selectActiveRoles(rolesData).map((r) => r.toLowerCase())
+        const isStaff = rolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r))
+
+        const { data: userAppsData } = await supabase
+          .from('applications')
+          .select('status, confirmed_at')
+          .eq('user_id', user.id)
+        const isConfirmed = Array.isArray(userAppsData) && userAppsData.some(
+          (app) => app.status === 'confirmed' || app.confirmed_at !== null
+        )
+
+        const isUnlocked = await checkEventPassUnlocked(rolesList)
+        setIsPassAllowed((isStaff || isConfirmed) && isUnlocked)
+      } catch (err) {
+        console.error('Failed to check event pass access for navbar:', err)
+        setIsPassAllowed(false)
+      }
     }
     checkPass()
 
