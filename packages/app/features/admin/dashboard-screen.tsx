@@ -75,12 +75,18 @@ interface Application {
   } | null
 }
 
-const previewText = (value: any): string => {
+const previewText = (value: any, locale: string = 'en'): string => {
   if (typeof value === 'string') return value
   if (!value || typeof value !== 'object') return ''
-  const translated = value.en || Object.values(value)[0]
+  if (locale && value[locale] !== undefined) return previewText(value[locale], locale)
+  if (value.en !== undefined) return previewText(value.en, locale)
+  if (value.es !== undefined) return previewText(value.es, locale)
+  const translated = Object.values(value)[0]
   if (typeof translated === 'string') return translated
-  return translated?.parts?.map((part: any) => part.content || '').join('') || ''
+  const richText = (translated as any)?.parts
+  return Array.isArray(richText)
+    ? richText.map((part: any) => part?.content || '').join('')
+    : ''
 }
 
 const DASHBOARD_CACHE_KEY = 'hackmty_admin_dashboard_state'
@@ -380,9 +386,7 @@ export function AdminDashboardScreen() {
           ? rel.form_fields[0] || {}
           : rel.form_fields || {})
         const labelRaw = fieldDef.label
-        const labelStr = typeof labelRaw === 'object' && labelRaw !== null
-          ? (typeof labelRaw.en === 'string' ? labelRaw.en : String(Object.values(labelRaw)[0] ?? rel.field_id))
-          : String(labelRaw ?? rel.field_id)
+        const labelStr = previewText(labelRaw, locale) || String(labelRaw ?? rel.field_id)
         return {
           relId: `${rel.application_type_id}|${rel.field_id}`,
           fieldId: rel.field_id,
@@ -484,9 +488,9 @@ export function AdminDashboardScreen() {
       const fieldPatch = { id: cleanFieldId, label: localized(newFieldLabelTranslations), field_type: newFieldType, is_required: newFieldRequired, default_section_id: newFieldSection || null, subtitle: newFieldSubtitleTranslations.some((translation) => translation.value.trim()) ? (newFieldSubtitleRich ? richLocalized(newFieldSubtitleTranslations) : localized(newFieldSubtitleTranslations)) : null, options: ['select', 'multiselect', 'radio', 'segmented'].includes(newFieldType) ? options : null, conditional_logic: conditionalLogic, ui_metadata: uiMetadata }
       setAllFormFields((previous) => [...previous.filter((field) => field.id !== cleanFieldId), fieldPatch])
       if (editingFieldId) {
-        setFormFieldsList((previous) => previous.map((field) => field.fieldId === cleanFieldId ? { ...field, label: previewText(fieldPatch.label), type: fieldPatch.field_type, required: fieldPatch.is_required, sectionId: fieldPatch.default_section_id || 'general', subtitle: fieldPatch.subtitle, options: fieldPatch.options } : field))
+        setFormFieldsList((previous) => previous.map((field) => field.fieldId === cleanFieldId ? { ...field, label: previewText(fieldPatch.label, locale), type: fieldPatch.field_type, required: fieldPatch.is_required, sectionId: fieldPatch.default_section_id || 'general', subtitle: fieldPatch.subtitle, options: fieldPatch.options } : field))
       } else {
-        setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${cleanFieldId}`, fieldId: cleanFieldId, displayOrder: previous.length + 1, sectionId: fieldPatch.default_section_id || 'general', label: previewText(fieldPatch.label), type: fieldPatch.field_type, required: fieldPatch.is_required, subtitle: fieldPatch.subtitle, options: fieldPatch.options }])
+        setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${cleanFieldId}`, fieldId: cleanFieldId, displayOrder: previous.length + 1, sectionId: fieldPatch.default_section_id || 'general', label: previewText(fieldPatch.label, locale), type: fieldPatch.field_type, required: fieldPatch.is_required, subtitle: fieldPatch.subtitle, options: fieldPatch.options }])
       }
       setFormDraftActions((previous) => [...previous.filter((action) => action.type !== 'field' || action.field.id !== cleanFieldId), { type: 'field', field: fieldPatch }, ...(editingFieldId ? [] : [{ type: 'attach', fieldId: cleanFieldId, sectionOverrideId: null }])])
 
@@ -531,7 +535,7 @@ export function AdminDashboardScreen() {
     if (!isSupabaseConfigured) return
     const field = allFormFields.find((item) => item.id === fieldId)
     if (!field) return
-    setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${fieldId}`, fieldId, displayOrder: previous.length + 1, sectionId: sectionOverrideId || field.default_section_id || 'general', label: previewText(field.label), type: field.field_type, required: !!field.is_required, subtitle: field.subtitle, options: field.options }])
+    setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${fieldId}`, fieldId, displayOrder: previous.length + 1, sectionId: sectionOverrideId || field.default_section_id || 'general', label: previewText(field.label, locale), type: field.field_type, required: !!field.is_required, subtitle: field.subtitle, options: field.options }])
     setFormDraftActions((previous) => [...previous, { type: 'attach', fieldId, sectionOverrideId }])
   }
 

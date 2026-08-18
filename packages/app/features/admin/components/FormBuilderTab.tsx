@@ -39,17 +39,18 @@ interface FormBuilderTabProps {
 // Form labels can be localized strings or composite rich-text definitions.
 // The builder is intentionally a static preview, so flatten rich text rather
 // than passing a JSON object to React Native's <Text> component.
-const previewText = (value: any): string => {
+const previewText = (value: any, locale = 'en'): string => {
   if (value === null || value === undefined) return ''
   if (typeof value === 'string' || typeof value === 'number') return String(value)
-  if (Array.isArray(value)) return value.map(previewText).filter(Boolean).join('')
+  if (Array.isArray(value)) return value.map((item) => previewText(item, locale)).filter(Boolean).join('')
   if (typeof value !== 'object') return ''
 
-  if (value.en !== undefined) return previewText(value.en)
-  if (value.es !== undefined) return previewText(value.es)
-  if (value.content !== undefined) return previewText(value.content)
-  if (value.text !== undefined) return previewText(value.text)
-  if (value.parts !== undefined) return previewText(value.parts)
+  if (locale && value[locale] !== undefined) return previewText(value[locale], locale)
+  if (value.en !== undefined) return previewText(value.en, locale)
+  if (value.es !== undefined) return previewText(value.es, locale)
+  if (value.content !== undefined) return previewText(value.content, locale)
+  if (value.text !== undefined) return previewText(value.text, locale)
+  if (value.parts !== undefined) return previewText(value.parts, locale)
   // Link-only composite parts do not have display text in form_fields. Keep a
   // readable marker instead of exposing the underlying object or crashing.
   if (value.linkRef) return 'Link'
@@ -57,7 +58,7 @@ const previewText = (value: any): string => {
   return ''
 }
 
-const fmt = (val: any, fallback = '') => previewText(val) || fallback
+const fmt = (val: any, fallback = '', locale = 'en') => previewText(val, locale) || fallback
 
 const TYPE_META: Record<string, { icon: string; color: string; bg: string }> = {
   text:         { icon: 'T',  color: '#2563eb', bg: '#eff6ff' },
@@ -83,14 +84,15 @@ function FieldPreview({ field, isFirst, isLast, onRemove, onUp, onDown, onEdit }
   field: FormField; isFirst: boolean; isLast: boolean
   onRemove: () => void; onUp: () => void; onDown: () => void; onEdit: () => void
 }) {
+  const { locale, t } = useTranslation()
   const meta = typeMeta(field.type)
-  const label = fmt(field.label, field.fieldId)
+  const label = fmt(field.label, field.fieldId, locale)
 
   const renderInput = () => {
     const t = (field.type || 'text').toLowerCase()
     const base = { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, backgroundColor: '#ffffff', paddingHorizontal: 12, paddingVertical: 11, marginTop: 6 } as any
-    const subtitleStr = previewText((field as any).subtitle)
-    const optionLabels = (field.options || []).map((option) => fmt(option.label, option.value || 'Option'))
+    const subtitleStr = previewText((field as any).subtitle, locale)
+    const optionLabels = (field.options || []).map((option) => fmt(option.label, option.value || 'Option', locale))
 
     const inputEl = (() => {
       if (t === 'textarea') return (
@@ -189,12 +191,14 @@ function FieldPreview({ field, isFirst, isLast, onRemove, onUp, onDown, onEdit }
 }
 
 function FieldControls({ field, meta, isFirst, isLast, onRemove, onUp, onDown, onEdit }: any) {
+  const { t } = useTranslation()
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
       <Text style={{ fontSize: 10, color: meta.color, fontWeight: '800' }}>{meta.icon} {(field.type || 'text').toUpperCase()}</Text>
       <Text style={{ fontSize: 10, color: '#94a3b8' }}>#{field.displayOrder}</Text>
       <View style={{ flex: 1 }} />
-      <Pressable onPress={onEdit} hitSlop={6}><Text style={{ color: '#5a0061', fontSize: 11, fontWeight: '800' }}>Edit</Text></Pressable>
+      <Pressable onPress={onEdit} hitSlop={6}><Text style={{ color: '#5a0061', fontSize: 11, fontWeight: '800' }}>{t('admin.edit')}</Text></Pressable>
       <Pressable onPress={onUp} disabled={isFirst} hitSlop={6}><Text style={{ color: isFirst ? '#cbd5e1' : '#5a0061', fontWeight: '800' }}>↑</Text></Pressable>
       <Pressable onPress={onDown} disabled={isLast} hitSlop={6}><Text style={{ color: isLast ? '#cbd5e1' : '#5a0061', fontWeight: '800' }}>↓</Text></Pressable>
       <Pressable onPress={onRemove} hitSlop={6}><Text style={{ color: '#dc2626', fontWeight: '800' }}>×</Text></Pressable>
@@ -207,7 +211,7 @@ function AddFromRegistryModal({ visible, onClose, allFormFields, formSectionsLis
   allFormFields: any[]; formSectionsList: any[]; formFieldsList: FormField[]
   onAttach: (fieldId: string, sectionOverride: string | null) => void
 }) {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const [search, setSearch] = React.useState('')
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null)
   const [sectionOverride, setSectionOverride] = React.useState('')
@@ -220,7 +224,7 @@ function AddFromRegistryModal({ visible, onClose, allFormFields, formSectionsLis
   }, [visible, sheetTranslateY])
   const alreadyAttached = new Set(formFieldsList.map(f => f.fieldId))
   const filtered = allFormFields.filter(f => {
-    const label = String(fmt(f.label, f.id))
+    const label = String(fmt(f.label, f.id, locale))
     return label.toLowerCase().includes(search.toLowerCase()) || String(f.id).toLowerCase().includes(search.toLowerCase())
   })
   const doAttach = () => {
@@ -244,7 +248,7 @@ function AddFromRegistryModal({ visible, onClose, allFormFields, formSectionsLis
           <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
             <View style={{ gap: 6 }}>
               {filtered.map(f => {
-                const label = String(fmt(f.label, f.id))
+                const label = String(fmt(f.label, f.id, locale))
                 const meta = typeMeta(f.field_type)  // raw DB rows use field_type
                 const isAttached = alreadyAttached.has(f.id)
                 const isSelected = selectedFieldId === f.id
@@ -277,7 +281,7 @@ function AddFromRegistryModal({ visible, onClose, allFormFields, formSectionsLis
                   {formSectionsList.map((s: any) => (
                     <Pressable key={s.id} onPress={() => setSectionOverride(sectionOverride === s.id ? '' : s.id)}
                       style={({ pressed }) => ({ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: sectionOverride === s.id ? '#5a0061' : '#e2e8f0', backgroundColor: sectionOverride === s.id ? 'rgba(90,0,97,0.08)' : pressed ? '#f8fafc' : '#fff' })}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: sectionOverride === s.id ? '#5a0061' : '#666' }}>{fmt(s.label, s.id)}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: sectionOverride === s.id ? '#5a0061' : '#666' }}>{fmt(s.label, s.id, locale)}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -329,7 +333,7 @@ export function FormBuilderTab({
   // A partial RLS response must not collapse this selector to a single role.
   const availableRoles = Array.from(new Map([
     ...defaultRoles,
-    ...rolesList.map(r => ({ id: r.id || 'role', label: fmt(r.label, (r.id || 'ROLE').toUpperCase()) })),
+    ...rolesList.map(r => ({ id: r.id || 'role', label: fmt(r.label, (r.id || 'ROLE').toUpperCase(), locale) })),
   ].map((role) => [role.id.toLowerCase(), role])).values())
   const currentRoleLabel = availableRoles.find(r => r.id.toLowerCase() === safeRole.toLowerCase())?.label || safeRole
 
@@ -439,7 +443,7 @@ export function FormBuilderTab({
         <View style={{ backgroundColor: '#f4f4f4', borderRadius: 24, padding: isWide ? 40 : 20, gap: 24 }}>
           {allSectionIds.map(sectionId => {
             const sectionDef = formSectionsList.find((s: any) => s.id === sectionId)
-            const sectionLabel = sectionDef ? fmt(sectionDef.label, sectionId) : sectionId
+            const sectionLabel = sectionDef ? fmt(sectionDef.label, sectionId, locale) : sectionId
             const fields = (sectionMap[sectionId] || []).sort((a, b) => a.displayOrder - b.displayOrder)
             if (fields.length === 0) return null
             return (

@@ -501,13 +501,16 @@ export function CheckInScannerTab() {
       const requiresInitialCheckIn = station.requires_initial_checkin_override ?? typeObj?.requires_initial_checkin ?? true
 
       const claimedTemplate = getLocalizedText(
-        station.already_claimed_message_override || typeObj?.default_already_claimed_message || 'Already processed at %s'
+        station.already_claimed_message_override || typeObj?.default_already_claimed_message || 'Already processed at %s',
+        locale,
       )
       const successTemplate = getLocalizedText(
-        station.success_message_override || typeObj?.default_success_message || 'Check-in successful at %s'
+        station.success_message_override || typeObj?.default_success_message || 'Check-in successful at %s',
+        locale,
       )
       const notCheckedInTemplate = getLocalizedText(
-        station.not_checked_in_message_override || typeObj?.default_not_checked_in_message || 'User has not completed initial event check-in'
+        station.not_checked_in_message_override || typeObj?.default_not_checked_in_message || 'User has not completed initial event check-in',
+        locale,
       )
 
       // 3b. Verify Application Status for Initial Entrance Check-in
@@ -622,7 +625,7 @@ export function CheckInScannerTab() {
       // Dispatch push notification to attendee (push only, no email)
       notifyUserOnCheckIn({
         userId: targetUserId,
-        stationTitle: getLocalizedText(station.title) || 'Event Check-In',
+        stationTitle: getLocalizedText(station.title, locale) || 'Event Check-In',
         isEntrance: station.type_id === 'checkin',
       }).catch((pushErr) => {
         console.warn('[CheckInScanner] Push notification error:', pushErr)
@@ -867,7 +870,7 @@ export function CheckInScannerTab() {
     return checkpoints
       .filter((cp) => {
         if (cp.is_active === false) return false
-        const title = getLocalizedText(cp.title).toLowerCase()
+        const title = getLocalizedText(cp.title, locale).toLowerCase()
         const location = (cp.location || '').toLowerCase()
         const typeId = (cp.type_id || '').toLowerCase()
         const q = stationSearchQuery.trim().toLowerCase()
@@ -889,20 +892,20 @@ export function CheckInScannerTab() {
 
         return getTimestamp(a.created_at) - getTimestamp(b.created_at)
       })
-  }, [checkpoints, stationSearchQuery, selectedCategoryFilter])
+  }, [checkpoints, locale, stationSearchQuery, selectedCategoryFilter])
 
   const formatStationSchedule = React.useCallback((cp: Checkpoint) => {
     const unlockTime = cp.unlocks_at || cp.start_time
     const endTime = cp.end_time
 
     if (!unlockTime) {
-      return { dateDisplay: 'Always Available', isLockedNow: false }
+      return { dateDisplay: t('admin.checkinAlwaysAvailable'), isLockedNow: false }
     }
 
     try {
       const startD = new Date(unlockTime)
       if (isNaN(startD.getTime())) {
-        return { dateDisplay: 'Always Available', isLockedNow: false }
+        return { dateDisplay: t('admin.checkinAlwaysAvailable'), isLockedNow: false }
       }
 
       const now = new Date()
@@ -926,11 +929,11 @@ export function CheckInScannerTab() {
         }
       }
 
-      return { dateDisplay: `Opens ${startStr}`, isLockedNow }
+      return { dateDisplay: `${t('admin.checkinOpens')} ${startStr}`, isLockedNow }
     } catch {
-      return { dateDisplay: 'Always Available', isLockedNow: false }
+      return { dateDisplay: t('admin.checkinAlwaysAvailable'), isLockedNow: false }
     }
-  }, [])
+  }, [t])
 
   return (
     <View style={styles.container}>
@@ -939,16 +942,14 @@ export function CheckInScannerTab() {
         <View style={styles.hubContainer}>
           <View style={styles.hubHeaderRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.hubTitle}>Checkpoint Station Hub</Text>
-              <Text style={styles.hubSubtitle}>
-                Select an active station to begin scanning attendee passes and processing check-ins.
-              </Text>
+              <Text style={styles.hubTitle}>{t('admin.checkinStationHubTitle')}</Text>
+              <Text style={styles.hubSubtitle}>{t('admin.checkinStationHubSubtitle')}</Text>
             </View>
 
             {canManageStations && (
               <Pressable onPress={() => setIsManagerOpen(true)} style={styles.createStationPrimaryBtn}>
                 <AppIcon name="plus.circle.fill" size={18} color="#ffffff" />
-                <Text style={styles.createStationPrimaryBtnText}>+ Create New Station</Text>
+                <Text style={styles.createStationPrimaryBtnText}>{t('admin.checkinCreateNewStation')}</Text>
               </Pressable>
             )}
           </View>
@@ -960,7 +961,7 @@ export function CheckInScannerTab() {
               <TextInput
                 value={stationSearchQuery}
                 onChangeText={setStationSearchQuery}
-                placeholder="Search stations by name, location, or category..."
+                placeholder={t('admin.checkinSearchPlaceholder')}
                 placeholderTextColor="#94a3b8"
                 style={styles.stationSearchInput}
               />
@@ -979,12 +980,12 @@ export function CheckInScannerTab() {
                   style={[styles.filterChip, selectedCategoryFilter === 'all' && styles.filterChipActive]}
                 >
                   <Text style={[styles.filterChipText, selectedCategoryFilter === 'all' && styles.filterChipTextActive]}>
-                    ALL STATIONS ({checkpoints.length})
+                    {t('admin.checkinAllStations', [checkpoints.length])}
                   </Text>
                 </Pressable>
 
                 {checkpointTypes.map((t) => {
-                  const typeName = getLocalizedText(t.name) || t.id
+                  const typeName = getLocalizedText(t.name, locale) || t.id
                   const isSel = selectedCategoryFilter === t.id
                   const count = checkpoints.filter((c) => (c.type_id || '').toLowerCase() === t.id.toLowerCase()).length
 
@@ -1011,22 +1012,22 @@ export function CheckInScannerTab() {
             <View style={styles.emptyStateCard}>
               <AppIcon name="magnifyingglass" size={32} color="rgba(255, 255, 255, 0.3)" />
               <Text style={styles.emptyStateTitle}>
-                {stationSearchQuery || selectedCategoryFilter !== 'all' ? 'No Matching Stations Found' : 'No Checkpoint Stations Created Yet'}
+                {stationSearchQuery || selectedCategoryFilter !== 'all' ? t('admin.checkinNoMatchingStations') : t('admin.checkinNoStationsCreatedYet')}
               </Text>
               <Text style={styles.emptyStateSub}>
                 {stationSearchQuery || selectedCategoryFilter !== 'all'
-                  ? 'Try adjusting your search query or category filter.'
-                  : 'Create your first checkpoint station to start scanning event passes.'}
+                  ? t('admin.checkinTryAdjustingFilters')
+                  : t('admin.checkinCreateFirstStationHint')}
               </Text>
               <Pressable onPress={handleOpenCreateModal} style={styles.createStationPrimaryBtn}>
-                <Text style={styles.createStationPrimaryBtnText}>+ Create Station</Text>
+                <Text style={styles.createStationPrimaryBtnText}>{t('admin.checkinCreateStation')}</Text>
               </Pressable>
             </View>
           ) : (
             <View style={styles.stationGrid}>
               {filteredCheckpoints.map((cp) => {
-                const titleText = getLocalizedText(cp.title)
-                const descText = getLocalizedText(cp.description)
+                const titleText = getLocalizedText(cp.title, locale)
+                const descText = getLocalizedText(cp.description, locale)
                 const requiresArrival = cp.requires_initial_checkin_override ?? cp.checkpoint_types?.requires_initial_checkin
 
                 return (
@@ -1042,22 +1043,22 @@ export function CheckInScannerTab() {
 
                     <View style={styles.stationCardMetaRow}>
                       <View style={styles.metaItem}>
-                        <Text style={styles.metaLabel}>LOCATION:</Text>
-                        <Text style={styles.metaValue}>{cp.location || 'Venue'}</Text>
+                        <Text style={styles.metaLabel}>{t('admin.checkinLocationLabel')}</Text>
+                        <Text style={styles.metaValue}>{cp.location || t('admin.checkinVenueFallback')}</Text>
                       </View>
                       <View style={styles.metaItem}>
-                        <Text style={styles.metaLabel}>PREREQUISITE:</Text>
+                        <Text style={styles.metaLabel}>{t('admin.checkinPrerequisiteLabel')}</Text>
                         <Text style={[styles.metaValue, { color: requiresArrival ? '#F59E0B' : '#10B981' }]}>
-                          {requiresArrival ? 'Arrival Check-in Required' : 'Open Access'}
+                          {requiresArrival ? t('admin.checkinArrivalRequired') : t('admin.checkinOpenAccess')}
                         </Text>
                       </View>
                       {(() => {
                         const { dateDisplay, isLockedNow } = formatStationSchedule(cp)
                         return (
                           <View style={styles.metaItem}>
-                            <Text style={styles.metaLabel}>SCHEDULE / LOCK:</Text>
+                            <Text style={styles.metaLabel}>{t('admin.checkinScheduleLockLabel')}</Text>
                             <Text style={[styles.metaValue, { color: isLockedNow ? '#F59E0B' : '#0f172a' }]}>
-                              {dateDisplay} {cp.hide_until_unlocked ? '(Hidden)' : ''}
+                              {dateDisplay} {cp.hide_until_unlocked ? `(${t('admin.checkinHidden')})` : ''}
                             </Text>
                           </View>
                         )
@@ -1072,7 +1073,7 @@ export function CheckInScannerTab() {
                         }}
                         style={[styles.openStationBtn, { flex: 1 }]}
                       >
-                        <Text style={styles.openStationBtnText}>Open Scanner</Text>
+                        <Text style={styles.openStationBtnText}>{t('admin.checkinOpenScanner')}</Text>
                         <AppIcon name="chevron.right" size={14} color="#ffffff" />
                       </Pressable>
 
@@ -1083,7 +1084,7 @@ export function CheckInScannerTab() {
                             style={styles.editStationBtn}
                           >
                             <AppIcon name="pencil" size={14} color="#475569" />
-                            <Text style={styles.editStationBtnText}>Edit</Text>
+                            <Text style={styles.editStationBtnText}>{t('admin.checkinEdit')}</Text>
                           </Pressable>
 
                           <Pressable
@@ -1091,7 +1092,7 @@ export function CheckInScannerTab() {
                             style={styles.deleteStationBtn}
                           >
                             <AppIcon name="trash" size={14} color="#dc2626" />
-                            <Text style={styles.deleteStationBtnText}>Delete</Text>
+                            <Text style={styles.deleteStationBtnText}>{t('admin.checkinDelete')}</Text>
                           </Pressable>
                         </>
                       )}
@@ -1115,18 +1116,18 @@ export function CheckInScannerTab() {
               style={styles.backToHubBtn}
             >
               <AppIcon name="chevron.left" size={16} color="#c2b75f" />
-              <Text style={styles.backToHubBtnText}>← All Stations</Text>
+              <Text style={styles.backToHubBtnText}>{`← ${t('admin.checkinAllStationsShort')}`}</Text>
             </Pressable>
 
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Text style={styles.activeStationTitle}>{getLocalizedText(selectedStation.title)}</Text>
+                <Text style={styles.activeStationTitle}>{getLocalizedText(selectedStation.title, locale)}</Text>
                 <View style={styles.stationCategoryBadge}>
                   <Text style={styles.stationCategoryBadgeText}>{(selectedStation.type_id || 'station').toUpperCase()}</Text>
                 </View>
               </View>
               <Text style={styles.activeStationSub}>
-                Location: {selectedStation.location || 'Venue'} • {selectedStation.requires_initial_checkin_override ?? selectedStation.checkpoint_types?.requires_initial_checkin ? 'Arrival Check-in Required' : 'Open Access'}
+                {t('admin.checkinLocationDetail', [selectedStation.location || t('admin.checkinVenueFallback'), selectedStation.requires_initial_checkin_override ?? selectedStation.checkpoint_types?.requires_initial_checkin ? t('admin.checkinArrivalRequired') : t('admin.checkinOpenAccess')])}
               </Text>
             </View>
 
@@ -1137,21 +1138,21 @@ export function CheckInScannerTab() {
                   style={styles.activeHeaderActionBtn}
                 >
                   <AppIcon name="pencil" size={14} color="#475569" />
-                  <Text style={styles.activeHeaderActionBtnText}>Edit</Text>
+                  <Text style={styles.activeHeaderActionBtnText}>{t('admin.checkinEdit')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setStationToDelete(selectedStation)}
                   style={styles.activeHeaderDeleteBtn}
                 >
                   <AppIcon name="trash" size={14} color="#dc2626" />
-                  <Text style={styles.activeHeaderDeleteBtnText}>Delete</Text>
+                  <Text style={styles.activeHeaderDeleteBtnText}>{t('admin.checkinDelete')}</Text>
                 </Pressable>
               </View>
             )}
 
             <View style={styles.countBadge}>
               <Text style={styles.countNumber}>{stationCheckInCount}</Text>
-              <Text style={styles.countLabel}>Scanned</Text>
+              <Text style={styles.countLabel}>{t('admin.checkinScanned')}</Text>
             </View>
           </View>
 
@@ -1163,7 +1164,7 @@ export function CheckInScannerTab() {
               <TextInput
                 value={scanInput}
                 onChangeText={setScanInput}
-                placeholder="Scan QR Code or paste User ID (hackmty:2026:user:...)"
+                placeholder={t('admin.checkinScanPlaceholder')}
                 placeholderTextColor="#94a3b8"
                 style={styles.scanTextInput}
                 onSubmitEditing={() => handleProcessCheckIn(scanInput)}
@@ -1177,14 +1178,14 @@ export function CheckInScannerTab() {
                 {isProcessing ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <Text style={styles.submitScanBtnText}>Check In</Text>
+                  <Text style={styles.submitScanBtnText}>{t('admin.checkinCheckInButton')}</Text>
                 )}
               </Pressable>
             </View>
 
             <Pressable onPress={() => setIsLookupOpen(true)} style={styles.lookupLink}>
               <AppIcon name="magnifyingglass" size={14} color="#5a0061" />
-              <Text style={styles.lookupLinkText}>Search Participant by Name / Email</Text>
+              <Text style={styles.lookupLinkText}>{t('admin.checkinLookupLink')}</Text>
             </Pressable>
           </View>
 
@@ -1218,12 +1219,12 @@ export function CheckInScannerTab() {
                 />
                 <Text style={styles.resultMessageTitle}>
                   {lastResult.status === 'success'
-                    ? 'SUCCESSFUL CHECK-IN'
+                    ? t('admin.checkinResultSuccess')
                     : lastResult.status === 'already_claimed'
-                    ? 'ALREADY CLAIMED'
+                    ? t('admin.checkinResultAlreadyClaimed')
                     : lastResult.status === 'not_checked_in'
-                    ? 'INITIAL CHECK-IN REQUIRED'
-                    : 'CHECK-IN BLOCKED'}
+                    ? t('admin.checkinResultInitialRequired')
+                    : t('admin.checkinResultBlocked')}
                 </Text>
               </View>
 
@@ -1245,21 +1246,21 @@ export function CheckInScannerTab() {
                       {lastResult.userProfile.first_name} {lastResult.userProfile.last_name}
                     </Text>
                     <Text style={styles.resultUserRole}>
-                      Roles: {(lastResult.userProfile.roles || [lastResult.userProfile.role || 'Hacker']).map((r: string) => r.toUpperCase()).join(', ')}
+                      {t('admin.checkinRolesPrefix')} {(lastResult.userProfile.roles || [lastResult.userProfile.role || 'Hacker']).map((r: string) => r.toUpperCase()).join(', ')}
                     </Text>
 
                     {/* HIG Meal & Dietary Highlights */}
                     <View style={styles.resultHighlightsRow}>
                       {lastResult.userProfile.tshirt_size && (
                         <View style={styles.resultPill}>
-                          <Text style={styles.resultPillText}>Size: {lastResult.userProfile.tshirt_size.toUpperCase()}</Text>
+                          <Text style={styles.resultPillText}>{t('admin.checkinSizePrefix')} {lastResult.userProfile.tshirt_size.toUpperCase()}</Text>
                         </View>
                       )}
                       {lastResult.userProfile.dietary_restrictions && lastResult.userProfile.dietary_restrictions !== 'none' && (
                         <View style={[styles.resultPill, styles.dietHighlightPill]}>
                           <AppIcon name="leaf.fill" size={12} color="#10B981" />
                           <Text style={[styles.resultPillText, { color: '#10B981', fontWeight: '800' }]}>
-                            DIET: {lastResult.userProfile.dietary_restrictions.toUpperCase()}
+                            {t('admin.checkinDietPrefix')} {lastResult.userProfile.dietary_restrictions.toUpperCase()}
                           </Text>
                         </View>
                       )}
@@ -1275,21 +1276,19 @@ export function CheckInScannerTab() {
             <View style={styles.historyHeader}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={styles.historyTitle}>Station Check-In Log</Text>
+                  <Text style={styles.historyTitle}>{t('admin.checkinHistoryTitle')}</Text>
                   <View style={styles.historyCountBadge}>
                     <Text style={styles.historyCountText}>{filteredHistory.length}</Text>
                   </View>
                 </View>
-                <Text style={styles.historySubtitle}>
-                  Attendees processed at this station in chronological order. Admins can revoke records if needed.
-                </Text>
+                <Text style={styles.historySubtitle}>{t('admin.checkinHistorySubtitle')}</Text>
               </View>
 
               <Pressable
                 onPress={() => selectedStationId && fetchStationHistory(selectedStationId)}
                 style={styles.historyRefreshBtn}
               >
-                <Text style={styles.historyRefreshBtnText}>↻ Refresh</Text>
+                <Text style={styles.historyRefreshBtnText}>{`↻ ${t('admin.checkinRefresh')}`}</Text>
               </Pressable>
             </View>
 
@@ -1301,7 +1300,7 @@ export function CheckInScannerTab() {
                   setHistorySearch(val)
                   setHistoryPage(1)
                 }}
-                placeholder="Filter attendees by name, email, university..."
+                placeholder={t('admin.checkinHistorySearchPlaceholder')}
                 placeholderTextColor="#94a3b8"
                 style={styles.historySearchInput}
               />
@@ -1311,12 +1310,12 @@ export function CheckInScannerTab() {
             {historyLoading && historyList.length === 0 ? (
               <View style={{ padding: 28, alignItems: 'center' }}>
                 <ActivityIndicator size="small" color="#5a0061" />
-                <Text style={{ color: '#64748b', marginTop: 8, fontSize: 13 }}>Loading check-in history...</Text>
+                <Text style={{ color: '#64748b', marginTop: 8, fontSize: 13 }}>{t('admin.checkinLoadingHistory')}</Text>
               </View>
             ) : filteredHistory.length === 0 ? (
               <View style={styles.historyEmptyBox}>
                 <Text style={styles.historyEmptyText}>
-                  {historySearch ? 'No attendees match your search query.' : 'No attendees checked into this station yet.'}
+                  {historySearch ? t('admin.checkinNoHistorySearchMatch') : t('admin.checkinNoHistoryYet')}
                 </Text>
               </View>
             ) : (
@@ -1387,7 +1386,7 @@ export function CheckInScannerTab() {
                           ) : (
                             <>
                               <AppIcon name="xmark" size={12} color="#dc2626" />
-                              <Text style={styles.revokeBtnText}>Revoke</Text>
+                              <Text style={styles.revokeBtnText}>{t('admin.checkinRevoke')}</Text>
                             </>
                           )}
                         </Pressable>
@@ -1419,7 +1418,7 @@ export function CheckInScannerTab() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Search Participant</Text>
+              <Text style={styles.modalTitle}>{t('admin.checkinSearchParticipant')}</Text>
               <Pressable onPress={() => setIsLookupOpen(false)}>
                 <AppIcon name="xmark" size={20} color="#64748b" />
               </Pressable>
@@ -1431,7 +1430,7 @@ export function CheckInScannerTab() {
                 <TextInput
                   value={lookupQuery}
                   onChangeText={setLookupQuery}
-                  placeholder="Search participant by name or email..."
+                  placeholder={t('admin.checkinSearchParticipantPlaceholder')}
                   placeholderTextColor="#94a3b8"
                   style={styles.modalSearchInput}
                   onSubmitEditing={() => handleSearchLookup()}
@@ -1444,7 +1443,7 @@ export function CheckInScannerTab() {
                 )}
               </View>
               <Pressable onPress={() => handleSearchLookup()} style={styles.modalSearchBtn}>
-                <Text style={styles.modalSearchBtnText}>Search</Text>
+                <Text style={styles.modalSearchBtnText}>{t('admin.checkinSearchButton')}</Text>
               </Pressable>
             </View>
 
@@ -1469,7 +1468,7 @@ export function CheckInScannerTab() {
                 <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={{ paddingTop: 12, paddingBottom: 20, paddingHorizontal: 4 }} showsVerticalScrollIndicator={false}>
                   {lookupResults.length === 0 && !!lookupQuery && !isSearchingLookup && (
                     <Text style={{ textAlign: 'center', color: '#94a3b8', padding: 20, fontSize: 13 }}>
-                      No participants found matching "{lookupQuery}".
+                      {t('admin.checkinNoParticipantsFound', [lookupQuery])}
                     </Text>
                   )}
                   {lookupResults.map((item) => {
@@ -1518,7 +1517,7 @@ export function CheckInScannerTab() {
                         </View>
 
                         <View style={styles.lookupCheckInAction}>
-                          <Text style={styles.lookupCheckInActionText}>Select</Text>
+                          <Text style={styles.lookupCheckInActionText}>{t('admin.checkinSelect')}</Text>
                           <AppIcon name="chevron.right" size={12} color="#5a0061" />
                         </View>
                       </Pressable>
@@ -1550,7 +1549,7 @@ export function CheckInScannerTab() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editingStation ? 'Edit Checkpoint Station' : 'Create New Checkpoint Station'}</Text>
+              <Text style={styles.modalTitle}>{editingStation ? t('admin.checkinEditStationModalTitle') : t('admin.checkinCreateStationModalTitle')}</Text>
               <Pressable onPress={() => setIsManagerOpen(false)}>
                 <AppIcon name="xmark" size={20} color="#64748b" />
               </Pressable>
@@ -1575,23 +1574,23 @@ export function CheckInScannerTab() {
 
               <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 28, paddingHorizontal: 4 }} showsVerticalScrollIndicator={false}>
                 <TranslationsEditor
-                  title="STATION TITLE"
+                  title={t('admin.checkinTranslationStationTitle')}
                   translations={titleTranslations}
                   setTranslations={setTitleTranslations}
-                  placeholder="e.g. Saturday Lunch"
+                  placeholder={t('admin.checkinStationTitlePlaceholder')}
                 />
 
                 <TranslationsEditor
-                  title="DESCRIPTION (OPTIONAL)"
+                  title={t('admin.checkinTranslationDescription')}
                   translations={descTranslations}
                   setTranslations={setDescTranslations}
-                  placeholder="Helpful details or instructions for attendees"
+                  placeholder={t('admin.checkinDescriptionPlaceholder')}
                 />
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 6 }}>
-                  <Text style={styles.fieldLabel}>Category Type:</Text>
+                  <Text style={styles.fieldLabel}>{t('admin.checkinCategoryTypeLabel')}</Text>
                   <Pressable onPress={() => setIsCreateTypeOpen(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ color: '#5a0061', fontSize: 12, fontWeight: '800' }}>+ Create New Type</Text>
+                    <Text style={{ color: '#5a0061', fontSize: 12, fontWeight: '800' }}>{t('admin.checkinCreateNewType')}</Text>
                   </Pressable>
                 </View>
 
@@ -1620,7 +1619,7 @@ export function CheckInScannerTab() {
                   >
                     <View style={styles.typeSelectorRow}>
                       {checkpointTypes.map((t) => {
-                        const typeName = getLocalizedText(t.name) || t.id
+                        const typeName = getLocalizedText(t.name, locale) || t.id
                         const isSel = newTypeId === t.id
                         return (
                           <Pressable
@@ -1659,16 +1658,16 @@ export function CheckInScannerTab() {
                   />
                 </View>
 
-                <Text style={styles.fieldLabel}>Location:</Text>
+                <Text style={styles.fieldLabel}>{t('admin.checkinLocationFieldLabel')}</Text>
                 <TextInput
                   value={newLocation}
                   onChangeText={setNewLocation}
-                  placeholder="e.g. Central Cafeteria"
+                  placeholder={t('admin.checkinLocationPlaceholder')}
                   placeholderTextColor="#94a3b8"
                   style={styles.modalInput}
                 />
 
-                <Text style={styles.fieldLabel}>Opening / Unlock Date & Time (Optional):</Text>
+                <Text style={styles.fieldLabel}>{t('admin.checkinOpeningUnlockLabel')}</Text>
                 {Platform.OS === 'web' ? (
                   <input
                     type="datetime-local"
@@ -1698,7 +1697,7 @@ export function CheckInScannerTab() {
                   />
                 )}
 
-                <Text style={styles.fieldLabel}>Closing / End Date & Time (Optional):</Text>
+                <Text style={styles.fieldLabel}>{t('admin.checkinClosingUnlockLabel')}</Text>
                 {Platform.OS === 'web' ? (
                   <input
                     type="datetime-local"
@@ -1737,7 +1736,7 @@ export function CheckInScannerTab() {
                     size={20}
                     color="#5a0061"
                   />
-                  <Text style={styles.checkinToggleText}>Requires Initial Event Arrival Check-in</Text>
+                  <Text style={styles.checkinToggleText}>{t('admin.checkinRequiresInitialArrival')}</Text>
                 </Pressable>
 
                 <Pressable
@@ -1749,28 +1748,28 @@ export function CheckInScannerTab() {
                     size={20}
                     color="#5a0061"
                   />
-                  <Text style={styles.checkinToggleText}>Hide Station from Timeline Until Opening Time</Text>
+                  <Text style={styles.checkinToggleText}>{t('admin.checkinHideUntilOpen')}</Text>
                 </Pressable>
 
                 <TranslationsEditor
-                  title="CUSTOM %s CLAIMED MESSAGE OVERRIDE (OPTIONAL)"
+                  title={t('admin.checkinClaimedOverrideTitle')}
                   translations={claimedMsgTranslations}
                   setTranslations={setClaimedMsgTranslations}
-                  placeholder="e.g. Meal already claimed at %s"
+                  placeholder={t('admin.checkinClaimedOverridePlaceholder')}
                 />
 
                 <TranslationsEditor
-                  title="CUSTOM %s SUCCESS MESSAGE OVERRIDE (OPTIONAL)"
+                  title={t('admin.checkinSuccessOverrideTitle')}
                   translations={successMsgTranslations}
                   setTranslations={setSuccessMsgTranslations}
-                  placeholder="e.g. Meal granted successfully at %s"
+                  placeholder={t('admin.checkinSuccessOverridePlaceholder')}
                 />
 
                 <TranslationsEditor
-                  title="CUSTOM %s NOT CHECKED IN MESSAGE OVERRIDE (OPTIONAL)"
+                  title={t('admin.checkinNotCheckedInOverrideTitle')}
                   translations={notCheckedInMsgTranslations}
                   setTranslations={setNotCheckedInMsgTranslations}
-                  placeholder="e.g. User didn't check in to the event yet"
+                  placeholder={t('admin.checkinNotCheckedInOverridePlaceholder')}
                 />
               </ScrollView>
 
@@ -1798,7 +1797,7 @@ export function CheckInScannerTab() {
                   style={styles.deleteStationModalBtn}
                 >
                   <AppIcon name="trash" size={16} color="#dc2626" />
-                  <Text style={styles.deleteStationModalBtnText}>Delete Station</Text>
+                  <Text style={styles.deleteStationModalBtnText}>{t('admin.checkinDeleteStationBtn')}</Text>
                 </Pressable>
               )}
               <Pressable
@@ -1809,7 +1808,7 @@ export function CheckInScannerTab() {
                 {isCreatingStation ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <Text style={styles.saveStationBtnText}>{editingStation ? 'Save Changes' : 'Create Station'}</Text>
+                  <Text style={styles.saveStationBtnText}>{editingStation ? t('admin.checkinSaveChanges') : t('admin.checkinCreateStationBtn')}</Text>
                 )}
               </Pressable>
             </View>
@@ -1822,7 +1821,7 @@ export function CheckInScannerTab() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create New Station Type</Text>
+              <Text style={styles.modalTitle}>{t('admin.checkinCreateStationTypeTitle')}</Text>
               <Pressable onPress={() => setIsCreateTypeOpen(false)}>
                 <AppIcon name="xmark" size={20} color="#64748b" />
               </Pressable>
@@ -1846,21 +1845,21 @@ export function CheckInScannerTab() {
               />
 
               <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 28, paddingHorizontal: 4 }} showsVerticalScrollIndicator={false}>
-                <Text style={styles.fieldLabel}>Type ID Key (Slug):</Text>
+                <Text style={styles.fieldLabel}>{t('admin.checkinTypeIdLabel')}</Text>
                 <TextInput
                   value={newTypeIdKey}
                   onChangeText={setNewTypeIdKey}
-                  placeholder="e.g. swag, booth, karaoke, game"
+                  placeholder={t('admin.checkinTypeIdPlaceholder')}
                   placeholderTextColor="#94a3b8"
                   style={styles.modalInput}
                   autoCapitalize="none"
                 />
 
                 <TranslationsEditor
-                  title="TYPE NAME"
+                  title={t('admin.checkinTypeNameTitle')}
                   translations={typeNameTranslations}
                   setTranslations={setTypeNameTranslations}
-                  placeholder="e.g. Swag Station"
+                  placeholder={t('admin.checkinTypeNamePlaceholder')}
                 />
 
                 <Pressable
@@ -1872,28 +1871,28 @@ export function CheckInScannerTab() {
                     size={20}
                     color="#5a0061"
                   />
-                  <Text style={styles.checkinToggleText}>Requires Initial Event Arrival Check-in by Default</Text>
+                  <Text style={styles.checkinToggleText}>{t('admin.checkinTypeRequiresInitialArrival')}</Text>
                 </Pressable>
 
                 <TranslationsEditor
-                  title="DEFAULT %s CLAIMED MESSAGE"
+                  title={t('admin.checkinTypeClaimedTitle')}
                   translations={typeClaimedTranslations}
                   setTranslations={setTypeClaimedTranslations}
-                  placeholder="e.g. Item already claimed at %s"
+                  placeholder={t('admin.checkinTypeClaimedPlaceholder')}
                 />
 
                 <TranslationsEditor
-                  title="DEFAULT %s SUCCESS MESSAGE"
+                  title={t('admin.checkinTypeSuccessTitle')}
                   translations={typeSuccessTranslations}
                   setTranslations={setTypeSuccessTranslations}
-                  placeholder="e.g. Item delivered successfully at %s"
+                  placeholder={t('admin.checkinTypeSuccessPlaceholder')}
                 />
 
                 <TranslationsEditor
-                  title="DEFAULT %s NOT CHECKED IN MESSAGE"
+                  title={t('admin.checkinTypeNotCheckedInTitle')}
                   translations={typeNotCheckedInTranslations}
                   setTranslations={setTypeNotCheckedInTranslations}
-                  placeholder="e.g. User has not completed initial event check-in"
+                  placeholder={t('admin.checkinTypeNotCheckedInPlaceholder')}
                 />
               </ScrollView>
 
@@ -1922,7 +1921,7 @@ export function CheckInScannerTab() {
               {isSavingType ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Text style={styles.saveStationBtnText}>Save Station Type</Text>
+                <Text style={styles.saveStationBtnText}>{t('admin.checkinSaveStationType')}</Text>
               )}
             </Pressable>
           </View>
@@ -1937,24 +1936,22 @@ export function CheckInScannerTab() {
               <View style={styles.revokeWarningIcon}>
                 <AppIcon name="xmark.octagon.fill" size={32} color="#dc2626" />
               </View>
-              <Text style={styles.revokeConfirmTitle}>Revoke Check-In?</Text>
+              <Text style={styles.revokeConfirmTitle}>{t('admin.checkinRevokeTitle')}</Text>
               <Text style={styles.revokeConfirmBody}>
-                Are you sure you want to revoke check-in for{' '}
+                {t('admin.checkinRevokeBodyStart')}{' '}
                 <Text style={{ fontWeight: '800', color: '#0f172a' }}>
-                  {`${revokeModalTarget.profiles?.first_name || ''} ${revokeModalTarget.profiles?.last_name || ''}`.trim() || revokeModalTarget.profiles?.email || 'this attendee'}
+                  {`${revokeModalTarget.profiles?.first_name || ''} ${revokeModalTarget.profiles?.last_name || ''}`.trim() || revokeModalTarget.profiles?.email || t('admin.checkinThisAttendee')}
                 </Text>
                 ?
               </Text>
-              <Text style={styles.revokeConfirmWarning}>
-                This will delete their check-in record for this station and remove their event/station access.
-              </Text>
+              <Text style={styles.revokeConfirmWarning}>{t('admin.checkinRevokeWarning')}</Text>
 
               <View style={styles.revokeModalActions}>
                 <Pressable
                   onPress={() => setRevokeModalTarget(null)}
                   style={styles.revokeCancelBtn}
                 >
-                  <Text style={styles.revokeCancelBtnText}>Cancel</Text>
+                  <Text style={styles.revokeCancelBtnText}>{t('admin.checkinCancel')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => handleRevokeCheckIn(revokeModalTarget)}
@@ -1964,7 +1961,7 @@ export function CheckInScannerTab() {
                   {revokingId === revokeModalTarget.id ? (
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <Text style={styles.revokeSubmitBtnText}>Yes, Revoke Check-In</Text>
+                    <Text style={styles.revokeSubmitBtnText}>{t('admin.checkinRevokeConfirmButton')}</Text>
                   )}
                 </Pressable>
               </View>
@@ -1981,17 +1978,15 @@ export function CheckInScannerTab() {
               <View style={styles.revokeWarningIcon}>
                 <AppIcon name="trash" size={30} color="#dc2626" />
               </View>
-              <Text style={styles.revokeConfirmTitle}>Delete Checkpoint Station?</Text>
+              <Text style={styles.revokeConfirmTitle}>{t('admin.checkinDeleteStationTitle')}</Text>
               <Text style={styles.revokeConfirmBody}>
-                Are you sure you want to delete{' '}
+                {t('admin.checkinDeleteStationBodyStart')}{' '}
                 <Text style={{ fontWeight: '800', color: '#0f172a' }}>
-                  "{getLocalizedText(stationToDelete.title) || 'this station'}"
+                  "{getLocalizedText(stationToDelete.title, locale) || t('admin.checkinThisStation')}"
                 </Text>
                 ?
               </Text>
-              <Text style={styles.revokeConfirmWarning}>
-                This will soft-delete and remove the station from active scanner lists and attendee timelines. All past check-in records will remain safely preserved.
-              </Text>
+              <Text style={styles.revokeConfirmWarning}>{t('admin.checkinDeleteStationWarning')}</Text>
 
               <View style={styles.revokeModalActions}>
                 <Pressable
@@ -1999,7 +1994,7 @@ export function CheckInScannerTab() {
                   disabled={isDeletingStation}
                   style={styles.revokeCancelBtn}
                 >
-                  <Text style={styles.revokeCancelBtnText}>Cancel</Text>
+                  <Text style={styles.revokeCancelBtnText}>{t('admin.checkinCancel')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleConfirmDeleteStation}
@@ -2009,7 +2004,7 @@ export function CheckInScannerTab() {
                   {isDeletingStation ? (
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <Text style={styles.revokeSubmitBtnText}>Confirm Deletion</Text>
+                    <Text style={styles.revokeSubmitBtnText}>{t('admin.checkinConfirmDeletion')}</Text>
                   )}
                 </Pressable>
               </View>

@@ -4,6 +4,7 @@ import * as React from 'react'
 import { View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native'
 import { PillButton } from '../../../components/pill-button'
 import { AppIcon } from '../../../components/app-icon'
+import { useTranslation } from 'app/i18n'
 
 export interface AdminPaginationBarProps {
   currentPage: number
@@ -25,21 +26,24 @@ export function AdminPaginationBar({
   pageSizeOptions = [10, 20, 50, 100],
 }: AdminPaginationBarProps) {
   const { width } = useWindowDimensions()
+  const { t } = useTranslation()
   const isSmallScreen = width > 0 && width < 640
 
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1
   const endItem = Math.min(currentPage * pageSize, totalItems)
+  const prevDisabled = currentPage <= 1
+  const nextDisabled = currentPage >= totalPages
 
   return (
     <View style={[styles.paginationCard, isSmallScreen && styles.paginationCardSmall]}>
       <Text style={[styles.paginationInfoText, isSmallScreen && styles.textCenter]}>
-        Showing {startItem}–{endItem} of {totalItems} entries
+        {t('admin.paginationShowing', [startItem, endItem, totalItems])}
       </Text>
 
       <View style={[styles.paginationControlsRow, isSmallScreen && styles.controlsRowSmall]}>
         {/* Page Size Options */}
         <View style={[styles.pageSizeSelector, isSmallScreen && styles.centeredRow]}>
-          <Text style={styles.pageSizeLabel}>Rows:</Text>
+          <Text style={styles.pageSizeLabel}>{t('admin.paginationRows')}</Text>
           {pageSizeOptions.map((sz) => (
             <Pressable
               key={sz}
@@ -60,37 +64,37 @@ export function AdminPaginationBar({
         <View style={[styles.pageButtonsRow, isSmallScreen && styles.centeredRow]}>
           <PillButton
             onPress={() => onPageChange(Math.max(1, currentPage - 1))}
-            disabled={currentPage <= 1}
+            disabled={prevDisabled}
             additionalStyle={[
               styles.pageBtn,
-              currentPage <= 1 && styles.pageBtnDisabled,
+              prevDisabled && styles.pageBtnDisabled,
               isSmallScreen && styles.pageBtnSmall,
             ]}
             fontSize={12}
           >
             <View style={styles.btnContentRow}>
-              <AppIcon name="chevron.left" size={14} color="#ffffff" />
-              {!isSmallScreen ? <Text style={styles.btnText}>Prev</Text> : null}
+              <AppIcon name="chevron.left" size={14} color={prevDisabled ? '#475569' : '#ffffff'} />
+              {!isSmallScreen ? <Text style={[styles.btnText, prevDisabled && styles.btnTextDisabled]}>{t('admin.paginationPrev')}</Text> : null}
             </View>
           </PillButton>
 
           <Text style={styles.pageIndicatorText}>
-            Page {currentPage} of {Math.max(1, totalPages)}
+            {t('admin.paginationPage', [currentPage, Math.max(1, totalPages)])}
           </Text>
 
           <PillButton
             onPress={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage >= totalPages}
+            disabled={nextDisabled}
             additionalStyle={[
               styles.pageBtn,
-              currentPage >= totalPages && styles.pageBtnDisabled,
+              nextDisabled && styles.pageBtnDisabled,
               isSmallScreen && styles.pageBtnSmall,
             ]}
             fontSize={12}
           >
             <View style={styles.btnContentRow}>
-              {!isSmallScreen ? <Text style={styles.btnText}>Next</Text> : null}
-              <AppIcon name="chevron.right" size={14} color="#ffffff" />
+              {!isSmallScreen ? <Text style={[styles.btnText, nextDisabled && styles.btnTextDisabled]}>{t('admin.paginationNext')}</Text> : null}
+              <AppIcon name="chevron.right" size={14} color={nextDisabled ? '#475569' : '#ffffff'} />
             </View>
           </PillButton>
         </View>
@@ -209,5 +213,8 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '700',
+  },
+  btnTextDisabled: {
+    color: '#1e293b',
   },
 })
