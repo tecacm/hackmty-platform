@@ -21,8 +21,8 @@ import { SimpleTextLink } from 'app/components/simple-text-link'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
-
 import { sanitizeEmail } from 'app/utils/sanitization'
+import { useTranslation } from 'app/i18n'
 
 type ForgotPasswordValues = {
   email: string
@@ -144,14 +144,15 @@ const styles = StyleSheet.create({
 })
 
 export function ForgotPasswordScreen() {
-  const { navigateTo } = useSmartNavigate();
-  const insets = useSafeArea();
-  const headerHeight = useHeaderHeightSafe();
-  const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const images = [rectoria, pavoreal, ciap, photo2024, skyview];
+  const { t } = useTranslation()
+  const { navigateTo } = useSmartNavigate()
+  const insets = useSafeArea()
+  const headerHeight = useHeaderHeightSafe()
+  const [stableHeaderHeight, setStableHeaderHeight] = useState(0)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const images = [rectoria, pavoreal, ciap, photo2024, skyview]
 
   const {
     control,
@@ -165,11 +166,11 @@ export function ForgotPasswordScreen() {
 
   useEffect(() => {
     if (headerHeight > stableHeaderHeight) {
-      setStableHeaderHeight(headerHeight);
+      setStableHeaderHeight(headerHeight)
     }
-  }, [headerHeight, stableHeaderHeight]);
+  }, [headerHeight, stableHeaderHeight])
 
-  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
+  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24
 
   const goToLogin = () => navigateTo('/login')
 
@@ -182,7 +183,7 @@ export function ForgotPasswordScreen() {
 
     try {
       if (!isSupabaseConfigured) {
-        setErrorMessage('Supabase is not configured for this environment.')
+        setErrorMessage(t('auth.supabaseNotConfigured'))
         return
       }
 
@@ -201,7 +202,7 @@ export function ForgotPasswordScreen() {
         return
       }
 
-      setStatusMessage('Password recovery link has been sent to your email!')
+      setStatusMessage(t('auth.recoverySent'))
     } catch {
       setErrorMessage('Unable to send recovery email. Please try again.')
     } finally {
@@ -216,10 +217,17 @@ export function ForgotPasswordScreen() {
         colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        style={{
+          position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: Platform.OS === 'web' ? -200 : 0,
+          height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
+        }}
       />
     </>
-  );
+  )
 
   return (
     <ParallaxScrollView
@@ -235,81 +243,81 @@ export function ForgotPasswordScreen() {
         overflow: 'visible',
       }}
     >
-        <View style={styles.glassCard}>
-          <View style={styles.glassCardGlow} pointerEvents="none" />
-          <View style={styles.glassCardRing} pointerEvents="none" />
-          <View style={{ width: 98, height: 140, flexShrink: 0 }}>
-            {(() => {
-              const ImageComponent = SolitoImage as any
-              return (
-                <ImageComponent
-                  src={logoImage}
-                  height={140}
-                  width={98}
-                  alt="The HackMTY Logo"
-                  contentFit="contain"
-                  resizeMode="contain"
-                />
-              )
-            })()}
+      <View style={styles.glassCard}>
+        <View style={styles.glassCardGlow} pointerEvents="none" />
+        <View style={styles.glassCardRing} pointerEvents="none" />
+        <View style={{ width: 98, height: 140, flexShrink: 0 }}>
+          {(() => {
+            const ImageComponent = SolitoImage as any
+            return (
+              <ImageComponent
+                src={logoImage}
+                height={140}
+                width={98}
+                alt="The HackMTY Logo"
+                contentFit="contain"
+                resizeMode="contain"
+              />
+            )
+          })()}
+        </View>
+        <View style={styles.wordmarkBlock}>
+          <View style={styles.wordmarkRow}>
+            <Text style={styles.wordmarkHack}>Hack</Text>
+            <Text style={styles.wordmarkMty}>MTY</Text>
           </View>
-          <View style={styles.wordmarkBlock}>
-            <View style={styles.wordmarkRow}>
-              <Text style={styles.wordmarkHack}>Hack</Text>
-              <Text style={styles.wordmarkMty}>MTY</Text>
-            </View>
-            <LinearGradient
-              colors={['transparent', '#f0d9b0', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.divider}
-            />
-          </View>
-          <Text style={styles.subtitle}>Enter your email address to receive a link to reset your password.</Text>
-          <Controller
-            control={control}
-            name="email"
-            rules={{
-              required: 'Email is required',
-              pattern: {
-                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                message: 'Invalid email',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
-                <StyledInput
-                  variant="glass"
-                  label="Email Address"
-                  placeholder="Enter your email"
-                  textContentType="emailAddress"
-                  keyboardType="email-address"
-                  onChangeText={onChange}
-                  value={value}
-                  error={errors.email?.message}
-                  onSubmitEditing={handleSubmit(onSubmit)}
-                />
-              </View>
-            )}
-          />
-
-          {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
-          {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
-
-          <PillButton
-            variant="gradient"
-            title={isSubmitting ? 'Sending link...' : 'Send Recovery Link'}
-            onPress={handleSubmit(onSubmit)}
-            additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
-          />
-
-          <SimpleTextLink
-            text="Back to "
-            accentText="Login"
-            onPress={goToLogin}
-            textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+          <LinearGradient
+            colors={['transparent', '#f0d9b0', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.divider}
           />
         </View>
+        <Text style={styles.subtitle}>{t('auth.forgotPasswordSubtitle')}</Text>
+        <Controller
+          control={control}
+          name="email"
+          rules={{
+            required: t('auth.emailRequired'),
+            pattern: {
+              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+              message: 'Invalid email',
+            },
+          }}
+          render={({ field: { onChange, value } }) => (
+            <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
+              <StyledInput
+                variant="glass"
+                label={t('auth.email')}
+                placeholder={t('auth.emailPlaceholder')}
+                textContentType="emailAddress"
+                keyboardType="email-address"
+                onChangeText={onChange}
+                value={value}
+                error={errors.email?.message}
+                onSubmitEditing={handleSubmit(onSubmit)}
+              />
+            </View>
+          )}
+        />
+
+        {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
+        {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
+
+        <PillButton
+          variant="gradient"
+          title={isSubmitting ? t('auth.sendingLink') : t('auth.sendRecoveryLink')}
+          onPress={handleSubmit(onSubmit)}
+          additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
+        />
+
+        <SimpleTextLink
+          text={t('auth.alreadyHaveAccount')}
+          accentText={t('auth.login')}
+          onPress={goToLogin}
+          textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+        />
+      </View>
     </ParallaxScrollView>
   )
 }

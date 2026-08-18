@@ -2,6 +2,8 @@ import React from 'react'
 import { View, Text, StyleSheet, Linking, Platform } from 'react-native'
 import { PillButton } from '../pill-button'
 
+import { useTranslation } from 'app/i18n'
+
 type DocumentPreviewProps = {
   title: string
   url?: string | null
@@ -27,15 +29,18 @@ export function DocumentPreview({
   title,
   url,
   loading = false,
-  emptyMessage = 'No document uploaded.',
+  emptyMessage,
   height = 420,
 }: DocumentPreviewProps) {
+  const { t } = useTranslation()
+  const resolvedEmptyMessage = emptyMessage || t('common.noDocument')
+
   if (loading) {
     return (
       <View style={[styles.card, { height: 'auto', minHeight: 180 }]}>
         <Text style={styles.title}>{title}</Text>
         <View style={styles.placeholderContainer}>
-          <Text style={styles.placeholderText}>Loading secure document link...</Text>
+          <Text style={styles.placeholderText}>{t('common.loadingDocument')}</Text>
         </View>
       </View>
     )
@@ -46,7 +51,7 @@ export function DocumentPreview({
       <View style={[styles.card, { height: 'auto', minHeight: 140 }]}>
         <Text style={styles.title}>{title}</Text>
         <View style={styles.placeholderContainer}>
-          <Text style={styles.placeholderText}>{emptyMessage}</Text>
+          <Text style={styles.placeholderText}>{resolvedEmptyMessage}</Text>
         </View>
       </View>
     )
@@ -59,7 +64,7 @@ export function DocumentPreview({
       <View style={styles.headerRow}>
         <Text style={styles.title}>{title}</Text>
         <PillButton
-          title="Open Document ↗"
+          title={t('common.openDocument')}
           onPress={() => Linking.openURL(url)}
           fontSize={12}
           additionalStyle={styles.openBtn}
@@ -81,7 +86,7 @@ export function DocumentPreview({
           />
         ) : (
           <iframe
-            src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`}
+            src={url}
             title={title}
             style={{
               width: '100%',

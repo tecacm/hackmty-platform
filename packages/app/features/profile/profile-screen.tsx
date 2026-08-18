@@ -23,13 +23,15 @@ import { PillButton } from 'app/components/pill-button'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { formFieldColors } from 'app/components/form-field-styles'
-import { dataReferences } from 'app/features/applicant/applicant-field-config'
+import { dataReferences, getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
+import { checkEventPassUnlocked } from 'app/utils/event-config'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AppIcon } from 'app/components/app-icon'
 
 import { sanitizeName, sanitizeString, sanitizeUrl } from 'app/utils/sanitization'
+import { useTranslation } from 'app/i18n'
 
 // Static fallback option arrays for selects
 const defaultGenderOptions = [
@@ -70,11 +72,13 @@ const defaultDietOptions = [
 function InfoTile({
   label,
   value,
+  emptyLabel = 'Not specified',
   isLink,
   onPress,
 }: {
   label: string
   value?: string | null
+  emptyLabel?: string
   isLink?: boolean
   onPress?: () => void
 }) {
@@ -90,7 +94,7 @@ function InfoTile({
         numberOfLines={1}
         ellipsizeMode="tail"
       >
-        {value || 'Not specified'}
+        {value || emptyLabel}
       </Text>
     </View>
   )
@@ -115,6 +119,7 @@ import { GlassButton } from 'app/components/glass-button'
 import { useProfileNavHeader } from './use-profile-nav-header'
 
 export function ProfileScreen({ navigation }: { navigation?: any }) {
+  const { t, locale } = useTranslation()
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { role: userRole } = useUserPermissions()
   const { width } = useWindowDimensions()
@@ -125,6 +130,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
   const [isUploading, setIsUploading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
+  const [isPassAllowed, setIsPassAllowed] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; isError: boolean } | null>(null)
 
   const handleToggleEdit = React.useCallback(() => {
@@ -216,9 +222,36 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
           .eq('id', user.id)
           .maybeSingle()
 
+        let fname = profile?.first_name || user.user_metadata?.first_name || user.user_metadata?.given_name || ''
+        let lname = profile?.last_name || user.user_metadata?.last_name || user.user_metadata?.family_name || ''
+
+        if (!fname && (user.user_metadata?.full_name || user.user_metadata?.name)) {
+          const rawName = user.user_metadata?.full_name || user.user_metadata?.name
+          const parts = String(rawName).trim().split(' ')
+          fname = parts[0] || ''
+          lname = parts.slice(1).join(' ') || ''
+        }
+
+        // Fallback: check latest submitted application answers
+        if (!fname) {
+          const { data: appData } = await supabase
+            .from('applications')
+            .select('answers')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (appData?.answers) {
+            fname = appData.answers.firstName || appData.answers.first_name || ''
+            lname = appData.answers.lastName || appData.answers.last_name || ''
+          }
+        }
+
+        setFirstName(fname)
+        setLastName(lname)
+
         if (profile) {
-          setFirstName(profile.first_name || '')
-          setLastName(profile.last_name || '')
           setPhone(profile.phone || '')
           setGender(profile.gender || '')
           setUniversity(profile.university || '')
@@ -243,6 +276,27 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             }
           }
         }
+
+        // Check permissions for QR event pass display
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+
+        const rolesList = rolesData ? rolesData.map((r) => r.role.toLowerCase()) : ['user']
+        const isStaff = rolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r))
+
+        const { data: userAppsData } = await supabase
+          .from('applications')
+          .select('status, confirmed_at')
+          .eq('user_id', user.id)
+
+        const isConfirmed = Array.isArray(userAppsData) && userAppsData.some(
+          (app) => app.status === 'confirmed' || app.confirmed_at !== null
+        )
+
+        const isUnlocked = await checkEventPassUnlocked(rolesList)
+        setIsPassAllowed((isStaff || isConfirmed) && isUnlocked)
 
         // Fetch dynamic form field choices
         const { data: fieldsData } = await supabase
@@ -331,10 +385,16 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             initials,
             avatarUrl: data.publicUrl,
           }))
+
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('profile_avatar_updated', {
+              detail: { avatarUrl: data.publicUrl, initials }
+            }))
+          }
         }
       }
 
-      setFeedbackMessage({ text: 'Profile photo updated successfully!', isError: false })
+      setFeedbackMessage({ text: t('profile.photoUpdated'), isError: false })
     } catch (err: any) {
       console.error('Avatar upload failed:', err)
       setFeedbackMessage({ text: err.message || 'Failed to upload image.', isError: true })
@@ -458,13 +518,20 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
         const cacheKey = `user_profile_${userId}`
         const first = (firstName || '').charAt(0).toUpperCase()
         const last = (lastName || '').charAt(0).toUpperCase()
+        const resolvedInitials = `${first}${last}` || '👤'
         localStorage.setItem(cacheKey, JSON.stringify({
-          initials: `${first}${last}` || '👤',
+          initials: resolvedInitials,
           avatarUrl: avatarDisplayUrl,
         }))
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('profile_updated', {
+            detail: { initials: resolvedInitials, avatarUrl: avatarDisplayUrl }
+          }))
+        }
       }
 
-      setFeedbackMessage({ text: 'Profile changes saved successfully!', isError: false })
+      setFeedbackMessage({ text: t('profile.profileUpdated'), isError: false })
       setIsEditing(false)
     } catch (err: any) {
       console.error('Failed to save profile changes:', err)
@@ -547,6 +614,28 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
     value: y.value,
   }))
 
+  const translatedGenderOptions = React.useMemo(() => [
+    { label: t('profile.genderMale'), value: 'male' },
+    { label: t('profile.genderFemale'), value: 'female' },
+    { label: t('profile.genderNonBinary'), value: 'nonbinary' },
+    { label: t('profile.genderPreferNotToAnswer'), value: 'prefer_not_to_answer' },
+  ], [t])
+
+  const translatedTshirtOptions = React.useMemo(() => [
+    { label: t('profile.tshirtSmall'), value: 'small' },
+    { label: t('profile.tshirtMedium'), value: 'medium' },
+    { label: t('profile.tshirtLarge'), value: 'large' },
+    { label: t('profile.tshirtXLarge'), value: 'xlarge' },
+  ], [t])
+
+  const translatedDietOptions = React.useMemo(() => [
+    { label: t('profile.dietNone'), value: 'none' },
+    { label: t('profile.dietVegetarian'), value: 'vegetarian' },
+    { label: t('profile.dietVegan'), value: 'vegan' },
+    { label: t('profile.dietNoPork'), value: 'no_pork' },
+    { label: t('profile.dietGlutenFree'), value: 'gluten_free' },
+  ], [t])
+
   const getOptionLabel = (options: { label: string; value: string }[], val: string) => {
     if (!val) return null
     const found = options.find((o) => o.value === val)
@@ -555,15 +644,15 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
 
   const fullName = [firstName, lastName].filter(Boolean).join(' ') || 'Your Name'
   const formattedRole = userRole
-    ? userRole.charAt(0).toUpperCase() + userRole.slice(1).toLowerCase()
-    : 'Hacker'
+    ? getApplicantRoleLabel(userRole, locale)
+    : getApplicantRoleLabel('hacker', locale)
 
   return (
     <View style={styles.container}>
       {isLoading ? (
         <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
           <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={{ color: '#ffffff', fontSize: 16 }}>Loading profile details...</Text>
+          <Text style={{ color: '#ffffff', fontSize: 16 }}>{t('profile.loadingProfile')}</Text>
         </View>
       ) : (
         <>
@@ -582,7 +671,11 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             >
               <View style={styles.avatarCircle}>
                 {avatarDisplayUrl ? (
-                  <Image source={{ uri: avatarDisplayUrl }} style={styles.avatarImage} />
+                  <Image
+                    source={{ uri: avatarDisplayUrl }}
+                    style={styles.avatarImage}
+                    onError={() => setAvatarDisplayUrl(null)}
+                  />
                 ) : (
                   <View style={styles.avatarFallback}>
                     <PersonSilhouette size={110} />
@@ -609,24 +702,24 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             {/* Role label directly under the name without a pill box */}
             <Text style={styles.floatingRole}>{formattedRole}</Text>
 
-            {/* Quick Action Slot */}
-            <View style={styles.quickActionsContainer}>
-              {false &&
-              <GlassButton
-                glassEffectStyle="clear"
-                colorScheme="dark"
-                accessibilityRole="button"
-                accessibilityLabel="Show My QR Code"
-                style={styles.quickActionButton}
-                onPress={() => {
-                  Alert.alert('My QR', 'QR Code check-in and info sharing features coming soon!')
-                }}
-              >
-                <AppIcon name="qrcode" color="#ffffff" size={16} />
-                <Text style={styles.quickActionText}>My QR</Text>
-              </GlassButton>
-              }
-            </View>
+            {/* Quick Action Slot: My Event Pass (QR Code) */}
+            {isPassAllowed && (
+              <View style={styles.quickActionsContainer}>
+                <GlassButton
+                  glassEffectStyle="regular"
+                  colorScheme="dark"
+                  accessibilityRole="button"
+                  accessibilityLabel={t('profile.showQrPass')}
+                  style={styles.quickActionButton}
+                  onPress={() => {
+                    navigateTo('/qr')
+                  }}
+                >
+                  <AppIcon name="qrcode" color="#ffffff" size={18} />
+                  <Text style={styles.quickActionText}>{t('profile.showQrPass')}</Text>
+                </GlassButton>
+              </View>
+            )}
           </View>
 
           {/* Profile Content Card - Material Container */}
@@ -634,9 +727,9 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             {/* Card Header Row */}
             <View style={styles.cardHeaderRow}>
               <View>
-                <Text style={styles.cardTitle}>Profile Information</Text>
+                <Text style={styles.cardTitle}>{t('profile.title')}</Text>
                 <Text style={styles.cardSubtitle}>
-                  {isEditing ? 'Editing your personal information' : 'Personal & account details'}
+                  {isEditing ? t('profile.editingSubtitle') : t('profile.subtitle')}
                 </Text>
               </View>
 
@@ -645,7 +738,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
                   glassEffectStyle="clear"
                   colorScheme="dark"
                   accessibilityRole="button"
-                  accessibilityLabel={isEditing ? 'Cancel editing profile' : 'Edit profile information'}
+                  accessibilityLabel={isEditing ? t('common.cancel') : t('profile.editProfile')}
                   style={[
                     styles.toggleEditBtn,
                     isEditing && styles.toggleEditBtnCancel,
@@ -655,13 +748,13 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
                 >
                   {isEditing ? (
                     <Text style={[styles.toggleEditBtnText, styles.toggleEditBtnTextCancel]}>
-                      Cancel
+                      {t('common.cancel')}
                     </Text>
                   ) : isSmallScreen ? (
                     <AppIcon name="pencil" size={16} color="#ffffff" />
                   ) : (
                     <Text style={styles.toggleEditBtnText}>
-                      Edit Profile
+                      {t('profile.editProfile')}
                     </Text>
                   )}
                 </GlassButton>
@@ -683,41 +776,41 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
               /* VIEW MODE (Nice minimized style) */
               <View style={styles.viewModeContainer}>
                 <View style={styles.infoSection}>
-                  <Text style={styles.sectionHeading}>PERSONAL DETAILS</Text>
+                  <Text style={styles.sectionHeading}>{t('profile.personalDetails')}</Text>
                   <View style={styles.infoGrid}>
-                    <InfoTile label="First Name" value={firstName} />
-                    <InfoTile label="Last Name" value={lastName} />
-                    <InfoTile label="Email Address" value={email} />
-                    <InfoTile label="Phone Number" value={phone} />
-                    <InfoTile label="Gender" value={getOptionLabel(genderOpts, gender)} />
+                    <InfoTile label={t('profile.firstName')} value={firstName} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.lastName')} value={lastName} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('auth.email')} value={email} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.phone')} value={phone} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.gender')} value={getOptionLabel(translatedGenderOptions, gender)} emptyLabel={t('profile.notSpecified')} />
                   </View>
                 </View>
 
                 <View style={styles.infoSection}>
-                  <Text style={styles.sectionHeading}>ACADEMIC INFORMATION</Text>
+                  <Text style={styles.sectionHeading}>{t('profile.academicInfo')}</Text>
                   <View style={styles.infoGrid}>
-                    <InfoTile label="University" value={university} />
-                    <InfoTile label="Major" value={major} />
-                    <InfoTile label="Graduation Year" value={getOptionLabel(gradYearOptions, gradYear)} />
-                    <InfoTile label="Level of Study" value={getOptionLabel(levelOfStudyOpts, levelOfStudy)} />
+                    <InfoTile label={t('profile.university')} value={university} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.major')} value={major} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.gradYear')} value={getOptionLabel(gradYearOptions, gradYear)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.levelOfStudy')} value={getOptionLabel(levelOfStudyOpts, levelOfStudy)} emptyLabel={t('profile.notSpecified')} />
                   </View>
                 </View>
 
                 <View style={styles.infoSection}>
-                  <Text style={styles.sectionHeading}>EVENT PREFERENCES</Text>
+                  <Text style={styles.sectionHeading}>{t('profile.eventPreferences')}</Text>
                   <View style={styles.infoGrid}>
-                    <InfoTile label="T-Shirt Size" value={getOptionLabel(tshirtOpts, tshirtSize)} />
-                    <InfoTile label="Dietary Restrictions" value={getOptionLabel(dietOpts, dietary)} />
+                    <InfoTile label={t('profile.tshirtSize')} value={getOptionLabel(translatedTshirtOptions, tshirtSize)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.dietaryRestrictions')} value={getOptionLabel(translatedDietOptions, dietary)} emptyLabel={t('profile.notSpecified')} />
                   </View>
                 </View>
 
                 <View style={styles.infoSection}>
-                  <Text style={styles.sectionHeading}>LINKS & SOCIALS</Text>
+                  <Text style={styles.sectionHeading}>{t('profile.linksSocials')}</Text>
                   <View style={styles.infoGrid}>
-                    <InfoTile label="GitHub" value={github} isLink onPress={() => handleOpenUrl(github)} />
-                    <InfoTile label="Devpost" value={devpost} isLink onPress={() => handleOpenUrl(devpost)} />
-                    <InfoTile label="LinkedIn" value={linkedin} isLink onPress={() => handleOpenUrl(linkedin)} />
-                    <InfoTile label="Personal Website" value={personalSite} isLink onPress={() => handleOpenUrl(personalSite)} />
+                    <InfoTile label={t('profile.githubUrl')} value={github} isLink onPress={() => handleOpenUrl(github)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.devpostUrl')} value={devpost} isLink onPress={() => handleOpenUrl(devpost)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.linkedinUrl')} value={linkedin} isLink onPress={() => handleOpenUrl(linkedin)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.personalWebsiteUrl')} value={personalSite} isLink onPress={() => handleOpenUrl(personalSite)} emptyLabel={t('profile.notSpecified')} />
                   </View>
                 </View>
               </View>
@@ -725,114 +818,114 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
               /* EDIT MODE (Form input fields) */
               <View style={styles.gridContainer}>
                 <StyledInput
-                  label="First Name"
-                  placeholder="Enter your first name"
+                  label={t('profile.firstName')}
+                  placeholder={t('profile.firstName')}
                   value={firstName}
                   onChangeText={setFirstName}
                   required
                 />
 
                 <StyledInput
-                  label="Last Name"
-                  placeholder="Enter your last name"
+                  label={t('profile.lastName')}
+                  placeholder={t('profile.lastName')}
                   value={lastName}
                   onChangeText={setLastName}
                   required
                 />
 
                 <StyledInput
-                  label="Email Address"
+                  label={t('auth.email')}
                   value={email}
                   editable={false}
                   additionalStyle={{ opacity: 0.8 }}
                 />
 
                 <StyledInput
-                  label="Phone Number"
+                  label={t('profile.phone')}
                   placeholder="+#########"
                   value={phone}
                   onChangeText={setPhone}
                 />
 
                 <StyledSelect
-                  label="Gender"
-                  placeholder="Select Gender..."
-                  options={genderOpts}
+                  label={t('profile.gender')}
+                  placeholder={t('profile.gender')}
+                  options={translatedGenderOptions}
                   value={gender}
                   onValueChange={setGender}
                 />
 
                 <StyledAutocomplete
-                  label="University"
-                  placeholder="Type your university..."
+                  label={t('profile.university')}
+                  placeholder={t('profile.university')}
                   options={uniOptions}
                   value={university}
                   onChangeText={setUniversity}
                 />
 
                 <StyledAutocomplete
-                  label="Major"
-                  placeholder="Type your major..."
+                  label={t('profile.major')}
+                  placeholder={t('profile.major')}
                   options={majorOptions}
                   value={major}
                   onChangeText={setMajor}
                 />
 
                 <StyledSelect
-                  label="Graduation Year"
-                  placeholder="Select Graduation Year..."
+                  label={t('profile.gradYear')}
+                  placeholder={t('profile.gradYear')}
                   options={gradYearOptions}
                   value={gradYear}
                   onValueChange={setGradYear}
                 />
 
                 <StyledSelect
-                  label="Level of Study"
-                  placeholder="Select Level of Study..."
+                  label={t('profile.levelOfStudy')}
+                  placeholder={t('profile.levelOfStudy')}
                   options={levelOfStudyOpts}
                   value={levelOfStudy}
                   onValueChange={setLevelOfStudy}
                 />
 
                 <StyledSelect
-                  label="T-Shirt Size"
-                  placeholder="Select T-Shirt Size..."
-                  options={tshirtOpts}
+                  label={t('profile.tshirtSize')}
+                  placeholder={t('profile.tshirtSize')}
+                  options={translatedTshirtOptions}
                   value={tshirtSize}
                   onValueChange={setTshirtSize}
                 />
 
                 <StyledSelect
-                  label="Dietary Restrictions"
-                  placeholder="Select Dietary Restrictions..."
-                  options={dietOpts}
+                  label={t('profile.dietaryRestrictions')}
+                  placeholder={t('profile.dietaryRestrictions')}
+                  options={translatedDietOptions}
                   value={dietary}
                   onValueChange={setDietary}
                 />
 
                 <StyledInput
-                  label="GitHub URL"
+                  label={t('profile.githubUrl')}
                   placeholder="https://github.com/username"
                   value={github}
                   onChangeText={setGithub}
                 />
 
                 <StyledInput
-                  label="Devpost URL"
+                  label={t('profile.devpostUrl')}
                   placeholder="https://devpost.com/username"
                   value={devpost}
                   onChangeText={setDevpost}
                 />
 
                 <StyledInput
-                  label="LinkedIn URL"
+                  label={t('profile.linkedinUrl')}
                   placeholder="https://linkedin.com/in/username"
                   value={linkedin}
                   onChangeText={setLinkedin}
                 />
 
                 <StyledInput
-                  label="Personal Website URL"
+                  label={t('profile.personalWebsiteUrl')}
                   placeholder="https://example.com"
                   value={personalSite}
                   onChangeText={setPersonalSite}
@@ -841,13 +934,13 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
                 {/* Edit Form Actions */}
                 <View style={styles.editActionRow}>
                   <PillButton
-                    title={isSaving ? 'Saving Changes...' : 'Save Profile'}
+                    title={isSaving ? t('profile.saving') : t('profile.saveChanges')}
                     onPress={isSaving ? () => {} : handleSaveProfile}
                     additionalStyle={{ flex: 1, opacity: isSaving ? 0.6 : 1 }}
                   />
                   <PillButton
                     variant="outline-secondary"
-                    title="Cancel"
+                    title={t('common.cancel')}
                     onPress={() => setIsEditing(false)}
                     additionalStyle={{ flex: 1 }}
                   />
@@ -860,7 +953,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
               <View style={styles.mobileSignOutRow}>
                 <PillButton
                   variant="outline-primary"
-                  title="Sign Out"
+                  title={t('profile.signOut')}
                   onPress={handleSignOut}
                 />
               </View>
@@ -869,13 +962,13 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             {/* Danger Zone - Only visible in Edit Mode */}
             {isEditing && (
               <View style={styles.dangerZone}>
-                <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
+                <Text style={styles.dangerZoneTitle}>{t('profile.dangerZone')}</Text>
                 <Text style={styles.dangerZoneDescription}>
-                  Permanently delete your profile and all associated hackathon application data.
+                  {t('profile.dangerZoneDesc')}
                 </Text>
                 <PillButton
                   variant="danger"
-                  title="Delete My Account"
+                  title={t('profile.deleteAccount')}
                   isLoading={isDeleting}
                   onPress={confirmDeleteAccount}
                 />
@@ -897,7 +990,11 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
               <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
                 <View style={styles.modalAvatarCircle}>
                   {avatarDisplayUrl ? (
-                    <Image source={{ uri: avatarDisplayUrl }} style={styles.modalAvatarImage} />
+                    <Image
+                      source={{ uri: avatarDisplayUrl }}
+                      style={styles.modalAvatarImage}
+                      onError={() => setAvatarDisplayUrl(null)}
+                    />
                   ) : (
                     <View style={styles.modalAvatarFallback}>
                       <PersonSilhouette size={200} />
@@ -1293,6 +1390,34 @@ const styles = StyleSheet.create({
   closeModalBtnText: {
     color: '#ffffff',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  qrPassPillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#5a0061',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#c2b75f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+    marginTop: 8,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      } as any,
+    }),
+  },
+  qrPassPillText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 })

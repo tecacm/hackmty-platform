@@ -21,6 +21,7 @@ import { SimpleTextLink } from 'app/components/simple-text-link'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+import { useTranslation } from 'app/i18n'
 
 type ResetPasswordValues = {
   password: string
@@ -114,11 +115,26 @@ const styles = StyleSheet.create({
     width: 44,
     height: 2,
   },
+  title: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    fontFamily: 'Montserrat',
+    marginBottom: 4,
+  },
   subtitle: {
     color: '#e9e3f0',
     fontSize: 13.5,
     fontWeight: '500',
     textAlign: 'center',
+    fontFamily: 'Montserrat',
+  },
+  initializingText: {
+    color: '#f0d9b0',
+    fontSize: 13.5,
+    fontWeight: '600',
+    marginTop: 10,
     fontFamily: 'Montserrat',
   },
   fieldGroup: {
@@ -140,23 +156,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Montserrat',
   },
-  initializingText: {
-    color: '#e9e3f0',
-    marginTop: 12,
-    fontFamily: 'Montserrat',
-  },
 })
 
 export function ResetPasswordScreen() {
-  const { navigateTo } = useSmartNavigate();
-  const insets = useSafeArea();
-  const headerHeight = useHeaderHeightSafe();
-  const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const images = [rectoria, pavoreal, ciap, photo2024, skyview];
+  const { t } = useTranslation()
+  const { navigateTo } = useSmartNavigate()
+  const insets = useSafeArea()
+  const headerHeight = useHeaderHeightSafe()
+  const [stableHeaderHeight, setStableHeaderHeight] = useState(0)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const images = [rectoria, pavoreal, ciap, photo2024, skyview]
 
   const {
     control,
@@ -174,12 +186,12 @@ export function ResetPasswordScreen() {
 
   useEffect(() => {
     if (headerHeight > stableHeaderHeight) {
-      setStableHeaderHeight(headerHeight);
+      setStableHeaderHeight(headerHeight)
     }
-  }, [headerHeight, stableHeaderHeight]);
+  }, [headerHeight, stableHeaderHeight])
 
   useEffect(() => {
-    const initializeRecoverySession = async () => {
+    async function initializeRecoverySession() {
       if (Platform.OS !== 'web' || typeof window === 'undefined') {
         setIsInitializing(false)
         return
@@ -187,16 +199,16 @@ export function ResetPasswordScreen() {
 
       try {
         if (!isSupabaseConfigured) {
-          setIsInitializing(false)
+          setErrorMessage(t('auth.supabaseNotConfigured'))
           return
         }
 
-        const url = new URL(window.location.href)
-        const code = url.searchParams.get('code')
+        const urlParams = new URLSearchParams(window.location.search)
+        const code = urlParams.get('code')
         const hash = window.location.hash
         let hasSession = false
 
-        // 1. If code exists, exchange code for session (PKCE Flow)
+        // 1. If auth code exists (PKCE Flow), exchange code for session
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) throw error
@@ -235,17 +247,15 @@ export function ResetPasswordScreen() {
         }
 
         if (!activeUser) {
-          setErrorMessage('This reset link is no longer valid. Please request a new password reset email.')
+          setErrorMessage(t('auth.invalidResetLink'))
         }
       } catch (err: any) {
         console.error('Failed to resolve recovery session:', err)
-        // "code verifier not found" happens when an older reset link is opened
-        // after a newer one was requested, invalidating the stored PKCE state.
         const isStaleLink = typeof err?.message === 'string' && /code verifier/i.test(err.message)
         setErrorMessage(
           isStaleLink
-            ? 'This reset link is no longer valid, possibly because a newer one was requested. Please request a new password reset email.'
-            : 'This reset link is no longer valid. Please request a new password reset email.'
+            ? t('auth.invalidResetLinkStale')
+            : t('auth.invalidResetLink')
         )
       } finally {
         setIsInitializing(false)
@@ -255,7 +265,7 @@ export function ResetPasswordScreen() {
     initializeRecoverySession()
   }, [])
 
-  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
+  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24
 
   const goToLogin = () => navigateTo('/login')
 
@@ -268,7 +278,7 @@ export function ResetPasswordScreen() {
 
     try {
       if (!isSupabaseConfigured) {
-        setErrorMessage('Supabase is not configured for this environment.')
+        setErrorMessage(t('auth.supabaseNotConfigured'))
         return
       }
 
@@ -281,7 +291,7 @@ export function ResetPasswordScreen() {
         return
       }
 
-      setStatusMessage('Your password has been reset successfully!')
+      setStatusMessage(t('auth.passwordResetSuccess'))
       setTimeout(() => {
         navigateTo('/login')
       }, 2000)
@@ -299,10 +309,17 @@ export function ResetPasswordScreen() {
         colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        style={{
+          position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: Platform.OS === 'web' ? -200 : 0,
+          height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
+        }}
       />
     </>
-  );
+  )
 
   return (
     <ParallaxScrollView
@@ -318,113 +335,114 @@ export function ResetPasswordScreen() {
         overflow: 'visible',
       }}
     >
-        <View style={styles.glassCard}>
-          <View style={styles.glassCardGlow} pointerEvents="none" />
-          <View style={styles.glassCardRing} pointerEvents="none" />
-          <View style={{ width: 98, height: 140, flexShrink: 0 }}>
-            {(() => {
-              const ImageComponent = SolitoImage as any
-              return (
-                <ImageComponent
-                  src={logoImage}
-                  height={140}
-                  width={98}
-                  alt="The HackMTY Logo"
-                  contentFit="contain"
-                  resizeMode="contain"
-                />
-              )
-            })()}
-          </View>
-          <View style={styles.wordmarkBlock}>
-            <View style={styles.wordmarkRow}>
-              <Text style={styles.wordmarkHack}>Hack</Text>
-              <Text style={styles.wordmarkMty}>MTY</Text>
-            </View>
-            <LinearGradient
-              colors={['transparent', '#f0d9b0', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.divider}
-            />
-          </View>
-
-          {isInitializing ? (
-            <View style={{ marginVertical: 16, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#f0d9b0" />
-              <Text style={styles.initializingText}>Establishing secure reset session...</Text>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.subtitle}>Enter and confirm your new account password.</Text>
-              <Controller
-                control={control}
-                name="password"
-                rules={{
-                  required: 'Password is required',
-                  minLength: {
-                    value: 6,
-                    message: 'Password must be at least 6 characters long',
-                  },
-                }}
-                render={({ field: { onChange, value } }) => (
-                  <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
-                    <StyledInput
-                      variant="glass"
-                      label="New Password"
-                      placeholder="Enter new password"
-                      textContentType="password"
-                      onChangeText={onChange}
-                      value={value}
-                      error={errors.password?.message}
-                      onSubmitEditing={handleSubmit(onSubmit)}
-                    />
-                  </View>
-                )}
+      <View style={styles.glassCard}>
+        <View style={styles.glassCardGlow} pointerEvents="none" />
+        <View style={styles.glassCardRing} pointerEvents="none" />
+        <View style={{ width: 98, height: 140, flexShrink: 0 }}>
+          {(() => {
+            const ImageComponent = SolitoImage as any
+            return (
+              <ImageComponent
+                src={logoImage}
+                height={140}
+                width={98}
+                alt="The HackMTY Logo"
+                contentFit="contain"
+                resizeMode="contain"
               />
-
-              <Controller
-                control={control}
-                name="confirmPassword"
-                rules={{
-                  required: 'Please confirm your password',
-                  validate: (value) => value === passwordVal || 'Passwords do not match',
-                }}
-                render={({ field: { onChange, value } }) => (
-                  <View style={styles.fieldGroup}>
-                    <StyledInput
-                      variant="glass"
-                      label="Confirm New Password"
-                      placeholder="Confirm new password"
-                      textContentType="password"
-                      onChangeText={onChange}
-                      value={value}
-                      error={errors.confirmPassword?.message}
-                      onSubmitEditing={handleSubmit(onSubmit)}
-                    />
-                  </View>
-                )}
-              />
-
-              {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
-              {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
-
-              <PillButton
-                variant="gradient"
-                title={isSubmitting ? 'Saving...' : 'Save New Password'}
-                onPress={handleSubmit(onSubmit)}
-                additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
-              />
-
-              <SimpleTextLink
-                text="Back to "
-                accentText="Login"
-                onPress={goToLogin}
-                textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
-              />
-            </>
-          )}
+            )
+          })()}
         </View>
+        <View style={styles.wordmarkBlock}>
+          <View style={styles.wordmarkRow}>
+            <Text style={styles.wordmarkHack}>Hack</Text>
+            <Text style={styles.wordmarkMty}>MTY</Text>
+          </View>
+          <LinearGradient
+            colors={['transparent', '#f0d9b0', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.divider}
+          />
+        </View>
+
+        {isInitializing ? (
+          <View style={{ marginVertical: 16, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#f0d9b0" />
+            <Text style={styles.initializingText}>{t('auth.establishingSession')}</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.title}>{t('auth.resetPassword')}</Text>
+            <Text style={styles.subtitle}>{t('auth.resetPasswordSubtitle')}</Text>
+            <Controller
+              control={control}
+              name="password"
+              rules={{
+                required: t('auth.passwordRequired'),
+                minLength: {
+                  value: 6,
+                  message: t('auth.passwordMinLength'),
+                },
+              }}
+              render={({ field: { onChange, value } }) => (
+                <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
+                  <StyledInput
+                    variant="glass"
+                    label={t('auth.newPassword')}
+                    placeholder={t('auth.newPasswordPlaceholder')}
+                    textContentType="password"
+                    onChangeText={onChange}
+                    value={value}
+                    error={errors.password?.message}
+                    onSubmitEditing={handleSubmit(onSubmit)}
+                  />
+                </View>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="confirmPassword"
+              rules={{
+                required: t('auth.passwordRequired'),
+                validate: (value) => value === passwordVal || t('auth.passwordsDoNotMatch'),
+              }}
+              render={({ field: { onChange, value } }) => (
+                <View style={styles.fieldGroup}>
+                  <StyledInput
+                    variant="glass"
+                    label={t('auth.confirmNewPassword')}
+                    placeholder={t('auth.confirmNewPasswordPlaceholder')}
+                    textContentType="password"
+                    onChangeText={onChange}
+                    value={value}
+                    error={errors.confirmPassword?.message}
+                    onSubmitEditing={handleSubmit(onSubmit)}
+                  />
+                </View>
+              )}
+            />
+
+            {errorMessage ? <Text style={styles.authError}>{errorMessage}</Text> : null}
+            {statusMessage ? <Text style={styles.successMessage}>{statusMessage}</Text> : null}
+
+            <PillButton
+              variant="gradient"
+              title={isSubmitting ? t('auth.savingPassword') : t('auth.saveNewPassword')}
+              onPress={handleSubmit(onSubmit)}
+              additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
+            />
+
+            <SimpleTextLink
+              text={t('auth.alreadyHaveAccount')}
+              accentText={t('auth.login')}
+              onPress={goToLogin}
+              textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+            />
+          </>
+        )}
+      </View>
     </ParallaxScrollView>
   )
 }

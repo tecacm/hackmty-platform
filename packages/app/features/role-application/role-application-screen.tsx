@@ -11,6 +11,7 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { getApplicationTypes, getApplicantFieldsForRole, getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { formFieldColors, formFieldStyles } from 'app/components/form-field-styles'
+import { useTranslation } from 'app/i18n'
 
 
 const styles = StyleSheet.create({
@@ -124,6 +125,7 @@ const styles = StyleSheet.create({
 })
 
 export function RoleApplicationScreen() {
+  const { t, locale } = useTranslation();
   const { navigateTo, replaceTo } = useSmartNavigate();
   const { hasPermission, role, loading: permissionsLoading } = useUserPermissions();
   const [isWide, setIsWide] = useState(false);
@@ -132,10 +134,8 @@ export function RoleApplicationScreen() {
   const [rolesList, setRolesList] = useState<Array<{ id: string; label: string; fieldCount: number; closeAt: string | null }>>([])
   const [userApps, setUserApps] = useState<Array<{ application_type_id: string; status: string }>>([])
   const [isRolesLoading, setIsRolesLoading] = useState(true)
-  const [tick, setTick] = useState(0)
 
   const isLoading = isRolesLoading || permissionsLoading
-
 
   const handleApply = (role: string) => {
     const isExisting = userApps.some(app => app.application_type_id === role)
@@ -150,149 +150,158 @@ export function RoleApplicationScreen() {
   }
 
   useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 60000)
-    return () => clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
     async function loadRoles() {
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         const hash = window.location.hash
-        if (hash.includes('type=invite')) {
-          window.location.replace('/complete-signup' + hash)
-          return
-        } else if (hash.includes('type=recovery')) {
-          window.location.replace('/reset-password' + hash)
-          return
+        if (hash) {
+          const params = new URLSearchParams(hash.replace(/^#/, ''))
+          const type = params.get('type')
+          if (type === 'recovery') {
+            replaceTo('/reset-password')
+            return
+          }
         }
       }
 
-      setIsRolesLoading(true)
-      
       if (!isSupabaseConfigured) {
-        const staticTypes = getApplicationTypes().filter((t: any) => t.is_public !== false)
-        const items = staticTypes.map(t => ({
-          id: t.id,
-          label: t.label,
-          fieldCount: getApplicantFieldsForRole(t.id).length,
-          closeAt: (t as any).close_at || null
+        const staticTypes = getApplicationTypes().map(type => ({
+          id: type.id,
+          label: type.label,
+          fieldCount: getApplicantFieldsForRole(type.id).length,
+          closeAt: type.close_at || null,
         }))
-        setRolesList(items)
+        setRolesList(staticTypes)
         setIsRolesLoading(false)
         return
       }
 
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { session } } = await supabase.auth.getSession()
+        let user = session?.user
+        if (!user) {
+          const { data: userData } = await supabase.auth.getUser()
+          user = userData?.user ?? undefined
+        }
+        if (!user) {
+          await new Promise(r => setTimeout(r, 400))
+          const { data: retrySession } = await supabase.auth.getSession()
+          user = retrySession?.session?.user
+        }
         if (!user) {
           replaceTo('/login')
           return
         }
 
-        const { data: types, error: typesError } = await supabase
-          .from('application_types')
-          .select('id, label, close_at, is_public')
-        
-        if (typesError) throw typesError
-
-        const { data: relations, error: relError } = await supabase
-          .from('application_type_fields')
-          .select('application_type_id, field_id')
-
-        if (relError) throw relError
-
-        const countsMap: Record<string, number> = {}
-        relations?.forEach(r => {
-          countsMap[r.application_type_id] = (countsMap[r.application_type_id] || 0) + 1
-        })
-
-        const getVal = (val: any) => {
-          if (!val) return ''
-          if (typeof val === 'object') return val.en || val
-          return val
-        }
-
-        const items = (types || [])
-          .filter((t: any) => t.is_public !== false)
-          .map(t => ({
-            id: t.id,
-            label: getVal(t.label),
-            fieldCount: countsMap[t.id] || 0,
-            closeAt: t.close_at || null
-          }))
-        setRolesList(items)
-
-        // Query user's applications to show status (draft/submitted)
-        const { data: apps } = await supabase
+        const [typesResult, userAppsResult] = await Promise.all([
+          supabase
+            .from('application_types')
+            .select(`
+              id,
+              label,
+              is_public,
+              close_at,
+              application_type_fields (
+                field_id,
+                form_fields (
+                  id,
+                  is_active
+                )
+              )
+            `)
+            .eq('is_public', true),
+          supabase
             .from('applications')
             .select('application_type_id, status')
-            .eq('user_id', user.id)
-        if (apps) {
-          setUserApps(apps)
+            .eq('user_id', user.id),
+        ])
+
+        if (userAppsResult.data) {
+          const fetchedUserApps = userAppsResult.data.map((app: any) => ({
+            application_type_id: app.application_type_id,
+            status: app.status,
+          }))
+          setUserApps(fetchedUserApps)
         }
-      } catch (err) {
-        console.error('Failed to load dynamic roles, falling back to static config:', err)
-        const staticTypes = getApplicationTypes()
-        const items = staticTypes.map(t => ({
-          id: t.id,
-          label: t.label,
-          fieldCount: getApplicantFieldsForRole(t.id).length,
-          closeAt: t.close_at || null
+
+        if (typesResult.data) {
+          const formatted = typesResult.data.map((type: any) => {
+            const activeFields = (type.application_type_fields || [])
+              .map((rel: any) => rel.form_fields)
+              .filter((field: any) => field && field.is_active)
+
+            const rawLabel = type.label
+            let resolvedLabel = ''
+            if (typeof rawLabel === 'object' && rawLabel !== null && rawLabel[locale]) {
+              resolvedLabel = rawLabel[locale]
+            } else {
+              resolvedLabel = getApplicantRoleLabel(type.id, locale)
+            }
+
+            return {
+              id: type.id,
+              label: resolvedLabel,
+              fieldCount: activeFields.length,
+              closeAt: type.close_at || null,
+            }
+          })
+          setRolesList(formatted)
+        } else {
+          const staticTypes = getApplicationTypes().map(type => ({
+            id: type.id,
+            label: getApplicantRoleLabel(type.id, locale),
+            fieldCount: getApplicantFieldsForRole(type.id).length,
+            closeAt: type.close_at || null,
+          }))
+          setRolesList(staticTypes)
+        }
+      } catch (err: any) {
+        console.warn('Failed to load application roles from Supabase, using static fallback:', err)
+        const staticTypes = getApplicationTypes().map(type => ({
+          id: type.id,
+          label: getApplicantRoleLabel(type.id, locale),
+          fieldCount: getApplicantFieldsForRole(type.id).length,
+          closeAt: type.close_at || null,
         }))
-        setRolesList(items)
+        setRolesList(staticTypes)
       } finally {
         setIsRolesLoading(false)
       }
     }
 
     loadRoles()
-  }, [])
+  }, [replaceTo, locale])
 
   useEffect(() => {
-    if (!permissionsLoading && !isRolesLoading) {
-      const showApplicationTab = hasPermission('applications', 'view')
-      if (!showApplicationTab) {
-        replaceTo('/profile')
-      }
-    }
-  }, [permissionsLoading, isRolesLoading, hasPermission, replaceTo])
-
-  useEffect(() => {
-    if (width > 0) {
-      setIsWide(width >= 520);
-    }
-  }, [width]);
+    setIsWide(width >= 520)
+  }, [width])
 
 
   const draftApps = userApps.filter(app => app.status === 'draft')
-  const submittedApps = userApps.filter(app => {
-    if (role === 'user' || role === 'admin') {
-      return app.status === 'submitted' || app.status === 'accepted' || app.status === 'rejected' || app.status === 'changes_requested'
-    }
-    return app.status === 'accepted' || app.status === 'confirmed' || app.status === 'rejected'
-  })
-  const activeRoleIds = userApps.map(app => app.application_type_id)
-  const availableRoles = rolesList.filter(role => !activeRoleIds.includes(role.id))
+  const submittedApps = userApps.filter(app => app.status !== 'draft')
+  const availableRoles = rolesList.filter(role => 
+    !userApps.some(app => app.application_type_id === role.id)
+  )
 
   const getRoleLabel = (roleId: string) => {
     const found = rolesList.find(r => r.id === roleId)
-    return found ? found.label : roleId.charAt(0).toUpperCase() + roleId.slice(1)
+    return found ? found.label : getApplicantRoleLabel(roleId)
   }
 
   const getRoleCloseAt = (roleId: string): string | null => {
     const found = rolesList.find(r => r.id === roleId)
-    return found ? found.closeAt : null
+    if (found && found.closeAt) return found.closeAt
+    const staticConfig = getApplicationTypes().find(t => t.id === roleId)
+    return staticConfig?.close_at || null
   }
 
-  const getCountdownText = (closeAtStr: string | null): { text: string; isClosed: boolean } => {
-    if (!closeAtStr) return { text: '', isClosed: false }
-
-    const deadline = new Date(closeAtStr).getTime()
+  const getCountdownText = (closeAt: string | null): { text: string; isClosed: boolean } => {
+    if (!closeAt) return { text: '', isClosed: false }
+    const deadline = new Date(closeAt).getTime()
     const now = Date.now()
     const diff = deadline - now
 
     if (diff <= 0) {
-      return { text: 'Registration Closed', isClosed: true }
+      return { text: t('applicant.closed'), isClosed: true }
     }
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -300,12 +309,12 @@ export function RoleApplicationScreen() {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
 
     const parts: string[] = []
-    if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`)
-    if (hours > 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`)
-    if (minutes > 0 || (days === 0 && hours === 0)) parts.push(`${minutes} minute${minutes > 1 ? 's' : ''}`)
+    if (days > 0) parts.push(`${days}d`)
+    if (hours > 0) parts.push(`${hours}h`)
+    if (minutes > 0 || (days === 0 && hours === 0)) parts.push(`${minutes}m`)
 
     return {
-      text: `Closes in ${parts.join(', ')}`,
+      text: t('applicant.closesIn', { time: parts.join(' ') }),
       isClosed: false
     }
   }
@@ -317,6 +326,7 @@ export function RoleApplicationScreen() {
       case 'submitted':
         return { backgroundColor: '#ecfeff' }
       case 'accepted':
+      case 'confirmed':
         return { backgroundColor: '#f0fdf4' }
       case 'changes_requested':
         return { backgroundColor: '#fffbeb' }
@@ -334,6 +344,7 @@ export function RoleApplicationScreen() {
       case 'submitted':
         return { color: '#0e7490' }
       case 'accepted':
+      case 'confirmed':
         return { color: '#15803d' }
       case 'changes_requested':
         return { color: '#b45309' }
@@ -347,15 +358,17 @@ export function RoleApplicationScreen() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'draft':
-        return 'Draft'
+        return t('applicant.statusDraft')
       case 'submitted':
-        return 'Under Review'
+        return t('applicant.statusUnderReview')
       case 'accepted':
-        return 'Accepted'
+        return t('applicant.statusAccepted')
+      case 'confirmed':
+        return t('applicant.attendanceConfirmed')
       case 'changes_requested':
-        return 'Changes Requested'
+        return t('applicant.statusChangesRequested')
       case 'rejected':
-        return 'Rejected'
+        return t('applicant.statusRejected')
       default:
         return status
     }
@@ -369,20 +382,20 @@ export function RoleApplicationScreen() {
             {isLoading ? (
               <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
                 <ActivityIndicator size="large" color="#a069ab" style={{ marginVertical: 30 }} />
-                <Text style={{ color: '#a069ab', fontSize: 16 }}>Loading applications dashboard...</Text>
+                <Text style={{ color: '#a069ab', fontSize: 16 }}>{t('applicant.loadingDashboard')}</Text>
               </View>
             ) : (
               <>
                 {/* Drafts Section */}
                 {draftApps.length > 0 && hasPermission('applications', 'create') && (
                   <View style={{ width: '100%' }}>
-                    <Text style={[styles.heading, styles.shadow]}>Drafts</Text>
+                    <Text style={[styles.heading, styles.shadow]}>{t('applicant.drafts')}</Text>
                     <Text style={formFieldStyles.label}>
-                      You have started these applications. Click continue to finish them before the deadline.
+                      {t('applicant.draftsSubtitle')}
                     </Text>
                     <View style={styles.roleList}>
                       {draftApps.map((app) => {
-                        const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id)
+                        const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id, locale)
                         const closeAt = getRoleCloseAt(app.application_type_id)
                         const { text: countdownText, isClosed } = getCountdownText(closeAt)
 
@@ -397,7 +410,7 @@ export function RoleApplicationScreen() {
                                   </Text>
                                 </View>
                               </View>
-                              <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                              <Text style={styles.roleCardMeta}>{t('applicant.tailoredForRole', { role: applicantRoleLabel.toLowerCase() })}</Text>
                               {countdownText !== '' && (
                                 <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
                                   {countdownText}
@@ -405,7 +418,7 @@ export function RoleApplicationScreen() {
                               )}
                             </View>
                             <PillButton
-                              title={isClosed ? "Closed" : "Continue Application"}
+                              title={isClosed ? t('applicant.closed') : t('applicant.continueApplication')}
                               onPress={isClosed ? undefined : () => handleApply(app.application_type_id)}
                               additionalStyle={[styles.roleButton, isClosed && { opacity: 0.5 }]}
                             />
@@ -424,13 +437,13 @@ export function RoleApplicationScreen() {
                 {/* My Applications Section */}
                 {submittedApps.length > 0 && (
                   <View style={{ width: '100%' }}>
-                    <Text style={[styles.heading, styles.shadow]}>My Applications</Text>
+                    <Text style={[styles.heading, styles.shadow]}>{t('applicant.myApplications')}</Text>
                     <Text style={formFieldStyles.label}>
-                      You have successfully submitted these applications. You can view or update your details here.
+                      {t('applicant.myApplicationsSubtitle')}
                     </Text>
                     <View style={styles.roleList}>
                       {submittedApps.map((app) => {
-                        const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id)
+                        const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id, locale)
                         const closeAt = getRoleCloseAt(app.application_type_id)
                         const { text: countdownText, isClosed } = getCountdownText(closeAt)
 
@@ -445,7 +458,7 @@ export function RoleApplicationScreen() {
                                   </Text>
                                 </View>
                               </View>
-                              <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                              <Text style={styles.roleCardMeta}>{t('applicant.tailoredForRole', { role: applicantRoleLabel.toLowerCase() })}</Text>
                               {countdownText !== '' && (
                                 <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
                                   {countdownText}
@@ -453,7 +466,7 @@ export function RoleApplicationScreen() {
                               )}
                             </View>
                             <PillButton
-                              title={(isClosed || app.status === 'accepted' || app.status === 'rejected') ? "View Application" : "View / Edit Application"}
+                              title={(isClosed || app.status === 'accepted' || app.status === 'confirmed' || app.status === 'rejected') ? t('applicant.viewApplication') : t('applicant.viewApplication')}
                               onPress={() => handleApply(app.application_type_id)}
                               additionalStyle={styles.roleButton}
                             />
@@ -472,12 +485,12 @@ export function RoleApplicationScreen() {
                 {/* Available Application Types */}
                 {availableRoles.length > 0 && hasPermission('applications', 'create') && (
                   <View style={{ width: '100%' }}>
-                    <Text style={[styles.heading, styles.shadow]}>Applications</Text>
-                    <Text style={formFieldStyles.label}>Choose the role that matches your profile and continue to the application for that role.</Text>
+                    <Text style={[styles.heading, styles.shadow]}>{t('applicant.availableApplications')}</Text>
+                    <Text style={formFieldStyles.label}>{t('applicant.availableApplicationsSubtitle')}</Text>
 
                     <View style={styles.roleList}>
                       {availableRoles.map((applicationType) => {
-                        const applicantRoleLabel = getApplicantRoleLabel(applicationType.id)
+                        const applicantRoleLabel = getApplicantRoleLabel(applicationType.id, locale)
                         const { text: countdownText, isClosed } = getCountdownText(applicationType.closeAt)
 
                         return (
@@ -487,11 +500,11 @@ export function RoleApplicationScreen() {
                                 <Text style={styles.roleCardLabel}>{applicationType.label}</Text>
                                 <View style={[styles.statusBadge, { backgroundColor: '#f1f5f9' }]}>
                                   <Text style={[styles.statusBadgeText, { color: '#475569' }]}>
-                                    {applicationType.fieldCount} questions
+                                    {t('applicant.questionsCount', { count: applicationType.fieldCount })}
                                   </Text>
                                 </View>
                               </View>
-                              <Text style={styles.roleCardMeta}>The application is tailored for {applicantRoleLabel.toLowerCase()} applicants.</Text>
+                              <Text style={styles.roleCardMeta}>{t('applicant.tailoredForRole', { role: applicantRoleLabel.toLowerCase() })}</Text>
                               {countdownText !== '' && (
                                 <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
                                   {countdownText}
@@ -499,7 +512,7 @@ export function RoleApplicationScreen() {
                               )}
                             </View>
                             <PillButton
-                              title={isClosed ? "Closed" : `Apply as ${applicationType.label}`}
+                              title={isClosed ? t('applicant.closed') : t('applicant.applyAs', { role: applicationType.label })}
                               onPress={isClosed ? undefined : () => handleApply(applicationType.id)}
                               additionalStyle={[styles.roleButton, isClosed && { opacity: 0.5 }]}
                             />

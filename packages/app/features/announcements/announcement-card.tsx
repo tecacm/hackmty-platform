@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { View, Text, StyleSheet, Platform, Pressable, Modal, Animated, Dimensions, Image } from 'react-native'
+import { View, Text, StyleSheet, Platform, Pressable, Modal, Animated, Image, Dimensions, useWindowDimensions } from 'react-native'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AnnouncementMedia } from 'app/components/announcement-media'
 import type { AnnouncementItem } from 'app/hooks/use-announcements'
@@ -14,8 +14,13 @@ interface AnnouncementCardProps {
 }
 
 import { AppIcon } from 'app/components/app-icon'
+import { useTranslation } from 'app/i18n'
+import { getLocalizedText } from 'app/utils/i18n-helpers'
+import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
+import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 
-function formatRelativeTime(dateString: string): string {
+function formatRelativeTime(dateString: string, t: (k: string, p?: any) => string): string {
   try {
     const now = new Date()
     const date = new Date(dateString)
@@ -24,14 +29,14 @@ function formatRelativeTime(dateString: string): string {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    if (diffMins < 1) return t('announcements.justNow')
+    if (diffMins < 60) return t('announcements.minutesAgo', [diffMins])
+    if (diffHours < 24) return t('announcements.hoursAgo', [diffHours])
+    if (diffDays === 1) return t('announcements.yesterday')
+    if (diffDays < 7) return t('announcements.daysAgo', [diffDays])
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   } catch (e) {
-    return 'Recently'
+    return t('announcements.recently')
   }
 }
 
@@ -42,6 +47,12 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
   onLike,
   screenFocused = true,
 }: AnnouncementCardProps) {
+  const { t, locale } = useTranslation()
+  const { hasPermission } = useUserPermissions()
+  const { navigateTo } = useSmartNavigate()
+  const { width } = useWindowDimensions()
+  const isSmallScreen = width > 0 && width < 640
+  const canEdit = hasPermission('announcements', 'create')
   const [liked, setLiked] = useState(isLiked)
   const [likesCount, setLikesCount] = useState(announcement.likes_count || 0)
   const [fullscreenVisible, setFullscreenVisible] = useState(false)
@@ -215,7 +226,7 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
             {/* Camera Date Stamp Badge */}
             <View style={styles.dateStampBadge}>
               <Text style={styles.dateStampText}>
-                {formatRelativeTime(announcement.created_at)}
+                {formatRelativeTime(announcement.created_at, t)}
               </Text>
             </View>
           </View>
@@ -237,18 +248,18 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
                     : styles.roleBadgeOther,
                 ]}
               >
-                <Text style={styles.roleBadgeText}>@{role.toUpperCase()}</Text>
+                <Text style={styles.roleBadgeText}>@{getApplicantRoleLabel(role, locale).toUpperCase()}</Text>
               </View>
             ))}
           </View>
 
           {/* Title */}
-          <Text style={styles.announcementTitle}>{announcement.title}</Text>
+          <Text style={styles.announcementTitle}>{getLocalizedText(announcement.title, locale)}</Text>
 
           {/* Message Content */}
-          <Text style={styles.announcementMessage}>{announcement.message}</Text>
+          <Text style={styles.announcementMessage}>{getLocalizedText(announcement.message, locale)}</Text>
 
-          {/* Card Footer: Author signature & Heart button */}
+          {/* Card Footer: Author signature & action buttons */}
           <View style={styles.cardFooter}>
             <View style={styles.authorInfo}>
               <View style={styles.authorAvatar}>
@@ -263,30 +274,48 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
               </View>
               <View>
                 <Text style={styles.authorName}>{announcement.author_name}</Text>
-                <Text style={styles.authorSubtext}>Organizer</Text>
+                <Text style={styles.authorSubtext}>{getApplicantRoleLabel('organizer', locale)}</Text>
               </View>
             </View>
 
-            {/* Like Heart Button */}
-            <Pressable
-              onPress={handleLikePress}
-              accessibilityRole="button"
-              accessibilityLabel={liked ? "Unlike announcement" : "Like announcement"}
-              style={({ hovered }: any) => [
-                styles.likeButton,
-                liked && styles.likeButtonActive,
-                hovered && styles.likeButtonHovered,
-              ]}
-            >
-              <AppIcon
-                name={liked ? 'heart.fill' : 'heart'}
-                color={liked ? '#7a47a2' : '#8c7b8e'}
-                size={16}
-              />
-              <Text style={[styles.likeCountText, liked && styles.likeCountTextActive]}>
-                {likesCount}
-              </Text>
-            </Pressable>
+            <View style={styles.actionsContainer}>
+              {canEdit && (
+                <Pressable
+                  onPress={() => navigateTo({ pathname: '/announcements/create', query: { editId: announcement.id } })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit announcement"
+                  style={({ hovered }: any) => [
+                    styles.editButton,
+                    isSmallScreen && styles.editButtonCompact,
+                    hovered && styles.editButtonHovered,
+                  ]}
+                >
+                  <AppIcon name="pencil" color="#5a0061" size={14} />
+                  {!isSmallScreen && <Text style={styles.editButtonText}>{t('admin.edit')}</Text>}
+                </Pressable>
+              )}
+
+              {/* Like Heart Button */}
+              <Pressable
+                onPress={handleLikePress}
+                accessibilityRole="button"
+                accessibilityLabel={liked ? "Unlike announcement" : "Like announcement"}
+                style={({ hovered }: any) => [
+                  styles.likeButton,
+                  liked && styles.likeButtonActive,
+                  hovered && styles.likeButtonHovered,
+                ]}
+              >
+                <AppIcon
+                  name={liked ? 'heart.fill' : 'heart'}
+                  color={liked ? '#7a47a2' : '#8c7b8e'}
+                  size={16}
+                />
+                <Text style={[styles.likeCountText, liked && styles.likeCountTextActive]}>
+                  {likesCount}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </View>
@@ -591,6 +620,42 @@ const styles = StyleSheet.create({
   authorSubtext: {
     color: '#8c7b8e',
     fontSize: 10.5,
+    fontFamily: 'Montserrat',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginLeft: 'auto',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 18,
+    backgroundColor: '#f7e9fb',
+    borderWidth: 1,
+    borderColor: 'rgba(90, 0, 97, 0.2)',
+    ...Platform.select({
+      web: { cursor: 'pointer', transition: 'all 0.2s ease' } as any,
+    }),
+  },
+  editButtonCompact: {
+    paddingHorizontal: 8,
+    minWidth: 34,
+    minHeight: 30,
+  },
+  editButtonHovered: {
+    backgroundColor: '#f0dff9',
+  },
+  editButtonText: {
+    color: '#5a0061',
+    fontSize: 12,
+    fontWeight: '700',
     fontFamily: 'Montserrat',
   },
   likeButton: {

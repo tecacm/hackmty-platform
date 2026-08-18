@@ -24,6 +24,7 @@ import { TeamsScreen } from 'app/features/teams/teams-screen'
 import { AdminDashboardScreen } from 'app/features/admin/dashboard-screen'
 import { AnnouncementsScreen } from 'app/features/announcements/announcements-screen'
 import { CreateAnnouncementScreen } from 'app/features/announcements/create-announcement-screen'
+import { QRScreen } from 'app/features/qr/qr-screen'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { formFieldColors } from 'app/components/form-field-styles'
 
@@ -44,6 +45,7 @@ type StackParamList = {
   'create-announcement': undefined
   'user-detail': { id: string }
   admin: undefined
+  qr: undefined
 }
 
 type TabParamList = {
@@ -116,6 +118,7 @@ const UserDetailScreenWithBackground = withNumbersBackground(UserDetailScreen)
 const AdminDashboardScreenWithBackground = withNumbersBackground(AdminDashboardScreen)
 const AnnouncementsScreenWithBackground = withNumbersBackground(AnnouncementsScreen)
 const CreateAnnouncementScreenWithBackground = withNumbersBackground(CreateAnnouncementScreen)
+const QRScreenWithBackground = withNumbersBackground(QRScreen)
 
 const HomeStack = createNativeStackNavigator()
 const ApplicationsStack = createNativeStackNavigator()
@@ -415,6 +418,18 @@ export function NativeNavigation() {
               headerTransparent: Platform.OS === 'ios',
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
               headerBackTitle: 'Home',
+            }}
+          />
+          <Stack.Screen 
+            name="qr" 
+            component={QRScreenWithBackground}
+            options={{
+              headerTitleAlign: 'center',
+              headerShown: true,
+              headerTitle: 'Event Badge',
+              headerTransparent: Platform.OS === 'ios',
+              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
+              headerBackTitle: 'Profile',
             }}
           />
         </>

@@ -1,3 +1,7 @@
 'use client'
 
-export { AdminDashboardScreen as default } from 'app/features/admin/dashboard-screen'
+import { AdminDashboardScreen } from 'app/features/admin/dashboard-screen'
+
+export default function AdminPage() {
+  return <AdminDashboardScreen />
+}

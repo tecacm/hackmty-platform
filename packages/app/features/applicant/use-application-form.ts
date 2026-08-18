@@ -23,6 +23,7 @@ export type UseApplicationFormResult = {
   onSaveDraft: (data: ApplicantFormData) => Promise<void>
   onConfirmAttendance: () => Promise<void>
   systemLinks: Record<string, { text: any; href: string }>
+  textBlocks: Record<string, string>
   isClosed: boolean
 }
 
@@ -36,6 +37,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
   const [adminFeedback, setAdminFeedback] = useState<string | null>(null)
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([])
   const [systemLinks, setSystemLinks] = useState<Record<string, { text: any; href: string }>>({})
+  const [textBlocks, setTextBlocks] = useState<Record<string, string>>({})
   const [isClosed, setIsClosed] = useState(false)
 
   const activeRequestIdRef = useRef(0)
@@ -191,24 +193,18 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
         linksMap[link.id] = { text: link.text, href: link.href }
       })
 
-      // 6. Fetch text blocks for content references (headers/paragraphs)
-      const contentRefs = relationData
-        .map((r: any) => r.form_fields?.content_ref)
-        .filter(Boolean)
+      // 6. Fetch text blocks from Supabase
+      const { data: blocks, error: blocksError } = await supabase
+        .from('text_blocks')
+        .select('id, body')
+
+      if (!isCurrent()) return
+      if (blocksError) throw blocksError
 
       const textBlocksMap: Record<string, any> = {}
-      if (contentRefs.length > 0) {
-        const { data: blocks, error: blocksError } = await supabase
-          .from('text_blocks')
-          .select('id, body')
-          .in('id', contentRefs)
-
-        if (!isCurrent()) return
-        if (blocksError) throw blocksError
-        blocks?.forEach((block) => {
-          textBlocksMap[block.id] = block.body
-        })
-      }
+      blocks?.forEach((block) => {
+        textBlocksMap[block.id] = block.body
+      })
 
       // Helper function to resolve translated fields
       const getVal = (val: any) => {
@@ -404,6 +400,12 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       }
 
       // Batch set state values when we know this is the latest call
+      const resolvedBlocks: Record<string, string> = {}
+      blocks?.forEach((block) => {
+        const val = getVal(block.body)
+        resolvedBlocks[block.id] = typeof val === 'string' ? val : ''
+      })
+      setTextBlocks(resolvedBlocks)
       setSystemLinks(linksMap)
       setFields(compiledFields)
       setDisabledFields(disabled)
@@ -709,6 +711,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
     onSaveDraft,
     onConfirmAttendance,
     systemLinks,
+    textBlocks,
     isClosed
   }
 }

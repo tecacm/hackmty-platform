@@ -11,6 +11,8 @@ import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
 import { SolitoImage } from 'solito/image'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AppIcon } from 'app/components/app-icon'
+import { checkEventPassUnlocked } from 'app/utils/event-config'
+import { useTranslation } from 'app/i18n'
 
 // Module-level in-memory cache to prevent flashing on component mount / route changes
 let globalProfileCache: { avatarUrl: string | null; initials: string } | null = null
@@ -18,6 +20,7 @@ let globalProfileCache: { avatarUrl: string | null; initials: string } | null = 
 export function WebNavbar() {
   if (Platform.OS !== 'web') return null
 
+  const { t, locale, setLocale } = useTranslation()
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { hasPermission } = useUserPermissions()
   const pathname = usePathname()
@@ -33,33 +36,17 @@ export function WebNavbar() {
   const showApplicationTab = hasPermission('applications', 'view')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => globalProfileCache?.avatarUrl ?? null)
   const [initials, setInitials] = useState<string>(() => globalProfileCache?.initials ?? '')
+  const [imageError, setImageError] = useState(false)
+  const [isPassAllowed, setIsPassAllowed] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const dropdownRef = useRef<any>(null)
 
   useEffect(() => {
-    // Synchronously check localStorage if global cache is empty
-    if (!globalProfileCache && typeof window !== 'undefined') {
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i)
-          if (key && key.startsWith('user_profile_')) {
-            const cached = localStorage.getItem(key)
-            if (cached) {
-              const parsed = JSON.parse(cached)
-              if (parsed.avatarUrl || parsed.initials) {
-                const init = parsed.initials && parsed.initials !== '👤' ? parsed.initials : ''
-                globalProfileCache = { avatarUrl: parsed.avatarUrl || null, initials: init }
-                setAvatarUrl(parsed.avatarUrl || null)
-                setInitials(init)
-                break
-              }
-            }
-          }
-        }
-      } catch (e) {}
-    }
+    setImageError(false)
+  }, [avatarUrl])
 
+  useEffect(() => {
     async function loadUserProfile() {
       if (!isSupabaseConfigured) return
 
@@ -74,129 +61,165 @@ export function WebNavbar() {
           if (cached) {
             try {
               const parsed = JSON.parse(cached)
-              const init = parsed.initials && parsed.initials !== '👤' ? parsed.initials : ''
-              globalProfileCache = { avatarUrl: parsed.avatarUrl || null, initials: init }
-              setInitials(init)
               if (parsed.avatarUrl) setAvatarUrl(parsed.avatarUrl)
+              if (parsed.initials) setInitials(parsed.initials)
             } catch (e) {}
           }
         }
-
+        
         const { data: profile } = await supabase
           .from('profiles')
           .select('first_name, last_name, avatar_url')
           .eq('id', user.id)
           .maybeSingle()
 
-        if (!profile) return
-
-        const first = (profile.first_name || '').charAt(0).toUpperCase()
-        const last = (profile.last_name || '').charAt(0).toUpperCase()
-        const resolvedInitials = `${first}${last}`.trim()
+        const first = (profile?.first_name || user.user_metadata?.first_name || user.user_metadata?.name || '').charAt(0).toUpperCase()
+        const last = (profile?.last_name || user.user_metadata?.last_name || '').charAt(0).toUpperCase()
+        const resolvedInitials = `${first}${last}`.trim() || '👤'
         
+        const rawAvatar = profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || null
         let resolvedAvatar: string | null = null
-        if (profile.avatar_url) {
-          resolvedAvatar = supabase.storage.from('avatars').getPublicUrl(profile.avatar_url).data.publicUrl
+        if (rawAvatar) {
+          if (rawAvatar.startsWith('http://') || rawAvatar.startsWith('https://')) {
+            resolvedAvatar = rawAvatar
+          } else {
+            const { data } = supabase.storage.from('avatars').getPublicUrl(rawAvatar)
+            resolvedAvatar = data?.publicUrl || rawAvatar
+          }
         }
 
         globalProfileCache = { avatarUrl: resolvedAvatar, initials: resolvedInitials }
-        setInitials(resolvedInitials)
         setAvatarUrl(resolvedAvatar)
+        setInitials(resolvedInitials)
 
         if (typeof window !== 'undefined') {
-          localStorage.setItem(cacheKey, JSON.stringify({
-            initials: resolvedInitials,
-            avatarUrl: resolvedAvatar
-          }))
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({ avatarUrl: resolvedAvatar, initials: resolvedInitials })
+          )
         }
       } catch (err) {
-        console.error('Failed to load user profile in WebNavbar:', err)
+        console.error('Failed to load user profile for navbar:', err)
       }
     }
 
     loadUserProfile()
 
-    // Listen for auth changes to clear or refresh navbar avatar immediately
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        globalProfileCache = null
-        setAvatarUrl(null)
-        setInitials('')
-      } else {
-        loadUserProfile()
+    // Listen for custom profile update events from profile screen
+    const handleProfileUpdate = (e: any) => {
+      if (e?.detail?.avatarUrl !== undefined) {
+        setAvatarUrl(e.detail.avatarUrl)
+        if (globalProfileCache) globalProfileCache.avatarUrl = e.detail.avatarUrl
       }
+      if (e?.detail?.initials !== undefined) {
+        setInitials(e.detail.initials)
+        if (globalProfileCache) globalProfileCache.initials = e.detail.initials
+      }
+      loadUserProfile()
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('profile_avatar_updated', handleProfileUpdate)
+      window.addEventListener('profile_updated', handleProfileUpdate)
+    }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      loadUserProfile()
     })
 
+    async function checkPass() {
+      const allowed = await checkEventPassUnlocked()
+      setIsPassAllowed(allowed)
+    }
+    checkPass()
+
     return () => {
-      subscription.unsubscribe()
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('profile_avatar_updated', handleProfileUpdate)
+        window.removeEventListener('profile_updated', handleProfileUpdate)
+      }
+      authListener?.subscription?.unsubscribe?.()
     }
   }, [])
 
-  const handleSignOut = async () => {
-    try {
-      globalProfileCache = null
-      setAvatarUrl(null)
-      setInitials('')
-      await supabase.auth.signOut()
-      if (typeof window !== 'undefined') {
-        localStorage.clear()
-      }
-      replaceTo('/login')
-    } catch (err) {
-      console.error('Failed to sign out:', err)
-    }
-  }
-
-  // Click outside listener for dropdown
   useEffect(() => {
-    function handleClickOutside(event: any) {
+    function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [])
+  }, [isOpen])
+
+  const handleSignOut = async () => {
+    try {
+      if (isSupabaseConfigured) {
+        await supabase.auth.signOut()
+      }
+    } catch (err) {
+      console.error('Sign out error:', err)
+    } finally {
+      if (typeof window !== 'undefined') {
+        try {
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i)
+            if (key && key.startsWith('user_profile_')) {
+              localStorage.removeItem(key)
+            }
+          }
+        } catch (e) {}
+      }
+      globalProfileCache = null
+      setAvatarUrl(null)
+      setInitials('')
+      replaceTo('/login')
+    }
+  }
 
   return (
     <View style={styles.navbarContainer}>
       <View style={[styles.navbarInner, isMobile && { height: 56 }]}>
-        {/* Left Side: Brand Logo */}
+        {/* Left Side: Brand logos */}
         <View style={styles.brandGroup}>
           <Pressable onPress={() => { setMobileMenuOpen(false); navigateTo('/home') }} style={styles.brandContainer}>
-            <SolitoImage
-              {...({
-                src: logoImage,
-                height: isMobile ? 28 : 35,
-                width: isMobile ? 95 : 120,
-                alt: 'The HackMTY Logo',
-                contentFit: 'contain',
-                resizeMode: 'contain',
-              } as any)}
-            />    
+            <View style={{ width: isMobile ? 95 : 120, height: isMobile ? 28 : 35 }}>
+              <SolitoImage
+                {...({
+                  src: logoImage,
+                  height: isMobile ? 28 : 35,
+                  width: isMobile ? 95 : 120,
+                  alt: 'HackMTY Logo',
+                  contentFit: 'contain',
+                  resizeMode: 'contain',
+                } as any)}
+              />
+            </View>
           </Pressable>
-          <View style={{ width: 1.5, height: isMobile ? 24 : 35, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+          <View style={{ width: 1.5, height: isMobile ? 24 : 35, backgroundColor: 'rgba(255,255,255,0.18)', marginHorizontal: 8 }} />
           <Pressable onPress={() => { setMobileMenuOpen(false); navigateTo('https://tec.acm.org') }} style={styles.brandContainer}>
-            <SolitoImage
+             <SolitoImage
               {...({
                 src: tecAcm,
                 height: isMobile ? 28 : 35,
                 width: isMobile ? 95 : 120,
-                alt: 'The TecACM Logo',
+                alt: 'TecACM Logo',
                 contentFit: 'contain',
                 resizeMode: 'contain',
               } as any)}
-            />    
+            />
           </Pressable>
         </View>
 
-        {/* Center: Main Links (Desktop Only) */}
+        {/* Center: Absolute Overlaid Links (Desktop) */}
         {!isMobile && (
           <View pointerEvents="box-none" style={styles.linksOverlay}>
             <View style={styles.linksContainer}>
-              {/* 1st Link: Feed / Announcements */}
               {hasPermission('announcements', 'view') && (
                 <Pressable
                   onPress={() => navigateTo('/home')}
@@ -213,13 +236,12 @@ export function WebNavbar() {
                         (pathname === '/home' || pathname === '/announcements') && styles.navLinkTextActive,
                       ]}
                     >
-                      Feed
+                      {t('nav.home')}
                     </Text>
                   )}
                 </Pressable>
               )}
 
-              {/* 2nd Link: Application */}
               {showApplicationTab && (
                 <Pressable
                   onPress={() => navigateTo('/applications')}
@@ -236,13 +258,12 @@ export function WebNavbar() {
                         (pathname === '/applications' || pathname === '/application') && styles.navLinkTextActive,
                       ]}
                     >
-                      Application
+                      {t('nav.applications')}
                     </Text>
                   )}
                 </Pressable>
               )}
 
-              {/* 3rd Link: My Team */}
               {hasPermission('teams', 'create') && (
                 <Pressable
                   onPress={() => navigateTo('/teams')}
@@ -259,13 +280,12 @@ export function WebNavbar() {
                         pathname === '/teams' && styles.navLinkTextActive,
                       ]}
                     >
-                      My Team
+                      {t('nav.teams')}
                     </Text>
                   )}
                 </Pressable>
               )}
 
-              {/* 4th Link: Profile */}
               <Pressable
                 onPress={() => navigateTo('/profile')}
                 style={({ hovered }) => [
@@ -281,12 +301,11 @@ export function WebNavbar() {
                       pathname === '/profile' && styles.navLinkTextActive,
                     ]}
                   >
-                    Profile
+                    {t('nav.profile')}
                   </Text>
                 )}
               </Pressable>
 
-              {/* 5th Link: Admin */}
               {hasPermission('applications', 'view_others') && (
                 <Pressable
                   onPress={() => navigateTo('/admin')}
@@ -303,7 +322,7 @@ export function WebNavbar() {
                         pathname === '/admin' && styles.navLinkTextActive,
                       ]}
                     >
-                      Admin
+                      {t('nav.admin')}
                     </Text>
                   )}
                 </Pressable>
@@ -312,12 +331,31 @@ export function WebNavbar() {
           </View>
         )}
 
-        {/* Right Side: Avatar Dropdown & Mobile Toggle */}
+        {/* Right Side: Language Switcher, Avatar Dropdown & Mobile Toggle */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {!isMobile && (
+            <Pressable
+              onPress={() => setLocale(locale === 'en' ? 'es' : 'en')}
+              style={({ hovered }) => [
+                styles.langTogglePill,
+                hovered && styles.langTogglePillHover,
+              ]}
+              accessibilityLabel={t('nav.toggleLanguage')}
+            >
+              <Text style={[styles.langText, locale === 'en' && styles.langTextActive]}>EN</Text>
+              <Text style={styles.langDivider}>|</Text>
+              <Text style={[styles.langText, locale === 'es' && styles.langTextActive]}>ES</Text>
+            </Pressable>
+          )}
+
           <View ref={dropdownRef} style={styles.dropdownWrapper}>
             <Pressable onPress={() => setIsOpen(!isOpen)} style={styles.avatarButton}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+              {avatarUrl && !imageError ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.avatarImage}
+                  onError={() => setImageError(true)}
+                />
               ) : (
                 <View style={styles.avatarFallback}>
                   {initials && initials !== '👤' ? (
@@ -338,11 +376,24 @@ export function WebNavbar() {
                   }}
                   style={styles.dropdownItem}
                 >
-                  <Text style={styles.dropdownItemText}>My Profile</Text>
+                  <Text style={styles.dropdownItemText}>{t('nav.myProfile')}</Text>
                 </Pressable>
+                {isPassAllowed && (
+                  <Pressable
+                    onPress={() => {
+                      setIsOpen(false)
+                      navigateTo('/qr')
+                    }}
+                    style={styles.dropdownItem}
+                  >
+                    <Text style={[styles.dropdownItemText, { color: '#c2b75f', fontWeight: '800' }]}>
+                      {t('nav.myEventPass')}
+                    </Text>
+                  </Pressable>
+                )}
                 <View style={styles.divider} />
                 <Pressable onPress={handleSignOut} style={styles.dropdownItem}>
-                  <Text style={[styles.dropdownItemText, { color: '#ff6b6b' }]}>Sign Out</Text>
+                  <Text style={[styles.dropdownItemText, { color: '#ff6b6b' }]}>{t('nav.signOut')}</Text>
                 </Pressable>
               </View>
             )}
@@ -373,7 +424,7 @@ export function WebNavbar() {
                 (pathname === '/home' || pathname === '/announcements') && styles.mobileNavLinkActive,
               ]}
             >
-              <Text style={styles.mobileNavLinkText}>Feed</Text>
+              <Text style={styles.mobileNavLinkText}>{t('nav.home')}</Text>
             </Pressable>
           )}
 
@@ -388,7 +439,7 @@ export function WebNavbar() {
                 (pathname === '/applications' || pathname === '/application') && styles.mobileNavLinkActive,
               ]}
             >
-              <Text style={styles.mobileNavLinkText}>Application</Text>
+              <Text style={styles.mobileNavLinkText}>{t('nav.applications')}</Text>
             </Pressable>
           )}
 
@@ -403,7 +454,7 @@ export function WebNavbar() {
                 pathname === '/teams' && styles.mobileNavLinkActive,
               ]}
             >
-              <Text style={styles.mobileNavLinkText}>My Team</Text>
+              <Text style={styles.mobileNavLinkText}>{t('nav.teams')}</Text>
             </Pressable>
           )}
 
@@ -417,8 +468,25 @@ export function WebNavbar() {
               pathname === '/profile' && styles.mobileNavLinkActive,
             ]}
           >
-            <Text style={styles.mobileNavLinkText}>Profile</Text>
+            <Text style={styles.mobileNavLinkText}>{t('nav.profile')}</Text>
           </Pressable>
+
+          {isPassAllowed && (
+            <Pressable
+              onPress={() => {
+                setMobileMenuOpen(false)
+                navigateTo('/qr')
+              }}
+              style={[
+                styles.mobileNavLink,
+                pathname === '/qr' && styles.mobileNavLinkActive,
+              ]}
+            >
+              <Text style={[styles.mobileNavLinkText, { color: '#c2b75f', fontWeight: '800' }]}>
+                {t('nav.myEventPass')}
+              </Text>
+            </Pressable>
+          )}
 
           {hasPermission('applications', 'view_others') && (
             <Pressable
@@ -431,9 +499,21 @@ export function WebNavbar() {
                 pathname === '/admin' && styles.mobileNavLinkActive,
               ]}
             >
-              <Text style={styles.mobileNavLinkText}>Admin</Text>
+              <Text style={styles.mobileNavLinkText}>{t('nav.admin')}</Text>
             </Pressable>
           )}
+
+          <Pressable
+            onPress={() => setLocale(locale === 'en' ? 'es' : 'en')}
+            style={styles.mobileLangRow}
+          >
+            <Text style={styles.mobileLangLabel}>{t('nav.language')}</Text>
+            <View style={styles.langTogglePill}>
+              <Text style={[styles.langText, locale === 'en' && styles.langTextActive]}>EN</Text>
+              <Text style={styles.langDivider}>|</Text>
+              <Text style={[styles.langText, locale === 'es' && styles.langTextActive]}>ES</Text>
+            </View>
+          </Pressable>
 
           <View style={styles.divider} />
 
@@ -444,7 +524,7 @@ export function WebNavbar() {
             }}
             style={[styles.mobileNavLink, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}
           >
-            <Text style={[styles.mobileNavLinkText, { color: '#ff6b6b' }]}>Sign Out</Text>
+            <Text style={[styles.mobileNavLinkText, { color: '#ff6b6b' }]}>{t('nav.signOut')}</Text>
           </Pressable>
         </View>
       )}
@@ -661,6 +741,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.5,
+    fontFamily: 'Montserrat, "Helvetica Neue", Helvetica, Arial, sans-serif',
+  },
+  langTogglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    gap: 4,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+      } as any,
+    }),
+  },
+  langTogglePillHover: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(194, 183, 95, 0.5)',
+  },
+  langText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    fontFamily: 'Montserrat, "Helvetica Neue", Helvetica, Arial, sans-serif',
+  },
+  langTextActive: {
+    color: '#c2b75f',
+  },
+  langDivider: {
+    color: 'rgba(255, 255, 255, 0.2)',
+    fontSize: 10,
+  },
+  mobileLangRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginTop: 4,
+  },
+  mobileLangLabel: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
     fontFamily: 'Montserrat, "Helvetica Neue", Helvetica, Arial, sans-serif',
   },
 })

@@ -21,8 +21,8 @@ import { SimpleTextLink } from 'app/components/simple-text-link'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
-
 import { sanitizeEmail } from 'app/utils/sanitization'
+import { useTranslation } from 'app/i18n'
 
 type LoginFormValues = {
   email: string
@@ -131,19 +131,20 @@ const styles = StyleSheet.create({
   },
   linksBlock: {
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     marginTop: 2,
   },
 })
 
 export function LoginScreen() {
-  const { navigateTo } = useSmartNavigate();
-  const insets = useSafeArea();
-  const headerHeight = useHeaderHeightSafe();
-  const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const images = [rectoria, skyview, photo2024, ciap, pavoreal];
+  const { t } = useTranslation()
+  const { navigateTo } = useSmartNavigate()
+  const insets = useSafeArea()
+  const headerHeight = useHeaderHeightSafe()
+  const [stableHeaderHeight, setStableHeaderHeight] = useState(0)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const images = [rectoria, pavoreal, ciap, photo2024, skyview]
   const {
     control,
     handleSubmit,
@@ -157,9 +158,9 @@ export function LoginScreen() {
 
   useEffect(() => {
     if (headerHeight > stableHeaderHeight) {
-      setStableHeaderHeight(headerHeight);
+      setStableHeaderHeight(headerHeight)
     }
-  }, [headerHeight, stableHeaderHeight]);
+  }, [headerHeight, stableHeaderHeight])
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -172,7 +173,7 @@ export function LoginScreen() {
     }
   }, [])
 
-  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
+  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24
 
   const goToRegister = () => navigateTo('/register')
 
@@ -185,7 +186,7 @@ export function LoginScreen() {
 
     try {
       if (!isSupabaseConfigured) {
-        setAuthError('Supabase is not configured for this environment.')
+        setAuthError(t('auth.supabaseNotConfigured'))
         return
       }
 
@@ -221,10 +222,17 @@ export function LoginScreen() {
         colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        style={{
+          position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: Platform.OS === 'web' ? -200 : 0,
+          height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
+        }}
       />
     </>
-  );
+  )
 
   return (
     <ParallaxScrollView
@@ -240,104 +248,104 @@ export function LoginScreen() {
         overflow: 'visible',
       }}
     >
-        <View style={styles.glassCard}>
-          <View style={styles.glassCardGlow} pointerEvents="none" />
-          <View style={styles.glassCardRing} pointerEvents="none" />
-          <View style={{ width: 98, height: 140, flexShrink: 0 }}>
-            {(() => {
-              const ImageComponent = SolitoImage as any
-              return (
-                <ImageComponent
-                  src={logoImage}
-                  height={140}
-                  width={98}
-                  alt="The HackMTY Logo"
-                  contentFit="contain"
-                  resizeMode="contain"
-                />
-              )
-            })()}
-          </View>
-          <View style={styles.wordmarkBlock}>
-            <View style={styles.wordmarkRow}>
-              <Text style={styles.wordmarkHack}>Hack</Text>
-              <Text style={styles.wordmarkMty}>MTY</Text>
-            </View>
-            <LinearGradient
-              colors={['transparent', '#f0d9b0', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.divider}
-            />
-          </View>
-          <Controller
-            control={control}
-            name="email"
-            rules={{
-              required: 'Email is required',
-              pattern: {
-                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                message: 'Invalid email',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
-                <StyledInput
-                  variant="glass"
-                  label="Email Address"
-                  placeholder="Enter your email"
-                  textContentType="emailAddress"
-                  autoComplete="username"
-                  keyboardType="email-address"
-                  onChangeText={onChange}
-                  value={value}
-                  error={errors.email?.message}
-                  onSubmitEditing={handleSubmit(onSubmit)}
-                />
-              </View>
-            )}
-          />
-          <Controller
-            control={control}
-            name="password"
-            rules={{ required: 'Password is required' }}
-            render={({ field: { onChange, value } }) => (
-              <View style={styles.fieldGroup}>
-                <StyledInput
-                  variant="glass"
-                  label="Password"
-                  placeholder="Enter your password"
-                  textContentType="password"
-                  autoComplete="current-password"
-                  onChangeText={onChange}
-                  value={value}
-                  error={errors.password?.message}
-                  onSubmitEditing={handleSubmit(onSubmit)}
-                />
-              </View>
-            )}
-          />
-          {authError ? <Text style={styles.authError}>{authError}</Text> : null}
-          <PillButton
-            variant="gradient"
-            title={isSubmitting ? 'Logging in...' : 'Login'}
-            onPress={handleSubmit(onSubmit)}
-            additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
-          />
-          <View style={styles.linksBlock}>
-            <SimpleTextLink
-              text="Don't have an account? "
-              accentText="Sign Up"
-              onPress={goToRegister}
-              textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
-            />
-            <SimpleTextLink
-              text="Forgot your password?"
-              onPress={() => navigateTo('/forgot-password')}
-              textStyle={{ fontSize: 12.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
-            />
-          </View>
+      <View style={styles.glassCard}>
+        <View style={styles.glassCardGlow} pointerEvents="none" />
+        <View style={styles.glassCardRing} pointerEvents="none" />
+        <View style={{ width: 98, height: 140, flexShrink: 0 }}>
+          {(() => {
+            const ImageComponent = SolitoImage as any
+            return (
+              <ImageComponent
+                src={logoImage}
+                height={140}
+                width={98}
+                alt="The HackMTY Logo"
+                contentFit="contain"
+                resizeMode="contain"
+              />
+            )
+          })()}
         </View>
+        <View style={styles.wordmarkBlock}>
+          <View style={styles.wordmarkRow}>
+            <Text style={styles.wordmarkHack}>Hack</Text>
+            <Text style={styles.wordmarkMty}>MTY</Text>
+          </View>
+          <LinearGradient
+            colors={['transparent', '#f0d9b0', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.divider}
+          />
+        </View>
+        <Controller
+          control={control}
+          name="email"
+          rules={{
+            required: t('auth.emailRequired'),
+            pattern: {
+              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+              message: 'Invalid email',
+            },
+          }}
+          render={({ field: { onChange, value } }) => (
+            <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
+              <StyledInput
+                variant="glass"
+                label={t('auth.email')}
+                placeholder={t('auth.emailPlaceholder')}
+                textContentType="emailAddress"
+                autoComplete="username"
+                keyboardType="email-address"
+                onChangeText={onChange}
+                value={value}
+                error={errors.email?.message}
+                onSubmitEditing={handleSubmit(onSubmit)}
+              />
+            </View>
+          )}
+        />
+        <Controller
+          control={control}
+          name="password"
+          rules={{ required: t('auth.passwordRequired') }}
+          render={({ field: { onChange, value } }) => (
+            <View style={styles.fieldGroup}>
+              <StyledInput
+                variant="glass"
+                label={t('auth.password')}
+                placeholder={t('auth.passwordPlaceholder')}
+                textContentType="password"
+                autoComplete="current-password"
+                onChangeText={onChange}
+                value={value}
+                error={errors.password?.message}
+                onSubmitEditing={handleSubmit(onSubmit)}
+              />
+            </View>
+          )}
+        />
+        {authError ? <Text style={styles.authError}>{authError}</Text> : null}
+        <PillButton
+          variant="gradient"
+          title={isSubmitting ? t('auth.loggingIn') : t('auth.login')}
+          onPress={handleSubmit(onSubmit)}
+          additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
+        />
+        <View style={styles.linksBlock}>
+          <SimpleTextLink
+            text={t('auth.dontHaveAccount')}
+            accentText={t('auth.register')}
+            onPress={goToRegister}
+            textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+          />
+          <SimpleTextLink
+            text={t('auth.forgotPassword')}
+            onPress={() => navigateTo('/forgot-password')}
+            textStyle={{ fontSize: 12.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
+          />
+        </View>
+      </View>
     </ParallaxScrollView>
   )
 }

@@ -1,12 +1,15 @@
 import * as React from 'react'
 import { View, Text, Pressable } from 'react-native'
+import { useTranslation } from 'app/i18n'
+
+export type AdminTabType = 'applications' | 'users' | 'roles' | 'forms' | 'checkin' | 'config'
 
 interface AdminTabBarProps {
-  adminTab: 'applications' | 'users' | 'roles' | 'forms'
-  setAdminTab: (tab: 'applications' | 'users' | 'roles' | 'forms') => void
+  adminTab: AdminTabType
+  setAdminTab: (tab: AdminTabType) => void
   appsCount: number
   usersCount: number | string
-  onTabChange?: (tab: 'applications' | 'users' | 'roles' | 'forms') => void
+  onTabChange?: (tab: AdminTabType) => void
 }
 
 export function AdminTabBar({
@@ -16,16 +19,20 @@ export function AdminTabBar({
   usersCount,
   onTabChange,
 }: AdminTabBarProps) {
-  const handleSelectTab = (tab: 'applications' | 'users' | 'roles' | 'forms') => {
+  const { t } = useTranslation()
+
+  const handleSelectTab = (tab: AdminTabType) => {
     setAdminTab(tab)
     if (onTabChange) onTabChange(tab)
   }
 
-  const tabs: Array<{ id: 'applications' | 'users' | 'roles' | 'forms'; label: string; badge?: string | number }> = [
-    { id: 'applications', label: 'Submissions', badge: appsCount },
-    { id: 'users', label: 'User Directory', badge: usersCount },
-    { id: 'roles', label: 'Roles & Access' },
-    { id: 'forms', label: 'Form Builder' },
+  const tabs: Array<{ id: AdminTabType; label: string; badge?: string | number }> = [
+    { id: 'checkin', label: t('admin.checkInScanner') },
+    { id: 'applications', label: t('admin.submissions'), badge: appsCount },
+    { id: 'users', label: t('admin.userDirectory'), badge: usersCount },
+    { id: 'roles', label: t('admin.rolesAccess') },
+    { id: 'forms', label: t('admin.formBuilder') },
+    { id: 'config', label: t('admin.globalConfig') },
   ]
 
   return (

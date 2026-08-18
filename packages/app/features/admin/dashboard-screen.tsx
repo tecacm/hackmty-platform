@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react'
 import {
   View,
   Text,
@@ -12,24 +12,52 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { PillButton } from '../../components/pill-button'
-import { AdminTabBar } from './components/AdminTabBar'
-import { SubmissionsTab } from './components/SubmissionsTab'
-import { UserDirectoryTab } from './components/UserDirectoryTab'
-import { RolesAccessTab } from './components/RolesAccessTab'
-import { FormBuilderTab } from './components/FormBuilderTab'
-import { UserEditModal } from './components/UserEditModal'
-import { CreateRoleModal } from './components/CreateRoleModal'
-import { AddFieldModal } from './components/AddFieldModal'
-import { SecretInviteModal } from './components/SecretInviteModal'
-import { DirectMessageModal } from './components/DirectMessageModal'
+import { AdminTabBar, AdminTabType } from './components/AdminTabBar'
 import { AppIcon } from 'app/components/app-icon'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
+import { useTranslation } from 'app/i18n'
+import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
+
+const CheckInScannerTab = lazy(() =>
+  import('./components/CheckInScannerTab').then((mod) => ({ default: mod.CheckInScannerTab }))
+)
+const SubmissionsTab = lazy(() =>
+  import('./components/SubmissionsTab').then((mod) => ({ default: mod.SubmissionsTab }))
+)
+const UserDirectoryTab = lazy(() =>
+  import('./components/UserDirectoryTab').then((mod) => ({ default: mod.UserDirectoryTab }))
+)
+const RolesAccessTab = lazy(() =>
+  import('./components/RolesAccessTab').then((mod) => ({ default: mod.RolesAccessTab }))
+)
+const FormBuilderTab = lazy(() =>
+  import('./components/FormBuilderTab').then((mod) => ({ default: mod.FormBuilderTab }))
+)
+const GlobalConfigTab = lazy(() =>
+  import('./components/GlobalConfigTab').then((mod) => ({ default: mod.GlobalConfigTab }))
+)
+const UserEditModal = lazy(() =>
+  import('./components/UserEditModal').then((mod) => ({ default: mod.UserEditModal }))
+)
+const CreateRoleModal = lazy(() =>
+  import('./components/CreateRoleModal').then((mod) => ({ default: mod.CreateRoleModal }))
+)
+const AddFieldModal = lazy(() =>
+  import('./components/AddFieldModal').then((mod) => ({ default: mod.AddFieldModal }))
+)
+const SecretInviteModal = lazy(() =>
+  import('./components/SecretInviteModal').then((mod) => ({ default: mod.SecretInviteModal }))
+)
+const DirectMessageModal = lazy(() =>
+  import('./components/DirectMessageModal').then((mod) => ({ default: mod.DirectMessageModal }))
+)
 
 interface Application {
   id: string
   status: string
+  confirmed_at?: string | null
   admin_feedback: string | null
   application_type_id: string
   answers: Record<string, any>
@@ -47,12 +75,18 @@ interface Application {
   } | null
 }
 
-const previewText = (value: any): string => {
+const previewText = (value: any, locale: string = 'en'): string => {
   if (typeof value === 'string') return value
   if (!value || typeof value !== 'object') return ''
-  const translated = value.en || Object.values(value)[0]
+  if (locale && value[locale] !== undefined) return previewText(value[locale], locale)
+  if (value.en !== undefined) return previewText(value.en, locale)
+  if (value.es !== undefined) return previewText(value.es, locale)
+  const translated = Object.values(value)[0]
   if (typeof translated === 'string') return translated
-  return translated?.parts?.map((part: any) => part.content || '').join('') || ''
+  const richText = (translated as any)?.parts
+  return Array.isArray(richText)
+    ? richText.map((part: any) => part?.content || '').join('')
+    : ''
 }
 
 const DASHBOARD_CACHE_KEY = 'hackmty_admin_dashboard_state'
@@ -83,6 +117,7 @@ function saveStoredDashboardState(state: Record<string, any>) {
 }
 
 export function AdminDashboardScreen() {
+  const { t, locale } = useTranslation()
   const { navigateTo } = useSmartNavigate()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
   const hasViewOthersPermission = !permissionsLoading && hasPermission('applications', 'view_others')
@@ -156,7 +191,7 @@ export function AdminDashboardScreen() {
     })
   }
   // Primary Admin Tab State
-  const [adminTab, setAdminTab] = useState<'applications' | 'users' | 'roles' | 'forms'>(initialCache.adminTab || 'applications')
+  const [adminTab, setAdminTab] = useState<AdminTabType>(initialCache.adminTab || 'checkin')
 
   // Roles & Access Management State
   const [rolesList, setRolesList] = useState<any[]>([])
@@ -351,9 +386,7 @@ export function AdminDashboardScreen() {
           ? rel.form_fields[0] || {}
           : rel.form_fields || {})
         const labelRaw = fieldDef.label
-        const labelStr = typeof labelRaw === 'object' && labelRaw !== null
-          ? (typeof labelRaw.en === 'string' ? labelRaw.en : String(Object.values(labelRaw)[0] ?? rel.field_id))
-          : String(labelRaw ?? rel.field_id)
+        const labelStr = previewText(labelRaw, locale) || String(labelRaw ?? rel.field_id)
         return {
           relId: `${rel.application_type_id}|${rel.field_id}`,
           fieldId: rel.field_id,
@@ -455,9 +488,9 @@ export function AdminDashboardScreen() {
       const fieldPatch = { id: cleanFieldId, label: localized(newFieldLabelTranslations), field_type: newFieldType, is_required: newFieldRequired, default_section_id: newFieldSection || null, subtitle: newFieldSubtitleTranslations.some((translation) => translation.value.trim()) ? (newFieldSubtitleRich ? richLocalized(newFieldSubtitleTranslations) : localized(newFieldSubtitleTranslations)) : null, options: ['select', 'multiselect', 'radio', 'segmented'].includes(newFieldType) ? options : null, conditional_logic: conditionalLogic, ui_metadata: uiMetadata }
       setAllFormFields((previous) => [...previous.filter((field) => field.id !== cleanFieldId), fieldPatch])
       if (editingFieldId) {
-        setFormFieldsList((previous) => previous.map((field) => field.fieldId === cleanFieldId ? { ...field, label: previewText(fieldPatch.label), type: fieldPatch.field_type, required: fieldPatch.is_required, sectionId: fieldPatch.default_section_id || 'general', subtitle: fieldPatch.subtitle, options: fieldPatch.options } : field))
+        setFormFieldsList((previous) => previous.map((field) => field.fieldId === cleanFieldId ? { ...field, label: previewText(fieldPatch.label, locale), type: fieldPatch.field_type, required: fieldPatch.is_required, sectionId: fieldPatch.default_section_id || 'general', subtitle: fieldPatch.subtitle, options: fieldPatch.options } : field))
       } else {
-        setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${cleanFieldId}`, fieldId: cleanFieldId, displayOrder: previous.length + 1, sectionId: fieldPatch.default_section_id || 'general', label: previewText(fieldPatch.label), type: fieldPatch.field_type, required: fieldPatch.is_required, subtitle: fieldPatch.subtitle, options: fieldPatch.options }])
+        setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${cleanFieldId}`, fieldId: cleanFieldId, displayOrder: previous.length + 1, sectionId: fieldPatch.default_section_id || 'general', label: previewText(fieldPatch.label, locale), type: fieldPatch.field_type, required: fieldPatch.is_required, subtitle: fieldPatch.subtitle, options: fieldPatch.options }])
       }
       setFormDraftActions((previous) => [...previous.filter((action) => action.type !== 'field' || action.field.id !== cleanFieldId), { type: 'field', field: fieldPatch }, ...(editingFieldId ? [] : [{ type: 'attach', fieldId: cleanFieldId, sectionOverrideId: null }])])
 
@@ -502,7 +535,7 @@ export function AdminDashboardScreen() {
     if (!isSupabaseConfigured) return
     const field = allFormFields.find((item) => item.id === fieldId)
     if (!field) return
-    setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${fieldId}`, fieldId, displayOrder: previous.length + 1, sectionId: sectionOverrideId || field.default_section_id || 'general', label: previewText(field.label), type: field.field_type, required: !!field.is_required, subtitle: field.subtitle, options: field.options }])
+    setFormFieldsList((previous) => [...previous, { relId: `${selectedFormRole}|${fieldId}`, fieldId, displayOrder: previous.length + 1, sectionId: sectionOverrideId || field.default_section_id || 'general', label: previewText(field.label, locale), type: field.field_type, required: !!field.is_required, subtitle: field.subtitle, options: field.options }])
     setFormDraftActions((previous) => [...previous, { type: 'attach', fieldId, sectionOverrideId }])
   }
 
@@ -834,6 +867,7 @@ export function AdminDashboardScreen() {
         .select(`
           id,
           status,
+          confirmed_at,
           admin_feedback,
           application_type_id,
           answers,
@@ -859,11 +893,11 @@ export function AdminDashboardScreen() {
 
       if (typesData) {
         setDbTypes(typesData.map((t: any) => {
-          let lbl = t.id
-          if (typeof t.label === 'object' && t.label !== null) {
-            lbl = t.label.en || t.id
-          } else if (typeof t.label === 'string') {
-            lbl = t.label
+          let lbl = ''
+          if (typeof t.label === 'object' && t.label !== null && t.label[locale]) {
+            lbl = t.label[locale]
+          } else {
+            lbl = getApplicantRoleLabel(t.id, locale)
           }
           return { id: t.id, label: lbl }
         }))
@@ -942,22 +976,23 @@ export function AdminDashboardScreen() {
   useEffect(() => {
     if (hasViewOthersPermission) {
       fetchApplications()
+      fetchUsersDirectory()
     }
   }, [hasViewOthersPermission])
 
   const dynamicTypeOptions = useMemo(() => {
     const optionsMap = new Map<string, string>()
-    optionsMap.set('all', 'ALL TYPES')
+    optionsMap.set('all', locale === 'es' ? 'TODOS LOS TIPOS' : 'ALL TYPES')
     dbTypes.forEach(t => {
-      optionsMap.set(t.id, t.label.toUpperCase())
+      optionsMap.set(t.id, (t.label || getApplicantRoleLabel(t.id, locale)).toUpperCase())
     })
     apps.forEach(app => {
       if (app.application_type_id && !optionsMap.has(app.application_type_id)) {
-        optionsMap.set(app.application_type_id, app.application_type_id.toUpperCase())
+        optionsMap.set(app.application_type_id, getApplicantRoleLabel(app.application_type_id, locale).toUpperCase())
       }
     })
     return Array.from(optionsMap.entries()).map(([id, label]) => ({ id, label }))
-  }, [dbTypes, apps])
+  }, [dbTypes, apps, locale])
 
   const filteredUsers = useMemo(() => {
     return usersList.filter(user => {
@@ -965,11 +1000,17 @@ export function AdminDashboardScreen() {
       const email = (user.email || '').toLowerCase()
       const id = (user.id || '').toLowerCase()
       const university = (user.university || '').toLowerCase()
+      const major = (user.major || '').toLowerCase()
+      const teamName = (user.team?.name || user.teamName || user.teams?.name || '').toLowerCase()
+      const q = userSearchQuery.toLowerCase().trim()
       const matchesSearch = 
-        fullName.includes(userSearchQuery.toLowerCase()) ||
-        email.includes(userSearchQuery.toLowerCase()) ||
-        id.includes(userSearchQuery.toLowerCase()) ||
-        university.includes(userSearchQuery.toLowerCase())
+        !q ||
+        fullName.includes(q) ||
+        email.includes(q) ||
+        id.includes(q) ||
+        university.includes(q) ||
+        major.includes(q) ||
+        teamName.includes(q)
       const matchesRole = userRoleFilter === 'all' || user.roles.includes(userRoleFilter)
       return matchesSearch && matchesRole
     })
@@ -1037,19 +1078,35 @@ export function AdminDashboardScreen() {
       const email = app.answers?.email || ''
       const university = app.answers?.university || ''
       const city = app.answers?.city || ''
+      const teamName = app.profiles?.teams?.name || app.answers?.teamName || ''
+      const q = searchQuery.toLowerCase().trim()
       const matchesSearch = 
-        fullName.includes(searchQuery.toLowerCase()) ||
-        email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        university.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        city.toLowerCase().includes(searchQuery.toLowerCase())
+        !q ||
+        fullName.includes(q) ||
+        email.toLowerCase().includes(q) ||
+        university.toLowerCase().includes(q) ||
+        city.toLowerCase().includes(q) ||
+        teamName.toLowerCase().includes(q)
+
       const matchesType = selectedType === 'all' || app.application_type_id === selectedType
       const matchesCountry = selectedCountries.length === 0 || selectedCountries.includes(app.answers?.country)
-      const matchesStatus = selectedStatus === 'all' || app.status === selectedStatus
+      
+      const isConfirmed = app.status === 'confirmed' || Boolean(app.confirmed_at)
+      const matchesStatus =
+        selectedStatus === 'all'
+          ? true
+          : selectedStatus === 'confirmed'
+          ? isConfirmed
+          : selectedStatus === 'accepted'
+          ? app.status === 'accepted' && !app.confirmed_at
+          : app.status === selectedStatus
+
       const checkTagMatch = (tag: string) => {
         const queryStr = tag.toLowerCase().trim()
         const country = String(app.answers?.country || '').toLowerCase()
         const major = String(app.answers?.major || '').toLowerCase()
-        const fullContentStr = `${fullName} ${email} ${university} ${city} ${country} ${major} ${JSON.stringify(app.answers || {})}`.toLowerCase()
+        const teamNameStr = String(teamName).toLowerCase()
+        const fullContentStr = `${fullName} ${email} ${university} ${city} ${country} ${major} ${teamNameStr} ${JSON.stringify(app.answers || {})}`.toLowerCase()
         if (queryStr.includes(':')) {
           const parts = queryStr.split(':')
           const prefix = (parts[0] || '').trim()
@@ -1062,6 +1119,8 @@ export function AdminDashboardScreen() {
             return country.includes(val)
           } else if (prefix === 'major') {
             return major.includes(val)
+          } else if (prefix === 'team') {
+            return teamNameStr.includes(val)
           } else if (prefix === 'status') {
             return String(app.status || '').toLowerCase().includes(val)
           } else if (prefix === 'role' || prefix === 'type') {
@@ -1137,11 +1196,12 @@ export function AdminDashboardScreen() {
 
   const stats = useMemo(() => {
     const total = apps.length
+    const confirmed = apps.filter(app => app.status === 'confirmed' || Boolean(app.confirmed_at)).length
     const accepted = apps.filter(app => app.status === 'accepted').length
-    const rejected = apps.filter(app => app.status === 'rejected').length
-    const changes = apps.filter(app => app.status === 'changes_requested').length
     const submitted = apps.filter(app => app.status === 'submitted').length
-    return { total, accepted, rejected, changes, submitted }
+    const changesRequested = apps.filter(app => app.status === 'changes_requested').length
+    const rejected = apps.filter(app => app.status === 'rejected').length
+    return { total, confirmed, accepted, submitted, changesRequested, rejected }
   }, [apps])
 
   if (!isReady) return <View style={[styles.container]} />
@@ -1158,184 +1218,15 @@ export function AdminDashboardScreen() {
     return (
       <View style={[styles.centerContainer]}>
         <View style={styles.accessDeniedCard}>
-          <Text style={styles.accessDeniedTitle}>Access Denied</Text>
+          <Text style={styles.accessDeniedTitle}>{t('admin.accessDenied')}</Text>
           <Text style={styles.accessDeniedSubtitle}>
-            You do not have administrative permissions to review application documents.
+            {t('admin.accessDeniedSubtitle')}
           </Text>
           <PillButton
-            title="Return Home"
+            title={t('admin.returnHome')}
             onPress={() => navigateTo('/home')}
             additionalStyle={{ width: 200, height: 50, marginTop: 10 }}
           />
-        </View>
-      </View>
-    )
-  }
-
-  const renderStatusBadge = (status: string) => {
-    let bgColor = 'rgba(255,255,255,0.08)'
-    let textColor = '#e1e1e1'
-    let label = status.toUpperCase()
-    if (status === 'accepted') { bgColor = 'rgba(16, 185, 129, 0.15)'; textColor = '#10b981'; label = 'ACCEPTED' }
-    else if (status === 'rejected') { bgColor = 'rgba(239, 68, 68, 0.15)'; textColor = '#ef4444'; label = 'REJECTED' }
-    else if (status === 'changes_requested') { bgColor = 'rgba(245, 158, 11, 0.15)'; textColor = '#f59e0b'; label = 'CHANGES REQ' }
-    else if (status === 'submitted') { bgColor = 'rgba(59, 130, 246, 0.15)'; textColor = '#3b82f6'; label = 'SUBMITTED' }
-    else if (status === 'draft') { bgColor = 'rgba(156, 163, 175, 0.15)'; textColor = '#9ca3af'; label = 'DRAFT' }
-    else if (status === 'not_started') { bgColor = 'rgba(203, 213, 225, 0.25)'; textColor = '#64748b'; label = 'NOT STARTED' }
-
-    return (
-      <View style={[styles.statusBadge, { backgroundColor: bgColor }]}>
-        <Text style={[styles.statusBadgeText, { color: textColor }]}>{label}</Text>
-      </View>
-    )
-  }
-
-  const renderApplicationRow = (app: Application) => {
-    const firstName = app.profiles?.first_name || app.answers?.firstName || 'Unknown'
-    const lastName = app.profiles?.last_name || app.answers?.lastName || 'Applicant'
-    const fullName = `${firstName} ${lastName}`
-    const email = app.answers?.email || 'No email'
-    const country = app.answers?.country || 'N/A'
-    const university = app.answers?.university || 'N/A'
-    const roleType = app.application_type_id || 'hacker'
-
-    const isNonInteractive = app.status === 'draft' || app.status === 'not_started' || app.id.startsWith('no-app-')
-
-    return (
-      <View key={app.id} style={styles.appCard}>
-        <Pressable
-          disabled={isNonInteractive}
-          onPress={() => {
-            if (!isNonInteractive) {
-              navigateTo(`/users/${app.user_id}?appId=${app.id}`)
-            }
-          }}
-          style={[styles.appHeaderRow, isNonInteractive && { opacity: 0.85, cursor: 'default' as any }]}
-        >
-          <View style={styles.headerMainInfo}>
-            <Text style={styles.applicantName}>{fullName}</Text>
-            <Text style={styles.applicantEmail}>{email}</Text>
-          </View>
-          <View style={styles.headerSubInfo}>
-            <View style={styles.tagRow}>
-              <View style={[styles.typeBadge, { borderColor: roleType === 'hacker' ? '#c2b75f' : '#b284be' }]}>
-                <Text style={[styles.typeBadgeText, { color: roleType === 'hacker' ? '#c2b75f' : '#b284be' }]}>
-                  {roleType.toUpperCase()}
-                </Text>
-              </View>
-              <Text style={styles.countryTag}>{country}</Text>
-            </View>
-            <Text style={styles.universityText} numberOfLines={1}>{university}</Text>
-          </View>
-          <View style={[styles.headerStatusInfo, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
-            {renderStatusBadge(app.status)}
-            {app.user_id ? (
-              <Pressable
-                onPress={(e: any) => {
-                  if (typeof e?.stopPropagation === 'function') e.stopPropagation()
-                  openMessageModal('user', app.user_id, fullName)
-                }}
-                style={{
-                  backgroundColor: '#f3e8ff',
-                  borderColor: '#c084fc',
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  paddingHorizontal: 10,
-                  paddingVertical: 5,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                <AppIcon name="mail" size={12} color="#7e22ce" />
-                <Text style={{ color: '#7e22ce', fontSize: 11, fontWeight: '700' }}>Msg</Text>
-              </Pressable>
-            ) : null}
-            {!isNonInteractive ? (
-              <AppIcon name="chevron.right" size={14} color="#6d28d9" />
-            ) : (
-              <AppIcon name="ban" size={14} color="#94a3b8" />
-            )}
-          </View>
-        </Pressable>
-      </View>
-    )
-  }
-
-  const renderPaginationBar = (
-    currentPage: number,
-    totalPages: number,
-    pageSize: number,
-    totalItems: number,
-    onPageChange: (page: number) => void,
-    onPageSizeChange: (size: number) => void
-  ) => {
-    const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1
-    const endItem = Math.min(currentPage * pageSize, totalItems)
-
-    return (
-      <View style={[styles.paginationCard, isSmallScreen && { flexDirection: 'column', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 12 }]}>
-        <Text style={[styles.paginationInfoText, isSmallScreen && { textAlign: 'center' }]}>
-          Showing {startItem}–{endItem} of {totalItems} entries
-        </Text>
-
-        <View style={[styles.paginationControlsRow, isSmallScreen && { flexDirection: 'column', alignItems: 'center', width: '100%', gap: 12 }]}>
-          {/* Row 1: Page Size Selector (Centered) */}
-          <View style={[styles.pageSizeSelector, isSmallScreen && { justifyContent: 'center', width: '100%' }]}>
-            <Text style={styles.pageSizeLabel}>Rows:</Text>
-            {[10, 20, 50, 100].map(sz => (
-              <Pressable
-                key={sz}
-                onPress={() => { onPageSizeChange(sz); onPageChange(1); }}
-                style={[styles.pageSizeOption, pageSize === sz && styles.pageSizeOptionActive]}
-              >
-                <Text style={[styles.pageSizeOptionText, pageSize === sz && styles.pageSizeOptionTextActive]}>
-                  {sz}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {/* Row 2: Page Navigation Row (Centered on small screens) */}
-          <View style={[styles.pageButtonsRow, isSmallScreen && { justifyContent: 'center', width: '100%', gap: 12 }]}>
-            <PillButton
-              onPress={() => onPageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage <= 1}
-              additionalStyle={[
-                styles.pageBtn,
-                currentPage <= 1 && styles.pageBtnDisabled,
-                isSmallScreen && { width: 36, height: 36, paddingHorizontal: 0, justifyContent: 'center', alignItems: 'center', borderRadius: 18 }
-              ]}
-              fontSize={12}
-            >
-              {isSmallScreen ? (
-                <AppIcon name="chevron.left" size={14} color="#ffffff" />
-              ) : (
-                "← Prev"
-              )}
-            </PillButton>
-
-            <Text style={styles.pageIndicatorText}>
-              Page {currentPage} of {totalPages}
-            </Text>
-
-            <PillButton
-              onPress={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage >= totalPages}
-              additionalStyle={[
-                styles.pageBtn,
-                currentPage >= totalPages && styles.pageBtnDisabled,
-                isSmallScreen && { width: 36, height: 36, paddingHorizontal: 0, justifyContent: 'center', alignItems: 'center', borderRadius: 18 }
-              ]}
-              fontSize={12}
-            >
-              {isSmallScreen ? (
-                <AppIcon name="chevron.right" size={14} color="#ffffff" />
-              ) : (
-                "Next →"
-              )}
-            </PillButton>
-          </View>
         </View>
       </View>
     )
@@ -1346,21 +1237,8 @@ export function AdminDashboardScreen() {
         <View style={styles.contentWrapper}>
           <View style={[styles.headerTitleRow, isSmallScreen && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
             <View style={{ flex: isSmallScreen ? undefined : 1, width: isSmallScreen ? '100%' : undefined }}>
-              <Text style={styles.title}>Application Review Portal</Text>
-              <Text style={styles.subtitle}>Review, filter, and manage attendee applications.</Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <PillButton
-                title="Secret Links"
-                onPress={() => { setShowInviteModal(true); fetchInviteCodes(); }}
-                additionalStyle={{ width: 'auto', minWidth: 120, height: 40 }}
-              />
-              <PillButton
-                title="↻ Refresh"
-                onPress={fetchApplications}
-                isLoading={loading}
-                additionalStyle={styles.refreshBtn}
-              />
+              <Text style={styles.title}>{t('admin.dashboardTitle')}</Text>
+              <Text style={styles.subtitle}>{t('admin.dashboardSubtitle')}</Text>
             </View>
           </View>
 
@@ -1368,219 +1246,241 @@ export function AdminDashboardScreen() {
             adminTab={adminTab}
             setAdminTab={setAdminTab}
             appsCount={apps.length}
-            usersCount={usersList.length ? usersList.length : '...'}
+            usersCount={usersList.length}
             onTabChange={(tab) => {
+              if (tab === 'applications') fetchApplications()
               if (tab === 'users') fetchUsersDirectory()
               if (tab === 'roles') { fetchRolesList(); fetchRolePermissions(); fetchInviteCodes(); }
               if (tab === 'forms') { fetchRolesList(); fetchFormSchema(selectedFormRole); }
             }}
           />
 
-          {adminTab === 'roles' ? (
-            <RolesAccessTab
-              rolesLoading={rolesLoading}
-              rolesList={rolesList}
-              permissionsList={permissionsList}
-              rolePermissionsMap={rolePermissionsMap}
-              handleUpdateRolePermissions={handleUpdateRolePermissions}
-              fetchRolesList={fetchRolesList}
-              fetchInviteCodes={fetchInviteCodes}
-              setShowCreateRoleModal={setShowCreateRoleModal}
-              handleToggleRoleVisibility={handleToggleRoleVisibility}
-              setNewInviteRole={setNewInviteRole}
-              setShowInviteModal={setShowInviteModal}
-              handleUpdateRoleDeadline={handleUpdateRoleDeadline}
-              inviteCodesList={inviteCodesList}
-              copiedCodeId={copiedCodeId}
-              copyInviteLink={copyInviteLink}
-              styles={styles}
-            />
-          ) : adminTab === 'forms' ? (
-            <FormBuilderTab
-              selectedFormRole={selectedFormRole}
-              setSelectedFormRole={setSelectedFormRole}
-              fetchFormSchema={fetchFormSchema}
-              setShowAddFieldModal={setShowAddFieldModal}
-              formBuilderLoading={formBuilderLoading}
-              formFieldsList={formFieldsList}
-              formSectionsList={formSectionsList}
-              allFormFields={allFormFields}
-              handleRemoveFieldFromRole={handleRemoveFieldFromRole}
-              handleReorderField={handleReorderField}
-              handleAttachExistingField={handleAttachExistingField}
-              handleEditField={handleOpenFieldEditor}
-              formDraftCount={formDraftActions.length}
-              applyFormDraft={applyFormDraft}
-              discardFormDraft={discardFormDraft}
-              formDraftSaving={formDraftSaving}
-              handleAddSection={handleAddSection}
-              rolesList={rolesList}
-              styles={styles}
-            />
-          ) : adminTab === 'users' ? (
-            <UserDirectoryTab
-              userSearchQuery={userSearchQuery}
-              setUserSearchQuery={setUserSearchQuery}
-              userRoleFilter={userRoleFilter}
-              setUserRoleFilter={setUserRoleFilter}
-              fetchUsersDirectory={fetchUsersDirectory}
-              usersLoading={usersLoading}
-              filteredUsers={filteredUsers}
-              displayedUsers={displayedUsers}
-              resetEmailSentUser={resetEmailSentUser}
-              handleOpenEditUser={handleOpenEditUser}
-              handleSendPasswordReset={handleSendPasswordReset}
-              renderPaginationBar={renderPaginationBar}
-              userPage={userPage}
-              totalUserPages={totalUserPages}
-              userPageSize={userPageSize}
-              setUserPage={setUserPage}
-              setUserPageSize={setUserPageSize}
-              styles={styles}
-            />
-          ) : (
-            <SubmissionsTab
-              stats={{ ...stats, inReview: stats.changes || 0 }}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              includeInput={includeInput}
-              setIncludeInput={setIncludeInput}
-              includeTags={includeTags}
-              addIncludeTag={addIncludeTag}
-              removeIncludeTag={removeIncludeTag}
-              excludeInput={excludeInput}
-              setExcludeInput={setExcludeInput}
-              excludeTags={excludeTags}
-              addExcludeTag={addExcludeTag}
-              removeExcludeTag={removeExcludeTag}
-              selectedType={selectedType}
-              setSelectedType={setSelectedType}
-              dynamicTypeOptions={dynamicTypeOptions}
-              selectedStatus={selectedStatus}
-              setSelectedStatus={setSelectedStatus}
-              groupByTeams={groupByTeams}
-              setGroupByTeams={setGroupByTeams}
-              loading={loading}
-              error={error}
-              filteredApps={filteredApps}
-              displayedApps={displayedApps}
-              groupedData={groupedData}
-              expandedTeams={expandedTeams}
-              toggleTeamExpand={toggleTeamExpand}
-              renderApplicationRow={renderApplicationRow}
-              renderPaginationBar={renderPaginationBar}
-              appPage={appPage}
-              totalAppPages={totalAppPages}
-              appPageSize={appPageSize}
-              setAppPage={setAppPage}
-              setAppPageSize={setAppPageSize}
-              onOpenMessageModal={openMessageModal}
-              styles={styles}
-            />
-          )}
+          <Suspense
+            fallback={
+              <View style={{ paddingVertical: 50, alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color="#c2b75f" />
+                <Text style={{ color: '#ffffff', marginTop: 12, fontSize: 14, fontWeight: '700' }}>
+                  {t('admin.loadingTab')}
+                </Text>
+              </View>
+            }
+          >
+            {adminTab === 'checkin' ? (
+              <CheckInScannerTab />
+            ) : adminTab === 'roles' ? (
+              <RolesAccessTab
+                rolesLoading={rolesLoading}
+                rolesList={rolesList}
+                permissionsList={permissionsList}
+                rolePermissionsMap={rolePermissionsMap}
+                handleUpdateRolePermissions={handleUpdateRolePermissions}
+                fetchRolesList={fetchRolesList}
+                fetchInviteCodes={fetchInviteCodes}
+                setShowCreateRoleModal={setShowCreateRoleModal}
+                handleToggleRoleVisibility={handleToggleRoleVisibility}
+                setNewInviteRole={setNewInviteRole}
+                setShowInviteModal={setShowInviteModal}
+                handleUpdateRoleDeadline={handleUpdateRoleDeadline}
+                inviteCodesList={inviteCodesList}
+                copiedCodeId={copiedCodeId}
+                copyInviteLink={copyInviteLink}
+                styles={styles}
+              />
+            ) : adminTab === 'forms' ? (
+              <FormBuilderTab
+                selectedFormRole={selectedFormRole}
+                setSelectedFormRole={setSelectedFormRole}
+                fetchFormSchema={fetchFormSchema}
+                setShowAddFieldModal={setShowAddFieldModal}
+                formBuilderLoading={formBuilderLoading}
+                formFieldsList={formFieldsList}
+                formSectionsList={formSectionsList}
+                allFormFields={allFormFields}
+                handleRemoveFieldFromRole={handleRemoveFieldFromRole}
+                handleReorderField={handleReorderField}
+                handleAttachExistingField={handleAttachExistingField}
+                handleEditField={handleOpenFieldEditor}
+                formDraftCount={formDraftActions.length}
+                applyFormDraft={applyFormDraft}
+                discardFormDraft={discardFormDraft}
+                formDraftSaving={formDraftSaving}
+                handleAddSection={handleAddSection}
+                rolesList={rolesList}
+                styles={styles}
+              />
+            ) : adminTab === 'users' ? (
+              <UserDirectoryTab
+                userSearchQuery={userSearchQuery}
+                setUserSearchQuery={setUserSearchQuery}
+                userRoleFilter={userRoleFilter}
+                setUserRoleFilter={setUserRoleFilter}
+                fetchUsersDirectory={fetchUsersDirectory}
+                usersLoading={usersLoading}
+                filteredUsers={filteredUsers}
+                displayedUsers={displayedUsers}
+                resetEmailSentUser={resetEmailSentUser}
+                handleOpenEditUser={handleOpenEditUser}
+                handleSendPasswordReset={handleSendPasswordReset}
+                userPage={userPage}
+                totalUserPages={totalUserPages}
+                userPageSize={userPageSize}
+                setUserPage={setUserPage}
+                setUserPageSize={setUserPageSize}
+              />
+            ) : adminTab === 'config' ? (
+              <GlobalConfigTab />
+            ) : (
+              <SubmissionsTab
+                stats={stats}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                includeInput={includeInput}
+                setIncludeInput={setIncludeInput}
+                includeTags={includeTags}
+                addIncludeTag={addIncludeTag}
+                removeIncludeTag={removeIncludeTag}
+                excludeInput={excludeInput}
+                setExcludeInput={setExcludeInput}
+                excludeTags={excludeTags}
+                addExcludeTag={addExcludeTag}
+                removeExcludeTag={removeExcludeTag}
+                selectedType={selectedType}
+                setSelectedType={setSelectedType}
+                dynamicTypeOptions={dynamicTypeOptions}
+                selectedStatus={selectedStatus}
+                setSelectedStatus={setSelectedStatus}
+                groupByTeams={groupByTeams}
+                setGroupByTeams={setGroupByTeams}
+                loading={loading}
+                error={error}
+                filteredApps={filteredApps}
+                displayedApps={displayedApps}
+                groupedData={groupedData}
+                expandedTeams={expandedTeams}
+                toggleTeamExpand={toggleTeamExpand}
+                appPage={appPage}
+                totalAppPages={totalAppPages}
+                appPageSize={appPageSize}
+                setAppPage={setAppPage}
+                setAppPageSize={setAppPageSize}
+                onOpenMessageModal={openMessageModal}
+                onOpenSecretLinks={() => { setShowInviteModal(true); fetchInviteCodes(); }}
+                onRefresh={fetchApplications}
+              />
+            )}
+          </Suspense>
     </View>
 
-      <DirectMessageModal
-        visible={messageModalState.visible}
-        onClose={() => setMessageModalState(prev => ({ ...prev, visible: false }))}
-        targetType={messageModalState.targetType}
-        targetId={messageModalState.targetId}
-        targetName={messageModalState.targetName}
-        memberUserIds={messageModalState.memberUserIds}
-      />
+      <Suspense fallback={null}>
+        {messageModalState.visible && (
+          <DirectMessageModal
+            visible={messageModalState.visible}
+            onClose={() => setMessageModalState(prev => ({ ...prev, visible: false }))}
+            targetType={messageModalState.targetType}
+            targetId={messageModalState.targetId}
+            targetName={messageModalState.targetName}
+            memberUserIds={messageModalState.memberUserIds}
+          />
+        )}
 
-      <UserEditModal
-        visible={!!editingUser}
-        onClose={() => setEditingUser(null)}
-        editingUser={editingUser}
-        editFirstName={editFirstName}
-        setEditFirstName={setEditFirstName}
-        editLastName={editLastName}
-        setEditLastName={setEditLastName}
-        editEmail={editEmail}
-        setEditEmail={setEditEmail}
-        editRoles={editRoles}
-        toggleEditRole={toggleEditRole}
-        handleSaveUserChanges={handleSaveUserChanges}
-        isSavingUser={isSavingUser}
-        allAvailableSystemRoles={['user', 'admin', 'organizer', 'volunteer', 'mentor', 'judge', 'sponsor']}
-      />
+        {!!editingUser && (
+          <UserEditModal
+            visible={!!editingUser}
+            onClose={() => setEditingUser(null)}
+            editingUser={editingUser}
+            editFirstName={editFirstName}
+            setEditFirstName={setEditFirstName}
+            editLastName={editLastName}
+            setEditLastName={setEditLastName}
+            editEmail={editEmail}
+            setEditEmail={setEditEmail}
+            editRoles={editRoles}
+            toggleEditRole={toggleEditRole}
+            handleSaveUserChanges={handleSaveUserChanges}
+            isSavingUser={isSavingUser}
+            allAvailableSystemRoles={['user', 'admin', 'organizer', 'volunteer', 'mentor', 'judge', 'sponsor']}
+          />
+        )}
 
-      {/* Create New Role Modal */}
-      <CreateRoleModal
-        visible={showCreateRoleModal}
-        onClose={() => setShowCreateRoleModal(false)}
-        newRoleId={newRoleId}
-        setNewRoleId={setNewRoleId}
-        newRoleLabel={newRoleLabel}
-        setNewRoleLabel={setNewRoleLabel}
-        newRoleDesc={newRoleDesc}
-        setNewRoleDesc={setNewRoleDesc}
-        newRolePublic={newRolePublic}
-        setNewRolePublic={setNewRolePublic}
-        newRoleCloseAt={newRoleCloseAt}
-        setNewRoleCloseAt={setNewRoleCloseAt}
-        handleCreateRole={handleCreateRole}
-        isCreatingRole={isCreatingRole}
-      />
+        {showCreateRoleModal && (
+          <CreateRoleModal
+            visible={showCreateRoleModal}
+            onClose={() => setShowCreateRoleModal(false)}
+            newRoleId={newRoleId}
+            setNewRoleId={setNewRoleId}
+            newRoleLabel={newRoleLabel}
+            setNewRoleLabel={setNewRoleLabel}
+            newRoleDesc={newRoleDesc}
+            setNewRoleDesc={setNewRoleDesc}
+            newRolePublic={newRolePublic}
+            setNewRolePublic={setNewRolePublic}
+            newRoleCloseAt={newRoleCloseAt}
+            setNewRoleCloseAt={setNewRoleCloseAt}
+            handleCreateRole={handleCreateRole}
+            isCreatingRole={isCreatingRole}
+          />
+        )}
 
-      {/* Add Question Field Modal */}
-      <AddFieldModal
-        visible={showAddFieldModal}
-        onClose={() => { setShowAddFieldModal(false); resetFieldEditor() }}
-        selectedFormRole={selectedFormRole}
-        newFieldKey={newFieldId}
-        setNewFieldKey={setNewFieldId}
-        newFieldLabelTranslations={newFieldLabelTranslations}
-        setNewFieldLabelTranslations={setNewFieldLabelTranslations}
-        newFieldSubtitleTranslations={newFieldSubtitleTranslations}
-        setNewFieldSubtitleTranslations={setNewFieldSubtitleTranslations}
-        newFieldSubtitleRich={newFieldSubtitleRich}
-        setNewFieldSubtitleRich={setNewFieldSubtitleRich}
-        newFieldConditionField={newFieldConditionField}
-        setNewFieldConditionField={setNewFieldConditionField}
-        newFieldConditionOperator={newFieldConditionOperator}
-        setNewFieldConditionOperator={setNewFieldConditionOperator}
-        newFieldConditionValue={newFieldConditionValue}
-        setNewFieldConditionValue={setNewFieldConditionValue}
-        newFieldUiMetadata={newFieldUiMetadata}
-        setNewFieldUiMetadata={setNewFieldUiMetadata}
-        newFieldOptions={newFieldOptions}
-        setNewFieldOptions={setNewFieldOptions}
-        newFieldType={newFieldType}
-        setNewFieldType={setNewFieldType}
-        newFieldRequired={newFieldRequired}
-        setNewFieldRequired={setNewFieldRequired}
-        newFieldSection={newFieldSection}
-        setNewFieldSection={setNewFieldSection}
-        formSectionsList={formSectionsList}
-        allFormFields={allFormFields}
-        editingFieldId={editingFieldId}
-        handleAddFieldToRole={handleAddFieldToRole}
-        isAddingField={isAddingField}
-      />
+        {showAddFieldModal && (
+          <AddFieldModal
+            visible={showAddFieldModal}
+            onClose={() => { setShowAddFieldModal(false); resetFieldEditor() }}
+            selectedFormRole={selectedFormRole}
+            newFieldKey={newFieldId}
+            setNewFieldKey={setNewFieldId}
+            newFieldLabelTranslations={newFieldLabelTranslations}
+            setNewFieldLabelTranslations={setNewFieldLabelTranslations}
+            newFieldSubtitleTranslations={newFieldSubtitleTranslations}
+            setNewFieldSubtitleTranslations={setNewFieldSubtitleTranslations}
+            newFieldSubtitleRich={newFieldSubtitleRich}
+            setNewFieldSubtitleRich={setNewFieldSubtitleRich}
+            newFieldConditionField={newFieldConditionField}
+            setNewFieldConditionField={setNewFieldConditionField}
+            newFieldConditionOperator={newFieldConditionOperator}
+            setNewFieldConditionOperator={setNewFieldConditionOperator}
+            newFieldConditionValue={newFieldConditionValue}
+            setNewFieldConditionValue={setNewFieldConditionValue}
+            newFieldUiMetadata={newFieldUiMetadata}
+            setNewFieldUiMetadata={setNewFieldUiMetadata}
+            newFieldOptions={newFieldOptions}
+            setNewFieldOptions={setNewFieldOptions}
+            newFieldType={newFieldType}
+            setNewFieldType={setNewFieldType}
+            newFieldRequired={newFieldRequired}
+            setNewFieldRequired={setNewFieldRequired}
+            newFieldSection={newFieldSection}
+            setNewFieldSection={setNewFieldSection}
+            formSectionsList={formSectionsList}
+            allFormFields={allFormFields}
+            editingFieldId={editingFieldId}
+            handleAddFieldToRole={handleAddFieldToRole}
+            isAddingField={isAddingField}
+          />
+        )}
 
-      {/* Secret Invite Links Modal */}
-      <SecretInviteModal
-        visible={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        newInviteRole={newInviteRole}
-        setNewInviteRole={setNewInviteRole}
-        newInviteLabel={newInviteLabel}
-        setNewInviteLabel={setNewInviteLabel}
-        newInviteMaxUses={newInviteMaxUses}
-        setNewInviteMaxUses={setNewInviteMaxUses}
-        newInviteExpiresAt={newInviteExpiresAt}
-        setNewInviteExpiresAt={setNewInviteExpiresAt}
-        handleCreateInviteCode={handleCreateInviteCode}
-        isCreatingInvite={isCreatingInvite}
-        inviteCodesLoading={isInviteLoading}
-        inviteCodesList={inviteCodesList}
-        copiedCodeId={copiedCodeId}
-        copyInviteLink={copyInviteLink}
-        handleToggleInviteActive={handleToggleInviteActive}
-        handleDeleteInvite={handleDeleteInvite}
-      />
+        {showInviteModal && (
+          <SecretInviteModal
+            visible={showInviteModal}
+            onClose={() => setShowInviteModal(false)}
+            newInviteRole={newInviteRole}
+            setNewInviteRole={setNewInviteRole}
+            newInviteLabel={newInviteLabel}
+            setNewInviteLabel={setNewInviteLabel}
+            newInviteMaxUses={newInviteMaxUses}
+            setNewInviteMaxUses={setNewInviteMaxUses}
+            newInviteExpiresAt={newInviteExpiresAt}
+            setNewInviteExpiresAt={setNewInviteExpiresAt}
+            handleCreateInviteCode={handleCreateInviteCode}
+            isCreatingInvite={isCreatingInvite}
+            inviteCodesLoading={isInviteLoading}
+            inviteCodesList={inviteCodesList}
+            copiedCodeId={copiedCodeId}
+            copyInviteLink={copyInviteLink}
+            handleToggleInviteActive={handleToggleInviteActive}
+            handleDeleteInvite={handleDeleteInvite}
+          />
+        )}
+      </Suspense>
     </>
   )
 }
@@ -1660,7 +1560,7 @@ const mockApplications: Application[] = [
       country: 'United Kingdom',
       university: 'University of London',
       major: 'Analytical Systems',
-      year: '2025',
+      year: '2026',
       tshirt: 'S',
       diet: 'Gluten-Free',
     },

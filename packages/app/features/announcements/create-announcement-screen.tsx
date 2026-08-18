@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native'
+import { useSearchParams } from 'solito/navigation'
 import { useAnnouncements } from 'app/hooks/use-announcements'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
@@ -17,25 +18,116 @@ import { pickMedia, SelectedMedia } from './pick-media'
 import { AnnouncementMedia } from 'app/components/announcement-media'
 import { PillButton } from 'app/components/pill-button'
 
-const AVAILABLE_ROLES = [
-  { id: 'all', label: 'Everyone (@ALL)' },
-  { id: 'hacker', label: 'Hackers (@HACKER)' },
-  { id: 'mentor', label: 'Mentors (@MENTOR)' },
-  { id: 'judge', label: 'Judges (@JUDGE)' },
-  { id: 'sponsor', label: 'Sponsors (@SPONSOR)' },
-  { id: 'organizer', label: 'Organizers (@ORGANIZER)' },
-]
+import { useTranslation } from 'app/i18n'
+import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 
 export function CreateAnnouncementScreen() {
-  const { createAnnouncement } = useAnnouncements()
+  const { t } = useTranslation()
+  const params = useSearchParams()
+  const editId = params?.get('editId') || null
+  const { createAnnouncement, updateAnnouncement, announcements } = useAnnouncements()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
   const { navigateTo } = useSmartNavigate()
 
+  const availableRoles = React.useMemo(() => [
+    { id: 'all', label: t('announcements.audienceEveryone') },
+    { id: 'hacker', label: t('announcements.audienceHackers') },
+    { id: 'mentor', label: t('announcements.audienceMentors') },
+    { id: 'judge', label: t('announcements.audienceJudges') },
+    { id: 'sponsor', label: t('announcements.audienceSponsors') },
+    { id: 'organizer', label: t('announcements.audienceOrganizers') },
+  ], [t])
+
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
+  const [titleEs, setTitleEs] = useState('')
+  const [messageEs, setMessageEs] = useState('')
+  const [activeLangTab, setActiveLangTab] = useState<'en' | 'es'>('en')
   const [selectedRoles, setSelectedRoles] = useState<string[]>(['all'])
   const [selectedMedia, setSelectedMedia] = useState<SelectedMedia | null>(null)
-  
+  const [existingMediaUrl, setExistingMediaUrl] = useState<string | null>(null)
+  const [existingMediaType, setExistingMediaType] = useState<'image' | 'video' | null>(null)
+  const [removeExistingMedia, setRemoveExistingMedia] = useState(false)
+  const isEditing = Boolean(editId)
+  const priorEditIdRef = React.useRef<string | null>(null)
+
+  const extractTranslationValue = React.useCallback((value: any, lang: 'en' | 'es') => {
+    if (!value) return ''
+    if (typeof value === 'string') {
+      if (value.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(value)
+          return typeof parsed?.[lang] === 'string' ? parsed[lang] : ''
+        } catch {
+          return lang === 'en' ? value : ''
+        }
+      }
+      return lang === 'en' ? value : ''
+    }
+    if (typeof value === 'object') {
+      if (value[lang] && typeof value[lang] === 'string') return value[lang]
+    }
+    return ''
+  }, [])
+
+  const hydrateAnnouncementForm = React.useCallback((target: any) => {
+    if (!target) return
+    if (priorEditIdRef.current === editId) return
+
+    setTitle(extractTranslationValue(target.title, 'en'))
+    setMessage(extractTranslationValue(target.message, 'en'))
+    setTitleEs(extractTranslationValue(target.title, 'es'))
+    setMessageEs(extractTranslationValue(target.message, 'es'))
+    setSelectedRoles(Array.isArray(target.target_roles) && target.target_roles.length > 0 ? target.target_roles : ['all'])
+    setExistingMediaUrl(target.media_url || null)
+    setExistingMediaType(target.media_type === 'video' ? 'video' : target.media_type === 'image' ? 'image' : null)
+    setRemoveExistingMedia(false)
+    setSelectedMedia(null)
+    priorEditIdRef.current = editId
+  }, [editId, extractTranslationValue])
+
+  useEffect(() => {
+    if (!editId) {
+      priorEditIdRef.current = null
+      return
+    }
+
+    if (priorEditIdRef.current === editId) {
+      return
+    }
+
+    const target = announcements.find(item => item.id === editId)
+    if (target) {
+      hydrateAnnouncementForm(target)
+      return
+    }
+
+    if (!isSupabaseConfigured) {
+      return
+    }
+
+    let cancelled = false
+    const loadAnnouncement = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('announcements')
+          .select('*')
+          .eq('id', editId)
+          .limit(1)
+
+        if (cancelled || error || !data || data.length === 0) return
+        hydrateAnnouncementForm(data[0])
+      } catch (err) {
+        console.warn('Failed to load announcement for edit:', err)
+      }
+    }
+
+    loadAnnouncement()
+    return () => {
+      cancelled = true
+    }
+  }, [editId, announcements, hydrateAnnouncementForm])
+
   // Notification options
   const [sendPushNotification, setSendPushNotification] = useState(true)
   const [sendEmailNotification, setSendEmailNotification] = useState(true)
@@ -76,11 +168,13 @@ export function CreateAnnouncementScreen() {
   }
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
+    const primaryTitle = title.trim() || titleEs.trim()
+    const primaryMessage = message.trim() || messageEs.trim()
+    if (!primaryTitle) {
       setErrorMsg('Please enter an announcement title.')
       return
     }
-    if (!message.trim()) {
+    if (!primaryMessage) {
       setErrorMsg('Please enter the announcement body message.')
       return
     }
@@ -88,25 +182,53 @@ export function CreateAnnouncementScreen() {
     setErrorMsg(null)
     setSubmitting(true)
 
-    let notificationChannel: 'both' | 'push' | 'email' | 'none' = 'none'
-    if (sendPushNotification && sendEmailNotification) {
-      notificationChannel = 'both'
-    } else if (sendPushNotification) {
-      notificationChannel = 'push'
-    } else if (sendEmailNotification) {
-      notificationChannel = 'email'
+    let notificationChannel: 'both' | 'push' | 'email' | 'none' = isEditing ? 'none' : 'none'
+    if (!isEditing) {
+      if (sendPushNotification && sendEmailNotification) {
+        notificationChannel = 'both'
+      } else if (sendPushNotification) {
+        notificationChannel = 'push'
+      } else if (sendEmailNotification) {
+        notificationChannel = 'email'
+      }
     }
 
     try {
-      await createAnnouncement({
-        title: title.trim(),
-        message: message.trim(),
-        targetRoles: selectedRoles,
-        mediaFile: selectedMedia,
-        mediaType: selectedMedia?.mediaType || 'image',
-        notificationChannel,
-        sendNotifications: notificationChannel !== 'none',
-      })
+      const mediaPayload = selectedMedia ? {
+        ...selectedMedia,
+        uri: selectedMedia.uri,
+        name: selectedMedia.name,
+        type: selectedMedia.type,
+        file: selectedMedia.file,
+      } : undefined
+
+      if (isEditing && editId) {
+        await updateAnnouncement(editId, {
+          title: title.trim() || titleEs.trim(),
+          message: message.trim() || messageEs.trim(),
+          title_es: titleEs.trim() || undefined,
+          message_es: messageEs.trim() || undefined,
+          targetRoles: selectedRoles,
+          mediaFile: mediaPayload,
+          mediaType: selectedMedia?.mediaType || existingMediaType || 'image',
+          notificationChannel,
+          sendNotifications: notificationChannel !== 'none',
+          removeMedia: removeExistingMedia && !selectedMedia,
+          existingMediaUrl: removeExistingMedia ? null : existingMediaUrl,
+        })
+      } else {
+        await createAnnouncement({
+          title: title.trim() || titleEs.trim(),
+          message: message.trim() || messageEs.trim(),
+          title_es: titleEs.trim() || undefined,
+          message_es: messageEs.trim() || undefined,
+          targetRoles: selectedRoles,
+          mediaFile: mediaPayload,
+          mediaType: selectedMedia?.mediaType || 'image',
+          notificationChannel,
+          sendNotifications: notificationChannel !== 'none',
+        })
+      }
 
       navigateTo('/announcements')
     } catch (err: any) {
@@ -129,12 +251,12 @@ export function CreateAnnouncementScreen() {
       <View style={styles.contentContainer}>
         <View style={styles.unauthorizedCard}>
           <Text style={styles.unauthorizedIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Access Restricted</Text>
+          <Text style={styles.unauthorizedTitle}>{t('announcements.accessRestricted')}</Text>
           <Text style={styles.unauthorizedText}>
-            You do not have permission to post announcements.
+            {t('announcements.accessRestrictedDesc')}
           </Text>
           <Pressable onPress={() => navigateTo('/announcements')} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Return to Feed</Text>
+            <Text style={styles.backButtonText}>{t('announcements.backToAnnouncements')}</Text>
           </Pressable>
         </View>
       </View>
@@ -148,13 +270,13 @@ export function CreateAnnouncementScreen() {
         <View style={styles.headerRow}>
           <Pressable onPress={() => navigateTo('/announcements')} style={styles.backNavButton}>
             <Text style={styles.backNavIcon}>←</Text>
-            <Text style={styles.backNavText}>Back to Feed</Text>
+            <Text style={styles.backNavText}>{t('announcements.backToAnnouncements')}</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.heading}>New Announcement</Text>
+        <Text style={styles.heading}>{isEditing ? t('announcements.editAnnouncement') : t('announcements.createAnnouncement')}</Text>
         <Text style={styles.subheading}>
-          Create an official post. It will appear on the timeline feed and notify tagged roles.
+          {isEditing ? t('announcements.editAnnouncementSubtitle') : t('announcements.createAnnouncementSubtitle')}
         </Text>
 
         <View style={styles.sectionDivider} />
@@ -165,42 +287,90 @@ export function CreateAnnouncementScreen() {
           </View>
         )}
 
+        {/* Language Tabs */}
+        <View style={styles.langTabsRow}>
+          <Pressable
+            onPress={() => setActiveLangTab('en')}
+            style={[
+              styles.langTabButton,
+              activeLangTab === 'en' && styles.langTabButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.langTabButtonText,
+                activeLangTab === 'en' && styles.langTabButtonTextActive,
+              ]}
+            >
+              {t('announcements.englishTab')}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveLangTab('es')}
+            style={[
+              styles.langTabButton,
+              activeLangTab === 'es' && styles.langTabButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.langTabButtonText,
+                activeLangTab === 'es' && styles.langTabButtonTextActive,
+              ]}
+            >
+              {t('announcements.spanishTab')}
+            </Text>
+          </Pressable>
+        </View>
+
+        {activeLangTab === 'es' && (
+          <View style={styles.translationHintBox}>
+            <Text style={styles.translationHintText}>
+              💡 {t('announcements.translationHint')}
+            </Text>
+          </View>
+        )}
+
         {/* Title Field */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Announcement Title *</Text>
+          <Text style={styles.fieldLabel}>
+            {activeLangTab === 'en' ? t('announcements.postTitle') : t('announcements.postTitleEs')} *
+          </Text>
           <View style={styles.inputShell}>
             <TextInput
               style={styles.inputText}
-              placeholder="e.g. 🚀 HackMTY Opening Ceremony Starting Soon!"
+              placeholder={activeLangTab === 'en' ? t('announcements.postTitlePlaceholder') : t('announcements.postTitleEsPlaceholder')}
               placeholderTextColor="#908098"
-              value={title}
-              onChangeText={setTitle}
+              value={activeLangTab === 'en' ? title : titleEs}
+              onChangeText={activeLangTab === 'en' ? setTitle : setTitleEs}
             />
           </View>
         </View>
 
         {/* Message / Body Field */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Announcement Message *</Text>
+          <Text style={styles.fieldLabel}>
+            {activeLangTab === 'en' ? t('announcements.postMessage') : t('announcements.postMessageEs')} *
+          </Text>
           <View style={[styles.inputShell, styles.textAreaShell]}>
             <TextInput
               style={[styles.inputText, styles.textAreaText]}
-              placeholder="Enter announcement message details..."
+              placeholder={activeLangTab === 'en' ? t('announcements.postMessagePlaceholder') : t('announcements.postMessageEsPlaceholder')}
               placeholderTextColor="#908098"
               multiline
               numberOfLines={6}
               textAlignVertical="top"
-              value={message}
-              onChangeText={setMessage}
+              value={activeLangTab === 'en' ? message : messageEs}
+              onChangeText={activeLangTab === 'en' ? setMessage : setMessageEs}
             />
           </View>
         </View>
 
         {/* Role Tagging Selector */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Tag Specific Roles (Recipient Target)</Text>
+          <Text style={styles.fieldLabel}>{t('announcements.targetAudience')}</Text>
           <View style={styles.roleChipsWrapContainer}>
-            {AVAILABLE_ROLES.map(r => {
+            {availableRoles.map(r => {
               const isSelected = selectedRoles.includes(r.id)
               return (
                 <Pressable
@@ -223,19 +393,24 @@ export function CreateAnnouncementScreen() {
 
         {/* Media Upload Container */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Photo / Video Attachment (Optional)</Text>
-          {selectedMedia ? (
+          <Text style={styles.fieldLabel}>{t('announcements.mediaAttachment')}</Text>
+          {selectedMedia || existingMediaUrl ? (
             <View style={styles.mediaPreviewContainer}>
               <AnnouncementMedia
-                url={selectedMedia.uri}
-                mediaType={selectedMedia.mediaType}
+                url={selectedMedia?.uri || existingMediaUrl!}
+                mediaType={selectedMedia?.mediaType || existingMediaType || 'image'}
                 style={styles.mediaPreviewImage}
                 resizeMode="cover"
                 controls={true}
                 autoPlay={false}
                 muted={true}
               />
-              <Pressable onPress={() => setSelectedMedia(null)} style={styles.removeMediaButton}>
+              <Pressable onPress={() => {
+                setSelectedMedia(null)
+                setRemoveExistingMedia(true)
+                setExistingMediaUrl(null)
+                setExistingMediaType(null)
+              }} style={styles.removeMediaButton}>
                 <Text style={styles.removeMediaText}>✕ Remove Attachment</Text>
               </Pressable>
             </View>
@@ -248,55 +423,48 @@ export function CreateAnnouncementScreen() {
               ]}
             >
               <Text style={styles.uploadIcon}>📷</Text>
-              <Text style={styles.uploadTitle}>Upload Image or Video</Text>
+              <Text style={styles.uploadTitle}>{t('announcements.mediaAttachment')}</Text>
               <Text style={styles.uploadSubtext}>JPG, PNG, GIF, WEBP, or MP4 video</Text>
             </Pressable>
           )}
         </View>
 
-        {/* Notification Channels Options (Custom Theme Purple Checkboxes) */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Notification Channels</Text>
-          <Text style={styles.fieldHelper}>
-            Select which notification channels to send to users with tagged roles.
-          </Text>
+        {!isEditing && (
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>{t('announcements.notificationOptions')}</Text>
+            <Text style={styles.fieldHelper}>
+              Select which notification channels to send to users with tagged roles.
+            </Text>
 
-          <View style={styles.notificationsOptionsBox}>
-            {/* Push Notifications Option */}
-            <Pressable
-              onPress={() => setSendPushNotification(!sendPushNotification)}
-              style={styles.checkboxRow}
-            >
-              <View style={[styles.checkboxSquare, sendPushNotification && styles.checkboxSquareChecked]}>
-                {sendPushNotification && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <View style={styles.checkboxLabelGroup}>
-                <Text style={styles.checkboxTitle}>📱 Push Notifications</Text>
-                <Text style={styles.checkboxSubtext}>
-                  Send instant mobile and web push alerts to users with tagged roles.
-                </Text>
-              </View>
-            </Pressable>
+            <View style={styles.notificationsOptionsBox}>
+              <Pressable
+                onPress={() => setSendPushNotification(!sendPushNotification)}
+                style={styles.checkboxRow}
+              >
+                <View style={[styles.checkboxSquare, sendPushNotification && styles.checkboxSquareChecked]}>
+                  {sendPushNotification && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <View style={styles.checkboxLabelGroup}>
+                  <Text style={styles.checkboxTitle}>📱 {t('announcements.sendPush')}</Text>
+                </View>
+              </Pressable>
 
-            <View style={styles.optionDivider} />
+              <View style={styles.optionDivider} />
 
-            {/* Email Notifications Option */}
-            <Pressable
-              onPress={() => setSendEmailNotification(!sendEmailNotification)}
-              style={styles.checkboxRow}
-            >
-              <View style={[styles.checkboxSquare, sendEmailNotification && styles.checkboxSquareChecked]}>
-                {sendEmailNotification && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <View style={styles.checkboxLabelGroup}>
-                <Text style={styles.checkboxTitle}>📧 Email Notifications</Text>
-                <Text style={styles.checkboxSubtext}>
-                  Send formatted Mandrill HTML email updates to users with tagged roles.
-                </Text>
-              </View>
-            </Pressable>
+              <Pressable
+                onPress={() => setSendEmailNotification(!sendEmailNotification)}
+                style={styles.checkboxRow}
+              >
+                <View style={[styles.checkboxSquare, sendEmailNotification && styles.checkboxSquareChecked]}>
+                  {sendEmailNotification && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <View style={styles.checkboxLabelGroup}>
+                  <Text style={styles.checkboxTitle}>📧 {t('announcements.sendEmail')}</Text>
+                </View>
+              </Pressable>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Form Action Buttons */}
         <View style={styles.actionButtonsRow}>
@@ -305,12 +473,12 @@ export function CreateAnnouncementScreen() {
             disabled={submitting}
             style={styles.cancelButton}
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
           </Pressable>
 
           <View style={styles.submitButtonContainer}>
             <PillButton
-              title="🚀 Publish Announcement"
+              title={`🚀 ${isEditing ? t('announcements.saveChanges') : t('announcements.publish')}`}
               onPress={handleSubmit}
               isLoading={submitting}
               disabled={submitting}
@@ -426,6 +594,53 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '600',
     fontFamily: 'Montserrat',
+  },
+  langTabsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 4,
+    width: '100%',
+  },
+  langTabButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: 'rgba(90, 0, 97, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  langTabButtonActive: {
+    backgroundColor: '#5a0061',
+    borderColor: '#5a0061',
+  },
+  langTabButtonText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#5b4d61',
+    fontFamily: 'Montserrat',
+  },
+  langTabButtonTextActive: {
+    color: '#ffffff',
+  },
+  translationHintBox: {
+    backgroundColor: '#f8f4fb',
+    borderWidth: 1,
+    borderColor: 'rgba(90, 0, 97, 0.15)',
+    borderRadius: 12,
+    padding: 12,
+    width: '100%',
+  },
+  translationHintText: {
+    color: '#5a0061',
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Montserrat',
+    lineHeight: 18,
   },
   fieldContainer: {
     width: '100%',

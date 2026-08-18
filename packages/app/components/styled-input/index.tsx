@@ -1,6 +1,7 @@
 import { TextInput, View, Text, Pressable, TextInputProps, TextStyle, ViewStyle } from 'react-native'
 import { useState } from 'react'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
+import { useTranslation } from 'app/i18n'
 
 type StyledInputProps = Omit<TextInputProps, 'style'> & {
   label: string
@@ -14,6 +15,7 @@ type StyledInputProps = Omit<TextInputProps, 'style'> & {
 }
 
 export function StyledInput({ label, textContentType, additionalStyle = {}, error, subtitle, required = false, height, variant = 'default', ...props }: StyledInputProps) {
+  const { t } = useTranslation()
   let isPassword = textContentType === 'password'
   const isGlass = variant === 'glass'
   const [showPassword, setShowPassword] = useState(false)
@@ -48,7 +50,7 @@ export function StyledInput({ label, textContentType, additionalStyle = {}, erro
           style={formFieldStyles.togglePassword}
         >
           <Text style={isGlass ? formFieldStyles.togglePasswordTextGlass : formFieldStyles.togglePasswordText}>
-            {showPassword ? 'Hide' : 'Show'}
+            {showPassword ? t('common.hide') : t('common.show')}
           </Text>
         </Pressable>
       )}

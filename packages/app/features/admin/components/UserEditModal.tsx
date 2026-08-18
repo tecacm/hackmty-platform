@@ -1,6 +1,8 @@
 import * as React from 'react'
 import { View, Text, Modal, ScrollView, TextInput, Pressable, Platform } from 'react-native'
 import { PillButton } from '../../../components/pill-button'
+import { useTranslation } from 'app/i18n'
+import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 
 interface UserEditModalProps {
   visible: boolean
@@ -35,6 +37,7 @@ export function UserEditModal({
   isSavingUser,
   allAvailableSystemRoles,
 }: UserEditModalProps) {
+  const { t, locale } = useTranslation()
   if (!editingUser) return null
 
   return (
@@ -67,7 +70,7 @@ export function UserEditModal({
           {/* Modal Header */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#0f172a', letterSpacing: -0.3 }}>Edit User Profile</Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#0f172a', letterSpacing: -0.3 }}>{t('admin.editUserTitle')}</Text>
               <Text style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>ID: {editingUser.id}</Text>
             </View>
             <Pressable onPress={onClose} style={{ padding: 6 }}>
@@ -79,7 +82,7 @@ export function UserEditModal({
             {/* First & Last Name Inputs */}
             <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
               <View style={{ flex: 1, minWidth: 160, gap: 6 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>FIRST NAME</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>{t('admin.firstNameLabel')}</Text>
                 <TextInput
                   style={{
                     backgroundColor: '#f8fafc',
@@ -93,12 +96,12 @@ export function UserEditModal({
                   }}
                   value={editFirstName}
                   onChangeText={setEditFirstName}
-                  placeholder="First Name"
+                  placeholder={t('admin.firstNameLabel')}
                 />
               </View>
 
               <View style={{ flex: 1, minWidth: 160, gap: 6 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>LAST NAME</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>{t('admin.lastNameLabel')}</Text>
                 <TextInput
                   style={{
                     backgroundColor: '#f8fafc',
@@ -112,14 +115,14 @@ export function UserEditModal({
                   }}
                   value={editLastName}
                   onChangeText={setEditLastName}
-                  placeholder="Last Name"
+                  placeholder={t('admin.lastNameLabel')}
                 />
               </View>
             </View>
 
             {/* Email Address */}
             <View style={{ gap: 6 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>EMAIL ADDRESS</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>{t('admin.emailLabel')}</Text>
               <TextInput
                 style={{
                   backgroundColor: '#f8fafc',
@@ -141,7 +144,7 @@ export function UserEditModal({
 
             {/* Multi-Select Roles */}
             <View style={{ gap: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>SYSTEM ROLES (MULTIPLE)</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>{t('admin.systemRolesLabel')}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {allAvailableSystemRoles.map(role => {
                   const isSelected = editRoles.includes(role)
@@ -159,7 +162,7 @@ export function UserEditModal({
                       }}
                     >
                       <Text style={{ fontSize: 12, fontWeight: '800', color: isSelected ? '#ffffff' : '#334155' }}>
-                        {isSelected ? `✓ ${role.toUpperCase()}` : role.toUpperCase()}
+                        {isSelected ? `✓ ${getApplicantRoleLabel(role, locale).toUpperCase()}` : getApplicantRoleLabel(role, locale).toUpperCase()}
                       </Text>
                     </Pressable>
                   )
@@ -170,9 +173,9 @@ export function UserEditModal({
 
           {/* Action Buttons */}
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, borderTopWidth: 1, borderColor: '#f1f5f9', paddingTop: 14 }}>
-            <PillButton title="Cancel" onPress={onClose} variant="outline-primary" additionalStyle={{ height: 42, width: 'auto', paddingHorizontal: 18 }} />
+            <PillButton title={t('admin.cancel')} onPress={onClose} variant="outline-primary" additionalStyle={{ height: 42, width: 'auto', paddingHorizontal: 18 }} />
             <PillButton
-              title="Save Changes"
+              title={t('admin.saveChanges')}
               onPress={handleSaveUserChanges}
               isLoading={isSavingUser}
               additionalStyle={{ height: 42, width: 'auto', minWidth: 140, paddingHorizontal: 22, backgroundColor: '#6d28d9' }}

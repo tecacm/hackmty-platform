@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, TextStyle, ViewStyle } from 'react-native'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
+import { useTranslation } from 'app/i18n'
 
 type StyledFileInputProps = {
   label: string
@@ -97,6 +98,8 @@ export function StyledFileInput({
     }
   }
 
+  const { t } = useTranslation()
+
   return (
     <View style={formFieldStyles.container}>
       <Text style={[formFieldStyles.label, additionalStyle]}>
@@ -116,9 +119,9 @@ export function StyledFileInput({
         ]}
       >
         <Text style={[styles.triggerText, !value && styles.placeholderText, isDisabled && { color: '#a4a7ae' }]}>
-          {isUploading ? 'Uploading file...' : getDisplayLabel(value, placeholder)}
+          {isUploading ? t('common.uploadingFile') : getDisplayLabel(value, placeholder)}
         </Text>
-        <Text style={[styles.actionText, isDisabled && { color: '#a4a7ae' }]}>{isUploading ? 'Uploading...' : 'Browse'}</Text>
+        <Text style={[styles.actionText, isDisabled && { color: '#a4a7ae' }]}>{isUploading ? t('common.uploading') : t('common.browse')}</Text>
       </Pressable>
       <input
         ref={inputRef}

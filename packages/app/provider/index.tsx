@@ -5,6 +5,8 @@ import { SafeArea } from 'app/provider/safe-area'
 import { NavigationProvider } from './navigation'
 import { usePushNotifications } from 'app/hooks/use-push-notifications'
 
+import { I18nProvider } from 'app/i18n'
+
 export function Provider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
@@ -18,8 +20,10 @@ export function Provider({ children }: { children: React.ReactNode }) {
   usePushNotifications()
 
   return (
-    <SafeArea>
-      <NavigationProvider>{children as any}</NavigationProvider>
-    </SafeArea>
+    <I18nProvider>
+      <SafeArea>
+        <NavigationProvider>{children as any}</NavigationProvider>
+      </SafeArea>
+    </I18nProvider>
   )
 }
