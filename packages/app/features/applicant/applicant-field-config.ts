@@ -225,8 +225,29 @@ export const getApplicationTypes = (): ApplicationTypeConfig[] => applicationTyp
 export const getApplicantRoleConfig = (role: string | ApplicantRole): ApplicationTypeConfig | undefined =>
   applicationTypeMap.get(role as string)
 
-export const getApplicantRoleLabel = (role: string | ApplicantRole): string =>
-  getApplicantRoleConfig(role)?.label ?? String(role)
+const roleTranslations: Record<string, { en: string; es: string }> = {
+  hacker: { en: 'Hacker', es: 'Hacker' },
+  volunteer: { en: 'Volunteer', es: 'Voluntario' },
+  mentor: { en: 'Mentor', es: 'Mentor' },
+  sponsor: { en: 'Sponsor', es: 'Patrocinador' },
+  judge: { en: 'Judge', es: 'Juez' },
+  admin: { en: 'Admin', es: 'Administrador' },
+  organizer: { en: 'Organizer', es: 'Organizador' },
+  lead: { en: 'Lead', es: 'Líder' },
+  user: { en: 'User', es: 'Usuario' },
+}
+
+export const getApplicantRoleLabel = (role: string | ApplicantRole, lang: string = 'en'): string => {
+  const normalized = String(role).toLowerCase()
+  if (roleTranslations[normalized]) {
+    return roleTranslations[normalized][lang === 'es' ? 'es' : 'en'] || roleTranslations[normalized].en
+  }
+  const config = getApplicantRoleConfig(role)
+  if (config && typeof (config as any).label === 'object' && (config as any).label !== null) {
+    return (config as any).label[lang] || (config as any).label.en || String((config as any).label)
+  }
+  return config?.label ?? String(role)
+}
 
 // Discover all available roles from JSON
 export const getAvailableRoles = (): ApplicantRole[] => Array.from(applicationTypeMap.keys()) as ApplicantRole[]

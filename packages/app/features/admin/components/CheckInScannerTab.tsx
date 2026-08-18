@@ -30,6 +30,7 @@ import {
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { notifyUserOnCheckIn } from 'app/services/notification-service'
 import { AdminPaginationBar } from './AdminPaginationBar'
+import { useTranslation } from 'app/i18n'
 
 export interface CheckInHistoryItem {
   id: string
@@ -123,6 +124,7 @@ interface ScanResult {
 }
 
 export function CheckInScannerTab() {
+  const { t, locale } = useTranslation()
   const { role } = useUserPermissions()
   const canManageStations = ['admin', 'organizer'].includes((role || '').toLowerCase())
 

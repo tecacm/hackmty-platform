@@ -1,5 +1,7 @@
 import * as React from 'react'
 import { View, Text, Pressable, ActivityIndicator, ScrollView, TextInput, Modal, Platform, useWindowDimensions, Animated, Easing } from 'react-native'
+import { useTranslation } from 'app/i18n'
+import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 
 interface FormField {
   relId: string
@@ -205,6 +207,7 @@ function AddFromRegistryModal({ visible, onClose, allFormFields, formSectionsLis
   allFormFields: any[]; formSectionsList: any[]; formFieldsList: FormField[]
   onAttach: (fieldId: string, sectionOverride: string | null) => void
 }) {
+  const { t } = useTranslation()
   const [search, setSearch] = React.useState('')
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null)
   const [sectionOverride, setSectionOverride] = React.useState('')
@@ -260,12 +263,12 @@ function AddFromRegistryModal({ visible, onClose, allFormFields, formSectionsLis
                   </Pressable>
                 )
               })}
-              {filtered.length === 0 && <Text style={{ textAlign: 'center', color: '#aaa', fontStyle: 'italic', paddingVertical: 20 }}>No fields found</Text>}
+              {filtered.length === 0 && <Text style={{ textAlign: 'center', color: '#aaa', fontStyle: 'italic', paddingVertical: 20 }}>{t('admin.noFieldsFound')}</Text>}
             </View>
           </ScrollView>
           {selectedFieldId && (
             <View style={{ gap: 6 }}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#888', letterSpacing: 0.4 }}>SECTION OVERRIDE (optional)</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#888', letterSpacing: 0.4 }}>{t('admin.sectionOverride')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   <Pressable onPress={() => setSectionOverride('')} style={({ pressed }) => ({ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: !sectionOverride ? '#5a0061' : '#e2e8f0', backgroundColor: !sectionOverride ? 'rgba(90,0,97,0.08)' : pressed ? '#f8fafc' : '#fff' })}>
@@ -283,11 +286,11 @@ function AddFromRegistryModal({ visible, onClose, allFormFields, formSectionsLis
           )}
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Pressable onPress={onClose} style={({ pressed }) => ({ flex: 1, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.2)', backgroundColor: pressed ? '#f5f5f5' : 'transparent', alignItems: 'center', justifyContent: 'center' })}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#666' }}>Cancel</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#666' }}>{t('admin.cancel')}</Text>
             </Pressable>
             <Pressable onPress={doAttach} disabled={!selectedFieldId} style={({ pressed }) => ({ flex: 2, height: 44, borderRadius: 12, backgroundColor: !selectedFieldId ? '#e2e8f0' : pressed ? '#3d0042' : '#5a0061', alignItems: 'center', justifyContent: 'center' })}>
               <Text style={{ fontSize: 14, fontWeight: '800', color: !selectedFieldId ? '#aaa' : '#fff' }}>
-                Attach Field{sectionOverride ? ` → ${sectionOverride}` : ''}
+                {t('admin.attachField')}{sectionOverride ? ` → ${sectionOverride}` : ''}
               </Text>
             </Pressable>
           </View>
@@ -304,6 +307,7 @@ export function FormBuilderTab({
   formDraftCount, applyFormDraft, discardFormDraft, formDraftSaving,
   handleAddSection, rolesList = [], styles,
 }: FormBuilderTabProps) {
+  const { t, locale } = useTranslation()
   const { width } = useWindowDimensions()
   const isWide = width >= 700
   const isSmallScreen = width > 0 && width < 768
@@ -314,8 +318,11 @@ export function FormBuilderTab({
   const [newSectionTranslations, setNewSectionTranslations] = React.useState([{ key: 'en', value: '' }])
 
   const defaultRoles = [
-    { id: 'hacker', label: 'Hacker' }, { id: 'volunteer', label: 'Volunteer' },
-    { id: 'mentor', label: 'Mentor' }, { id: 'judge', label: 'Judge' }, { id: 'sponsor', label: 'Sponsor' },
+    { id: 'hacker', label: getApplicantRoleLabel('hacker', locale) },
+    { id: 'volunteer', label: getApplicantRoleLabel('volunteer', locale) },
+    { id: 'mentor', label: getApplicantRoleLabel('mentor', locale) },
+    { id: 'judge', label: getApplicantRoleLabel('judge', locale) },
+    { id: 'sponsor', label: getApplicantRoleLabel('sponsor', locale) },
   ]
   const safeRole = selectedFormRole || 'hacker'
   // Keep the known roles while also including every role fetched from Supabase.
@@ -370,10 +377,10 @@ export function FormBuilderTab({
       {/* Header toolbar */}
       <View style={{ position: 'relative', zIndex: 50, elevation: 50, backgroundColor: '#ffffff', borderRadius: 18, padding: 18, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: 14 }}>
         <View style={{ flex: isSmallScreen ? undefined : 1, width: isSmallScreen ? '100%' : 'auto' }}>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: '#22002c', letterSpacing: -0.3 }}>Form Builder</Text>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: '#22002c', letterSpacing: -0.3 }}>{t('admin.formBuilderTitle')}</Text>
           <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
-            Editing <Text style={{ fontWeight: '800', color: '#5a0061' }}>{currentRoleLabel.toUpperCase()}</Text>
-            {' · '}{formFieldsList.length} field{formFieldsList.length !== 1 ? 's' : ''}{allSectionIds.length > 0 ? ` · ${allSectionIds.length} section${allSectionIds.length !== 1 ? 's' : ''}` : ''}
+            {t('admin.formBuilderEditing')} <Text style={{ fontWeight: '800', color: '#5a0061' }}>{currentRoleLabel.toUpperCase()}</Text>
+            {' · '}{formFieldsList.length} {formFieldsList.length !== 1 ? t('admin.formBuilderFieldsPlural') : t('admin.formBuilderFields')}{allSectionIds.length > 0 ? ` · ${allSectionIds.length} ${allSectionIds.length !== 1 ? t('admin.formBuilderSectionsPlural') : t('admin.formBuilderSection')}` : ''}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center', width: isSmallScreen ? '100%' : 'auto' }}>
@@ -393,19 +400,19 @@ export function FormBuilderTab({
           </View>
           <Pressable onPress={() => setShowRegistryModal(true)}
             style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : '#fff', flexDirection: 'row', alignItems: 'center' })}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>Add Existing</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>{t('admin.addExisting')}</Text>
           </Pressable>
           <Pressable onPress={() => setShowAddSectionModal(true)}
             style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : '#fff', justifyContent: 'center' })}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>+ Section</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>{t('admin.addSection')}</Text>
           </Pressable>
           <Pressable onPress={() => setShowAddFieldModal(true)}
             style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', flexDirection: 'row', alignItems: 'center' })}>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>+ New Field</Text>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{t('admin.newField')}</Text>
           </Pressable>
           {formDraftCount > 0 && <>
-            <Pressable onPress={discardFormDraft} disabled={formDraftSaving} style={{ height: 38, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#dc2626', justifyContent: 'center' }}><Text style={{ color: '#dc2626', fontSize: 13, fontWeight: '800' }}>Discard</Text></Pressable>
-            <Pressable onPress={applyFormDraft} disabled={formDraftSaving} style={{ height: 38, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#16a34a', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>{formDraftSaving ? 'Applying…' : `Apply ${formDraftCount} change${formDraftCount === 1 ? '' : 's'}`}</Text></Pressable>
+            <Pressable onPress={discardFormDraft} disabled={formDraftSaving} style={{ height: 38, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#dc2626', justifyContent: 'center' }}><Text style={{ color: '#dc2626', fontSize: 13, fontWeight: '800' }}>{t('admin.discard')}</Text></Pressable>
+            <Pressable onPress={applyFormDraft} disabled={formDraftSaving} style={{ height: 38, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#16a34a', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>{formDraftSaving ? t('admin.applying') : formDraftCount === 1 ? t('admin.applyChange') : t('admin.applyChanges', [formDraftCount])}</Text></Pressable>
           </>}
         </View>
       </View>
@@ -413,18 +420,18 @@ export function FormBuilderTab({
       {formBuilderLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#c2b75f" />
-          <Text style={styles.loadingText}>Loading form…</Text>
+          <Text style={styles.loadingText}>{t('admin.loadingForm')}</Text>
         </View>
       ) : formFieldsList.length === 0 ? (
         <View style={{ backgroundColor: '#ffffff', borderRadius: 18, padding: 40, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', alignItems: 'center', gap: 12 }}>
-          <Text style={{ fontSize: 16, fontWeight: '800', color: '#22002c' }}>No fields yet</Text>
-          <Text style={{ fontSize: 13, color: '#888', textAlign: 'center' }}>Add existing fields from the registry or create new ones.</Text>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#22002c' }}>{t('admin.noFieldsYet')}</Text>
+          <Text style={{ fontSize: 13, color: '#888', textAlign: 'center' }}>{t('admin.noFieldsYetDesc')}</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
             <Pressable onPress={() => setShowRegistryModal(true)} style={({ pressed }) => ({ height: 38, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : '#fff', justifyContent: 'center' })}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>Add from Registry</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>{t('admin.addFromRegistry')}</Text>
             </Pressable>
             <Pressable onPress={() => setShowAddFieldModal(true)} style={({ pressed }) => ({ height: 38, paddingHorizontal: 16, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', justifyContent: 'center' })}>
-              <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>+ Create New</Text>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{t('admin.createNew')}</Text>
             </Pressable>
           </View>
         </View>
@@ -463,14 +470,14 @@ export function FormBuilderTab({
       <Modal visible={showAddSectionModal} transparent animationType="fade" onRequestClose={() => setShowAddSectionModal(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 420, gap: 14 }}>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: '#22002c' }}>Register Section</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#22002c' }}>{t('admin.registerSection')}</Text>
             <View style={{ gap: 4 }}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#888', letterSpacing: 0.4 }}>SECTION ID (slug)</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#888', letterSpacing: 0.4 }}>{t('admin.sectionIdLabel')}</Text>
               <TextInput value={newSectionId} onChangeText={setNewSectionId} placeholder="e.g. experience, links" placeholderTextColor="#aaa" autoCapitalize="none"
                 style={{ borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.2)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#22002c' }} />
             </View>
             <View style={{ gap: 7 }}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#888', letterSpacing: 0.4 }}>DISPLAY LABEL TRANSLATIONS</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#888', letterSpacing: 0.4 }}>{t('admin.displayLabelTranslations')}</Text>
               {newSectionTranslations.map((translation, index) => (
                 <View key={index} style={{ flexDirection: 'row', gap: 8 }}>
                   <TextInput value={translation.key} onChangeText={(value) => setNewSectionTranslations(newSectionTranslations.map((item, i) => i === index ? { ...item, key: value } : item))} placeholder="key" placeholderTextColor="#aaa" autoCapitalize="none" style={{ width: 74, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.2)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, fontSize: 14, color: '#22002c' }} />
@@ -478,16 +485,16 @@ export function FormBuilderTab({
                   {newSectionTranslations.length > 1 && <Pressable onPress={() => setNewSectionTranslations(newSectionTranslations.filter((_, i) => i !== index))} style={{ justifyContent: 'center' }}><Text style={{ color: '#dc2626', fontSize: 18, fontWeight: '800' }}>×</Text></Pressable>}
                 </View>
               ))}
-              <Pressable onPress={() => setNewSectionTranslations([...newSectionTranslations, { key: '', value: '' }])}><Text style={{ color: '#5a0061', fontSize: 12, fontWeight: '800' }}>+ Add translation</Text></Pressable>
+              <Pressable onPress={() => setNewSectionTranslations([...newSectionTranslations, { key: '', value: '' }])}><Text style={{ color: '#5a0061', fontSize: 12, fontWeight: '800' }}>{t('admin.addTranslation')}</Text></Pressable>
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Pressable onPress={() => { setShowAddSectionModal(false); setNewSectionId(''); setNewSectionTranslations([{ key: 'en', value: '' }]) }}
                 style={({ pressed }) => ({ flex: 1, height: 42, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.2)', backgroundColor: pressed ? '#f5f5f5' : 'transparent', alignItems: 'center', justifyContent: 'center' })}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#666' }}>Cancel</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#666' }}>{t('admin.cancel')}</Text>
               </Pressable>
               <Pressable onPress={() => { if (!newSectionId.trim()) return; const label = Object.fromEntries(newSectionTranslations.filter((translation) => translation.key.trim() && translation.value.trim()).map((translation) => [translation.key.trim(), translation.value.trim()])); handleAddSection(newSectionId.trim(), Object.keys(label).length ? label : { en: newSectionId.trim() }); setShowAddSectionModal(false); setNewSectionId(''); setNewSectionTranslations([{ key: 'en', value: '' }]) }}
                 style={({ pressed }) => ({ flex: 2, height: 42, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', alignItems: 'center', justifyContent: 'center' })}>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Add Section</Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{t('admin.addSectionBtn')}</Text>
               </Pressable>
             </View>
           </View>

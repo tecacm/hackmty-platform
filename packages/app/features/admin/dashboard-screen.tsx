@@ -17,6 +17,8 @@ import { AppIcon } from 'app/components/app-icon'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
+import { useTranslation } from 'app/i18n'
+import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 
 const CheckInScannerTab = lazy(() =>
   import('./components/CheckInScannerTab').then((mod) => ({ default: mod.CheckInScannerTab }))
@@ -109,6 +111,7 @@ function saveStoredDashboardState(state: Record<string, any>) {
 }
 
 export function AdminDashboardScreen() {
+  const { t, locale } = useTranslation()
   const { navigateTo } = useSmartNavigate()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
   const hasViewOthersPermission = !permissionsLoading && hasPermission('applications', 'view_others')
@@ -886,11 +889,11 @@ export function AdminDashboardScreen() {
 
       if (typesData) {
         setDbTypes(typesData.map((t: any) => {
-          let lbl = t.id
-          if (typeof t.label === 'object' && t.label !== null) {
-            lbl = t.label.en || t.id
-          } else if (typeof t.label === 'string') {
-            lbl = t.label
+          let lbl = ''
+          if (typeof t.label === 'object' && t.label !== null && t.label[locale]) {
+            lbl = t.label[locale]
+          } else {
+            lbl = getApplicantRoleLabel(t.id, locale)
           }
           return { id: t.id, label: lbl }
         }))
@@ -975,17 +978,17 @@ export function AdminDashboardScreen() {
 
   const dynamicTypeOptions = useMemo(() => {
     const optionsMap = new Map<string, string>()
-    optionsMap.set('all', 'ALL TYPES')
+    optionsMap.set('all', locale === 'es' ? 'TODOS LOS TIPOS' : 'ALL TYPES')
     dbTypes.forEach(t => {
-      optionsMap.set(t.id, t.label.toUpperCase())
+      optionsMap.set(t.id, (t.label || getApplicantRoleLabel(t.id, locale)).toUpperCase())
     })
     apps.forEach(app => {
       if (app.application_type_id && !optionsMap.has(app.application_type_id)) {
-        optionsMap.set(app.application_type_id, app.application_type_id.toUpperCase())
+        optionsMap.set(app.application_type_id, getApplicantRoleLabel(app.application_type_id, locale).toUpperCase())
       }
     })
     return Array.from(optionsMap.entries()).map(([id, label]) => ({ id, label }))
-  }, [dbTypes, apps])
+  }, [dbTypes, apps, locale])
 
   const filteredUsers = useMemo(() => {
     return usersList.filter(user => {
@@ -1211,12 +1214,12 @@ export function AdminDashboardScreen() {
     return (
       <View style={[styles.centerContainer]}>
         <View style={styles.accessDeniedCard}>
-          <Text style={styles.accessDeniedTitle}>Access Denied</Text>
+          <Text style={styles.accessDeniedTitle}>{t('admin.accessDenied')}</Text>
           <Text style={styles.accessDeniedSubtitle}>
-            You do not have administrative permissions to review application documents.
+            {t('admin.accessDeniedSubtitle')}
           </Text>
           <PillButton
-            title="Return Home"
+            title={t('admin.returnHome')}
             onPress={() => navigateTo('/home')}
             additionalStyle={{ width: 200, height: 50, marginTop: 10 }}
           />
@@ -1230,8 +1233,8 @@ export function AdminDashboardScreen() {
         <View style={styles.contentWrapper}>
           <View style={[styles.headerTitleRow, isSmallScreen && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
             <View style={{ flex: isSmallScreen ? undefined : 1, width: isSmallScreen ? '100%' : undefined }}>
-              <Text style={styles.title}>Event Management Hub</Text>
-              <Text style={styles.subtitle}>Manage check-ins, attendee submissions, user access, and system settings.</Text>
+              <Text style={styles.title}>{t('admin.dashboardTitle')}</Text>
+              <Text style={styles.subtitle}>{t('admin.dashboardSubtitle')}</Text>
             </View>
           </View>
 
@@ -1253,7 +1256,7 @@ export function AdminDashboardScreen() {
               <View style={{ paddingVertical: 50, alignItems: 'center', justifyContent: 'center' }}>
                 <ActivityIndicator size="large" color="#c2b75f" />
                 <Text style={{ color: '#ffffff', marginTop: 12, fontSize: 14, fontWeight: '700' }}>
-                  Loading tab...
+                  {t('admin.loadingTab')}
                 </Text>
               </View>
             }

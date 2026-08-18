@@ -5,6 +5,8 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Platfo
 import { PillButton } from '../../../components/pill-button'
 import { AppIcon } from '../../../components/app-icon'
 import { AdminPaginationBar } from './AdminPaginationBar'
+import { useTranslation } from 'app/i18n'
+import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 
 interface UserDirectoryTabProps {
   userSearchQuery: string
@@ -43,6 +45,8 @@ export function UserDirectoryTab({
   setUserPage,
   setUserPageSize,
 }: UserDirectoryTabProps) {
+  const { t, locale } = useTranslation()
+
   return (
     <View style={styles.container}>
       {/* User Search & Filter Toolbar */}
@@ -52,7 +56,7 @@ export function UserDirectoryTab({
             <AppIcon name="magnifyingglass" size={16} color="#64748b" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search users by name, email, university, or ID..."
+              placeholder={t('admin.searchUsersPlaceholder')}
               placeholderTextColor="#94a3b8"
               value={userSearchQuery}
               onChangeText={setUserSearchQuery}
@@ -74,13 +78,13 @@ export function UserDirectoryTab({
               style={styles.dropdownBtn}
             >
               <Text style={styles.dropdownBtnText}>
-                ROLE: {(userRoleFilter || 'all').toUpperCase()}
+                {t('admin.roleFilter', [(userRoleFilter || 'all').toUpperCase()])}
               </Text>
             </Pressable>
           </View>
 
           <PillButton
-            title="↻ Refresh Users"
+            title={`↻ ${t('admin.refreshUsers')}`}
             onPress={fetchUsersDirectory}
             isLoading={usersLoading}
             variant="outline-primary"
@@ -93,11 +97,11 @@ export function UserDirectoryTab({
       {usersLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#5a0061" />
-          <Text style={styles.loadingText}>Loading user directory...</Text>
+          <Text style={styles.loadingText}>{t('admin.loadingUsers')}</Text>
         </View>
       ) : filteredUsers.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No users found matching the search or role filter.</Text>
+          <Text style={styles.emptyText}>{t('admin.noUsersFound')}</Text>
         </View>
       ) : (
         <>
@@ -111,7 +115,7 @@ export function UserDirectoryTab({
                     <View style={styles.userMainInfo}>
                       <View style={styles.userNameRolesRow}>
                         <Text style={styles.userNameText}>
-                          {user.first_name || 'Unnamed'} {user.last_name || 'User'}
+                          {user.first_name || t('admin.unnamedFirst')} {user.last_name || t('admin.unnamedLast')}
                         </Text>
                         {(user.roles || []).map((r: string) => (
                           <View
@@ -131,7 +135,7 @@ export function UserDirectoryTab({
                                 r !== 'admin' && r !== 'organizer' && { color: '#2563eb' },
                               ]}
                             >
-                              {r.toUpperCase()}
+                              {getApplicantRoleLabel(r, locale).toUpperCase()}
                             </Text>
                           </View>
                         ))}
@@ -143,13 +147,13 @@ export function UserDirectoryTab({
                     {/* Quick Actions */}
                     <View style={styles.userActionsRow}>
                       <PillButton
-                        title="Edit User"
+                        title={t('admin.editUser')}
                         onPress={() => handleOpenEditUser(user)}
                         additionalStyle={styles.editBtn}
                         fontSize={12}
                       />
                       <PillButton
-                        title={isResetSent ? '✓ Sent!' : 'Password Reset'}
+                        title={isResetSent ? t('admin.copied') : t('admin.passwordReset')}
                         onPress={() => handleSendPasswordReset(user.email, user.id)}
                         variant={isResetSent ? 'primary' : 'outline-primary'}
                         additionalStyle={styles.actionBtn}
@@ -160,9 +164,9 @@ export function UserDirectoryTab({
 
                   {/* Applications Row */}
                   <View style={styles.appsRow}>
-                    <Text style={styles.appsLabel}>Applications:</Text>
+                    <Text style={styles.appsLabel}>{t('admin.applications')}</Text>
                     {(!user.applications || user.applications.length === 0) ? (
-                      <Text style={styles.noAppsText}>None</Text>
+                      <Text style={styles.noAppsText}>{t('admin.noApplications')}</Text>
                     ) : (
                       (user.applications || []).map((app: any, idx: number) => (
                         <View key={idx} style={styles.appTypeBadge}>
@@ -193,17 +197,17 @@ export function UserDirectoryTab({
                     <View style={styles.extraInfoRow}>
                       {Boolean(user.university) ? (
                         <Text style={styles.extraInfoText}>
-                          <Text style={styles.extraInfoLabel}>Uni:</Text> {user.university}
+                          <Text style={styles.extraInfoLabel}>{t('admin.uniLabel')}</Text> {user.university}
                         </Text>
                       ) : null}
                       {Boolean(user.major) ? (
                         <Text style={styles.extraInfoText}>
-                          <Text style={styles.extraInfoLabel}>Major:</Text> {user.major}
+                          <Text style={styles.extraInfoLabel}>{t('admin.majorLabel')}</Text> {user.major}
                         </Text>
                       ) : null}
                       {Boolean(user.phone) ? (
                         <Text style={styles.extraInfoText}>
-                          <Text style={styles.extraInfoLabel}>Phone:</Text> {user.phone}
+                          <Text style={styles.extraInfoLabel}>{t('admin.phoneLabel')}</Text> {user.phone}
                         </Text>
                       ) : null}
                     </View>

@@ -14,8 +14,11 @@ interface AnnouncementCardProps {
 }
 
 import { AppIcon } from 'app/components/app-icon'
+import { useTranslation } from 'app/i18n'
+import { getLocalizedText } from 'app/utils/i18n-helpers'
+import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 
-function formatRelativeTime(dateString: string): string {
+function formatRelativeTime(dateString: string, t: (k: string, p?: any) => string): string {
   try {
     const now = new Date()
     const date = new Date(dateString)
@@ -24,14 +27,14 @@ function formatRelativeTime(dateString: string): string {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    if (diffMins < 1) return t('announcements.justNow')
+    if (diffMins < 60) return t('announcements.minutesAgo', [diffMins])
+    if (diffHours < 24) return t('announcements.hoursAgo', [diffHours])
+    if (diffDays === 1) return t('announcements.yesterday')
+    if (diffDays < 7) return t('announcements.daysAgo', [diffDays])
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   } catch (e) {
-    return 'Recently'
+    return t('announcements.recently')
   }
 }
 
@@ -42,6 +45,7 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
   onLike,
   screenFocused = true,
 }: AnnouncementCardProps) {
+  const { t, locale } = useTranslation()
   const [liked, setLiked] = useState(isLiked)
   const [likesCount, setLikesCount] = useState(announcement.likes_count || 0)
   const [fullscreenVisible, setFullscreenVisible] = useState(false)
@@ -215,7 +219,7 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
             {/* Camera Date Stamp Badge */}
             <View style={styles.dateStampBadge}>
               <Text style={styles.dateStampText}>
-                {formatRelativeTime(announcement.created_at)}
+                {formatRelativeTime(announcement.created_at, t)}
               </Text>
             </View>
           </View>
@@ -237,16 +241,16 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
                     : styles.roleBadgeOther,
                 ]}
               >
-                <Text style={styles.roleBadgeText}>@{role.toUpperCase()}</Text>
+                <Text style={styles.roleBadgeText}>@{getApplicantRoleLabel(role, locale).toUpperCase()}</Text>
               </View>
             ))}
           </View>
 
           {/* Title */}
-          <Text style={styles.announcementTitle}>{announcement.title}</Text>
+          <Text style={styles.announcementTitle}>{getLocalizedText(announcement.title, locale)}</Text>
 
           {/* Message Content */}
-          <Text style={styles.announcementMessage}>{announcement.message}</Text>
+          <Text style={styles.announcementMessage}>{getLocalizedText(announcement.message, locale)}</Text>
 
           {/* Card Footer: Author signature & Heart button */}
           <View style={styles.cardFooter}>
@@ -263,7 +267,7 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
               </View>
               <View>
                 <Text style={styles.authorName}>{announcement.author_name}</Text>
-                <Text style={styles.authorSubtext}>Organizer</Text>
+                <Text style={styles.authorSubtext}>{getApplicantRoleLabel('organizer', locale)}</Text>
               </View>
             </View>
 

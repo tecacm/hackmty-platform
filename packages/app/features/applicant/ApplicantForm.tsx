@@ -10,12 +10,12 @@ import { StyledFileInput } from 'app/components/styled-file-input'
 import { FormCheckbox } from 'app/components/form-checkbox'
 import FormRadio from 'app/components/form-radio'
 import { PillButton } from 'app/components/pill-button'
-import { getApplicantFieldsForRole, type ApplicantField } from './applicant-field-config'
-import applicationFieldsConfig from 'app/data/application-fields.json'
+import { getApplicantFieldsForRole, getApplicantRoleLabel, type ApplicantField } from './applicant-field-config'
 import { ApplicantRole, ApplicantFormData } from './applicant-types'
 import { formFieldColors, formFieldStyles } from 'app/components/form-field-styles'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { ConfettiOverlay } from 'app/components/confetti-overlay'
+import { useTranslation } from 'app/i18n'
 
 type ApplicantFormProps = {
   role: ApplicantRole
@@ -29,6 +29,7 @@ type ApplicantFormProps = {
   onSaveDraft?: (data: ApplicantFormData) => void
   onConfirmAttendance?: () => Promise<void>
   systemLinks?: Record<string, { text: any; href: string }>
+  textBlocks?: Record<string, string>
   isClosed?: boolean
 }
 
@@ -48,16 +49,16 @@ function FormDivider() {
 
 type SectionHeader = { key: string; text: string }
 
-type HeaderConfig = { section: string; label: string; order?: number }
+function getSectionHeaders(sectionId: string, textBlocks: Record<string, string> = {}): SectionHeader[] {
+  const sectionHeaderMap: Record<string, { key: string; blockId: string }[]> = {
+    PERSONAL_INFO: [{ key: 'personalInfoIntro', blockId: 'personalInfoIntro' }],
+    SHOW_BUILT: [{ key: 'hackathonsHeader', blockId: 'hackathonsHeader' }],
+  }
 
-function getSectionHeaders(sectionId: string): SectionHeader[] {
-  const headers = (applicationFieldsConfig.headers as Record<string, HeaderConfig> | undefined) || {}
-  return headers
-    ? Object.entries(headers)
-        .filter(([, header]) => header.section === sectionId)
-        .sort(([, a], [, b]) => (a.order ?? 0) - (b.order ?? 0))
-        .map(([key, header]) => ({ key, text: header.label }))
-    : []
+  const items = sectionHeaderMap[sectionId] || []
+  return items
+    .map(({ key, blockId }) => ({ key, text: textBlocks[blockId] || '' }))
+    .filter(h => !!h.text)
 }
 
 function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): SectionRow<T>[] {
@@ -104,18 +105,25 @@ function buildSectionRows<T extends { fieldType?: string }>(fields: T[]): Sectio
 const createMLHLink = (text: string, href: string) =>
   createElement(
     TextLink,
-    { href, style: { color: applicationFieldsConfig.styles.linkColor, textDecorationLine: applicationFieldsConfig.styles.linkDecoration }, children: text }
+    { href, style: { color: '#c2b75f', textDecorationLine: 'underline' }, children: text }
   )
 
 // Helper function to build React components from composite label definitions
-const buildCompositeLabel = (labelDef: any, systemLinks: Record<string, { text: any; href: string }> = {}, baseStyle?: any): ReactNode => {
+const buildCompositeLabel = (labelDef: any, systemLinks: Record<string, { text: any; href: string }> = {}, baseStyle?: any, locale: string = 'en'): ReactNode => {
   if (!labelDef) return ''
   if (typeof labelDef === 'string') return labelDef
-  if (typeof labelDef === 'object' && labelDef !== null && labelDef.en) {
-    if (typeof labelDef.en === 'string') return labelDef.en
-    labelDef = labelDef.en
+  if (typeof labelDef === 'object' && labelDef !== null) {
+    if (labelDef[locale]) {
+      if (typeof labelDef[locale] === 'string') return labelDef[locale]
+      labelDef = labelDef[locale]
+    } else if (labelDef.en) {
+      if (typeof labelDef.en === 'string') return labelDef.en
+      labelDef = labelDef.en
+    }
   }
-  if (!labelDef.parts) return ''
+  if (!labelDef || !labelDef.parts) {
+    return typeof labelDef === 'string' ? labelDef : ''
+  }
   
   const parts = labelDef.parts.map((part: any) => {
     if (part.type === 'text') return part.content
@@ -124,10 +132,10 @@ const buildCompositeLabel = (labelDef: any, systemLinks: Record<string, { text: 
       let href = part.href
       let linkText = part.text
       if (part.linkRef) {
-        const linkDef = systemLinks[part.linkRef] || (applicationFieldsConfig.links as any)[part.linkRef]
+        const linkDef = systemLinks[part.linkRef]
         if (linkDef) {
           href = href || linkDef.href
-          linkText = linkText || (typeof linkDef.text === 'object' ? (linkDef.text.en || linkDef.text) : linkDef.text)
+          linkText = linkText || (typeof linkDef.text === 'object' ? (linkDef.text[locale] || linkDef.text.en || linkDef.text) : linkDef.text)
         }
       }
       if (!href) return linkText || part.linkRef || ''
@@ -155,8 +163,10 @@ export function ApplicantForm({
   onSaveDraft,
   onConfirmAttendance,
   systemLinks = {},
+  textBlocks = {},
   isClosed = false
 }: ApplicantFormProps) {
+  const { t, locale } = useTranslation()
   const { hasPermission } = useUserPermissions()
   const allFields = propFields || getApplicantFieldsForRole(role)
   const { width } = useWindowDimensions()
@@ -220,7 +230,7 @@ export function ApplicantForm({
       } as Partial<ApplicantFormData>)
       isInitialized.current = true
     }
-  }, [initialValues, isReady, reset])
+  }, [initialValues, isReady, reset, defaultValues])
 
   // Auto-save draft on change when form is dirty
   useEffect(() => {
@@ -244,9 +254,9 @@ export function ApplicantForm({
     }
   }, [currentValues, onSaveDraft, isReady, isDirty, reset])
 
-  const roleFieldNames = new Set(allFields.map((field: any) => field.name))
+  const roleFieldNames = new Set(allFields.map((f: any) => f?.name).filter(Boolean))
 
-  const fields = allFields.filter((field: any) => {
+  const fields = allFields.filter((field) => {
     if (!field.dependsOn) return true
     if (!roleFieldNames.has(field.dependsOn.field)) return true
     const dependentValue = (currentValues as Record<string, unknown>)[field.dependsOn.field]
@@ -269,7 +279,10 @@ export function ApplicantForm({
     const sec = (field as any).section as SectionRef | undefined
     const id = typeof sec === 'string' || !sec ? (sec ?? 'General') : (sec as any).id ?? 'General'
     const key = (field as any).sectionKey ?? (typeof sec === 'string' ? sec : undefined) ?? id
-    const label = typeof sec === 'object' && (sec as any).label ? (sec as any).label : id
+    const rawLabel = typeof sec === 'object' && (sec as any).label ? (sec as any).label : id
+    const label = typeof rawLabel === 'object' && rawLabel !== null
+      ? (rawLabel[locale] || rawLabel.en || String(rawLabel))
+      : String(rawLabel ?? '')
     const order = typeof sec === 'object' && typeof (sec as any).order === 'number' ? (sec as any).order : 0
 
     if (!sectionMap.has(key)) sectionMap.set(key, { key, id, label, order, fields: [] as typeof fields })
@@ -301,7 +314,7 @@ export function ApplicantForm({
       {isClosed && (
         <View style={{ backgroundColor: '#fee2e2', borderColor: '#f87171', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
           <Text style={{ color: '#991b1b', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
-            Registration for this role has closed. You are viewing your application in read-only mode.
+            {t('applicant.registrationClosed')}
           </Text>
         </View>
       )}
@@ -309,10 +322,10 @@ export function ApplicantForm({
       {status === 'changes_requested' && (
         <View style={{ backgroundColor: '#fffbeb', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
           <Text style={{ color: '#b45309', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>
-            Action Required: Changes Requested by Organizer
+            {t('applicant.changesRequestedTitle')}
           </Text>
           <Text style={{ color: '#78350f', fontSize: 14 }}>
-            {adminFeedback || 'Please review and update your application details.'}
+            {adminFeedback || t('applicant.changesRequestedDesc')}
           </Text>
         </View>
       )}
@@ -320,7 +333,7 @@ export function ApplicantForm({
       {status === 'submitted' && !isClosed && (
         <View style={{ backgroundColor: '#ecfdf5', borderColor: '#10b981', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
           <Text style={{ color: '#047857', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
-            Your application has been submitted and is currently locked.
+            {t('applicant.applicationSubmittedLocked')}
           </Text>
         </View>
       )}
@@ -328,14 +341,14 @@ export function ApplicantForm({
       {status === 'accepted' && (
         <View style={{ backgroundColor: '#f0fdf4', borderColor: '#22c55e', borderWidth: 1, borderRadius: 12, padding: 20, width: '100%', marginBottom: 20, gap: 12 }}>
           <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18, textAlign: 'center' }}>
-            Congratulations!
+            {t('applicant.congratulations')}
           </Text>
           <Text style={{ color: '#166534', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-            Your application has been accepted. Please confirm your attendance below to secure your spot at the event!
+            {t('applicant.acceptedNotice')}
           </Text>
           <View style={{ alignItems: 'center', marginTop: 8 }}>
             <PillButton
-              title="Confirm Attendance"
+              title={t('applicant.confirmAttendance')}
               variant="secondary"
               isLoading={isConfirming}
               onPress={handleConfirmAttendance}
@@ -348,10 +361,10 @@ export function ApplicantForm({
       {status === 'confirmed' && (
         <View style={{ backgroundColor: '#f0fdf4', borderColor: '#22c55e', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
           <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18, textAlign: 'center', marginBottom: 4 }}>
-            Attendance Confirmed
+            {t('applicant.attendanceConfirmed')}
           </Text>
           <Text style={{ color: '#166534', fontSize: 14, textAlign: 'center' }}>
-            Your attendance has been confirmed. See you at the hackathon!
+            {t('applicant.attendanceConfirmedNotice')}
           </Text>
         </View>
       )}
@@ -360,20 +373,20 @@ export function ApplicantForm({
       {feedbackHistory.length > 0 && (
         <View style={{ backgroundColor: '#ffffff', borderColor: 'rgba(90, 0, 97, 0.12)', borderWidth: 1.5, borderRadius: 16, padding: 20, width: '100%', marginBottom: 20, gap: 12 }}>
           <Text style={{ fontSize: 16, fontWeight: '800', color: '#22002c' }}>
-            Changes Request History
+            {t('applicant.changesRequestHistory')}
           </Text>
           {feedbackHistory.map((item: any, idx: number) => {
-            const reqDate = item.requested_at ? new Date(item.requested_at).toLocaleString() : 'Unknown date'
-            const resDate = item.resolved_at ? new Date(item.resolved_at).toLocaleString() : 'Pending resolution'
+            const reqDate = item.requested_at ? new Date(item.requested_at).toLocaleString(locale === 'es' ? 'es-MX' : 'en-US') : t('applicant.unknownDate')
+            const resDate = item.resolved_at ? new Date(item.resolved_at).toLocaleString(locale === 'es' ? 'es-MX' : 'en-US') : t('applicant.pendingResolution')
             return (
               <View key={idx} style={[{ paddingVertical: 8, gap: 4 }, idx > 0 && { borderTopWidth: 1, borderColor: 'rgba(34, 0, 44, 0.08)' }]}>
                 <Text style={{ fontSize: 14, color: '#555555', fontStyle: 'italic' }}>
                   "{item.feedback}"
                 </Text>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                  <Text style={{ fontSize: 11, color: '#888888' }}>Requested: {reqDate}</Text>
+                  <Text style={{ fontSize: 11, color: '#888888' }}>{t('applicant.requested')}: {reqDate}</Text>
                   <Text style={[{ fontSize: 11, color: '#888888' }, !item.resolved_at && { color: '#d32f2f', fontWeight: '700' }]}>
-                    Resolved: {resDate}
+                    {t('applicant.resolved')}: {resDate}
                   </Text>
                 </View>
               </View>
@@ -385,14 +398,14 @@ export function ApplicantForm({
       {status === 'rejected' && (
         <View style={{ backgroundColor: '#fef2f2', borderColor: '#ef4444', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
           <Text style={{ color: '#b91c1c', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
-            Your application was not accepted for this event. Thank you for your interest.
+            {t('applicant.rejectedNotice')}
           </Text>
         </View>
       )}
 
       {Platform.OS === 'web' && (
         <Text style={[styles.heading, { fontSize: dynamicHeadingSize }, styles.shadow]}> 
-          Applying as {role.charAt(0).toUpperCase() + role.slice(1)}
+          {t('applicant.applyingAs', { role: getApplicantRoleLabel(role, locale) })}
         </Text>
       )}
 
@@ -401,7 +414,7 @@ export function ApplicantForm({
           <View key={sectionKey} style={styles.section}>
             {sectionName !== 'General' && <Text style={styles.sectionTitle}>{sectionLabel ?? sectionName}</Text>}
 
-            {getSectionHeaders(sectionKey).map((header) => (
+            {getSectionHeaders(sectionKey, textBlocks).map((header) => (
               <View key={`${sectionKey}-${header.key}`} style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionHeaderText}>{header.text}</Text>
               </View>
@@ -411,11 +424,14 @@ export function ApplicantForm({
               if (row.type === 'divider') {
                 const f: any = row.field
                 if (f.fieldType === 'paragraph') {
-                  const contentNode = typeof f.content === 'object' && f.content !== null
-                    ? buildCompositeLabel(f.content, systemLinks, styles.paragraphText)
-                    : typeof f.label === 'object' && f.label !== null
-                    ? buildCompositeLabel(f.label, systemLinks, styles.paragraphText)
-                    : f.content || f.label
+                  const rawContent = f.content || f.label
+                  const resolved = typeof rawContent === 'object' && rawContent !== null && !rawContent.type && !rawContent.parts
+                    ? (rawContent[locale] || rawContent['en'] || rawContent)
+                    : rawContent
+
+                  const contentNode = typeof resolved === 'object' && resolved !== null
+                    ? buildCompositeLabel(resolved, systemLinks, styles.paragraphText)
+                    : resolved
 
                   return (
                     <View key={`${sectionKey}-${rowIndex}-paragraph`} style={styles.paragraphRow}>
@@ -443,14 +459,17 @@ export function ApplicantForm({
 
                     const ff: any = field
                     const resolvedLabel = typeof ff.label === 'object' && ff.label !== null
-                      ? buildCompositeLabel(ff.label, systemLinks, { color: formFieldColors.titleText })
+                      ? buildCompositeLabel(ff.label, systemLinks, { color: formFieldColors.titleText }, locale)
                       : ff.label
 
                     const resolvedSubtitle = typeof ff.subtitle === 'object' && ff.subtitle !== null
-                      ? buildCompositeLabel(ff.subtitle, systemLinks, formFieldStyles.helperText)
+                      ? buildCompositeLabel(ff.subtitle, systemLinks, formFieldStyles.helperText, locale)
                       : ff.subtitle
 
-                    const displayLabelString = typeof ff.label === 'string' ? ff.label : (ff.validationLabel ?? 'This field')
+                    const rawDisplay = typeof ff.label === 'string' ? ff.label : (ff.validationLabel ?? 'This field')
+                    const displayLabelString = typeof rawDisplay === 'object' && rawDisplay !== null
+                      ? (rawDisplay[locale] || rawDisplay.en || String(rawDisplay))
+                      : String(rawDisplay ?? '')
 
                     const otherInputProps = ff.otherInputProps || ff.ui_metadata?.otherInputProps || ff.ui_metadata?.otherInput || ff.uiMetadata?.otherInput
 
@@ -483,7 +502,7 @@ export function ApplicantForm({
                             }
                           }}
                           render={({ field: { onChange, value } }) => {
-                            const isFieldDisabled = disabledFields.includes(ff.name)
+                            const isFieldDisabled = isFormLocked || disabledFields.includes(ff.name)
 
                             if (ff.fieldType === 'checkbox') {
                               const checked = !!value
@@ -645,7 +664,7 @@ export function ApplicantForm({
         <View style={{ width: '100%', alignItems: 'center' }}>
           <View style={styles.buttonRow}>
             <PillButton
-              title="Submit"
+              title={t('applicant.submit')}
               onPress={handleSubmit(
                 async (data) => {
                   try {
@@ -669,7 +688,7 @@ export function ApplicantForm({
           {missingErrorCount > 0 && (
             <View style={{ backgroundColor: '#fee2e2', borderColor: '#ef4444', borderWidth: 1, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, marginTop: 14, width: '100%', maxWidth: 400, alignItems: 'center' }}>
               <Text style={{ color: '#b91c1c', fontSize: 14, fontWeight: '700', textAlign: 'center' }}>
-                {missingErrorCount} mandatory {missingErrorCount === 1 ? 'field is' : 'fields are'} missing completion
+                {t('applicant.mandatoryMissing', { count: missingErrorCount })}
               </Text>
             </View>
           )}
@@ -680,12 +699,12 @@ export function ApplicantForm({
 
       {!isClosed && saveStatus === 'saving' && (
         <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 10, fontStyle: 'italic', textAlign: 'center' }}>
-          Saving draft progress...
+          {t('applicant.savingDraft')}
         </Text>
       )}
       {!isClosed && saveStatus === 'saved' && (
         <Text style={{ color: '#10b981', fontSize: 13, marginTop: 10, fontWeight: '600', textAlign: 'center' }}>
-          ✓ Progress saved automatically
+          {t('applicant.progressSaved')}
         </Text>
       )}
     </View>

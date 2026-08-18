@@ -5,8 +5,8 @@ import { sendAnnouncement } from 'app/services/notification-service'
 
 export interface AnnouncementItem {
   id: string
-  title: string
-  message: string
+  title: string | { en: string; es?: string } | any
+  message: string | { en: string; es?: string } | any
   media_url?: string | null
   media_type?: 'image' | 'video' | null
   target_roles?: string[] | null
@@ -18,8 +18,10 @@ export interface AnnouncementItem {
 }
 
 export interface CreateAnnouncementInput {
-  title: string
-  message: string
+  title: string | { en: string; es?: string }
+  message: string | { en: string; es?: string }
+  title_es?: string
+  message_es?: string
   targetRoles: string[]
   mediaFile?: any
   mediaType?: 'image' | 'video'
@@ -30,8 +32,14 @@ export interface CreateAnnouncementInput {
 const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
   {
     id: 'mock-1',
-    title: '🚀 Welcome to HackMTY 2026!',
-    message: 'Hacking has officially begun! Check the schedule for workshop locations, mentor office hours, and meal times. Good luck to all teams!',
+    title: {
+      en: '🚀 Welcome to HackMTY 2026!',
+      es: '🚀 ¡Bienvenidos a HackMTY 2026!',
+    },
+    message: {
+      en: 'Hacking has officially begun! Check the schedule for workshop locations, mentor office hours, and meal times. Good luck to all teams!',
+      es: '¡El hackathon ha comenzado oficialmente! Consulta el itinerario para talleres, asesorías de mentores y comidas. ¡Mucho éxito a todos los equipos!',
+    },
     target_roles: ['all'],
     author_name: 'HackMTY Staff',
     likes_count: 42,
@@ -39,8 +47,14 @@ const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
   },
   {
     id: 'mock-2',
-    title: '🍕 Dinner is Served in Main Cafeteria',
-    message: 'Head over to the central dining hall for dinner. Vegetarian and gluten-free options are available at Station 3.',
+    title: {
+      en: '🍕 Dinner is Served in Main Cafeteria',
+      es: '🍕 La cena está servida en la cafetería principal',
+    },
+    message: {
+      en: 'Head over to the central dining hall for dinner. Vegetarian and gluten-free options are available at Station 3.',
+      es: 'Pasa al comedor central para la cena. Opciones vegetarianas y sin gluten disponibles en la Estación 3.',
+    },
     target_roles: ['all'],
     author_name: 'Logistics Team',
     likes_count: 29,
@@ -48,8 +62,14 @@ const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
   },
   {
     id: 'mock-3',
-    title: '💡 Mentor Office Hours & Tech Support',
-    message: 'Need help with AI models, cloud deployments, or DB connections? Mentors are available in Zone B. Request assistance via the platform mentor portal.',
+    title: {
+      en: '💡 Mentor Office Hours & Tech Support',
+      es: '💡 Asesorías con Mentores y Soporte Técnico',
+    },
+    message: {
+      en: 'Need help with AI models, cloud deployments, or DB connections? Mentors are available in Zone B. Request assistance via the platform mentor portal.',
+      es: '¿Necesitas ayuda con modelos de IA, despliegue en la nube o bases de datos? Los mentores están listos en la Zona B.',
+    },
     target_roles: ['hacker', 'mentor'],
     author_name: 'Mentorship Team',
     likes_count: 18,
@@ -317,9 +337,18 @@ export function useAnnouncements() {
       } catch (e) {}
     }
 
+    let finalTitle: any = title
+    if (typeof title === 'string' && input.title_es?.trim()) {
+      finalTitle = { en: title.trim(), es: input.title_es.trim() }
+    }
+    let finalMessage: any = message
+    if (typeof message === 'string' && input.message_es?.trim()) {
+      finalMessage = { en: message.trim(), es: input.message_es.trim() }
+    }
+
     const payload = {
-      title,
-      message,
+      title: finalTitle,
+      message: finalMessage,
       media_url: uploadedMediaUrl,
       media_type: uploadedMediaUrl ? mediaType : null,
       target_roles: targetRoles.length > 0 ? targetRoles : ['all'],
@@ -355,9 +384,16 @@ export function useAnnouncements() {
     const resolvedChannel = input.notificationChannel || (sendNotifications ? 'both' : 'none')
     if (resolvedChannel !== 'none') {
       try {
+        const notifTitle = typeof finalTitle === 'object' && finalTitle !== null
+          ? (finalTitle.en || finalTitle.es || '')
+          : String(finalTitle || '')
+        const notifMsg = typeof finalMessage === 'object' && finalMessage !== null
+          ? (finalMessage.en || finalMessage.es || '')
+          : String(finalMessage || '')
+
         await sendAnnouncement({
-          title,
-          message,
+          title: notifTitle,
+          message: notifMsg,
           badge: 'HackMTY Announcement',
           targetRoles,
           channel: resolvedChannel,

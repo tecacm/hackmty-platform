@@ -10,6 +10,7 @@ import { ApplicantRole } from 'app/features/applicant/applicant-types'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { useApplicationForm } from 'app/features/applicant/use-application-form'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
+import { useTranslation } from 'app/i18n'
 
 
 const styles = StyleSheet.create({
@@ -44,12 +45,13 @@ type ApplicationScreenProps = {
 }
 
 export function ApplicationScreen({ navigation, role }: ApplicationScreenProps = {}) {
+  const { t, locale } = useTranslation()
   const params = useSearchParams()
   const router = useRouter()
   const { width } = useWindowDimensions()
   const roleFromParams = role ?? params?.get('role')
   const applicantRole: ApplicantRole = roleFromParams ?? ''
-  const applicantRoleLabel = getApplicantRoleLabel(applicantRole)
+  const applicantRoleLabel = getApplicantRoleLabel(applicantRole, locale)
 
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
 
@@ -68,15 +70,26 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
     onSaveDraft,
     onConfirmAttendance,
     systemLinks,
+    textBlocks,
     isClosed
-  } = useApplicationForm(applicantRole, 'en', inviteFromParams)
+  } = useApplicationForm(applicantRole, locale, inviteFromParams)
 
   const isLoading = isConfigLoading || permissionsLoading
 
   useEffect(() => {
     async function checkAuth() {
       if (isSupabaseConfigured) {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { session } } = await supabase.auth.getSession()
+        let user = session?.user
+        if (!user) {
+          const { data: userData } = await supabase.auth.getUser()
+          user = userData?.user
+        }
+        if (!user) {
+          await new Promise(r => setTimeout(r, 400))
+          const { data: retrySession } = await supabase.auth.getSession()
+          user = retrySession?.session?.user
+        }
         if (!user) {
           router.replace('/login')
         }
@@ -97,20 +110,20 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
 
   useLayoutEffect(() => {
     if (navigation && typeof (navigation as any).setOptions === 'function') {
-      ;(navigation as any).setOptions({ title: `Applying as ${applicantRoleLabel}` })
+      ;(navigation as any).setOptions({ title: t('applicant.applyingAs', { role: applicantRoleLabel }) })
     }
-  }, [navigation, applicantRoleLabel])
+  }, [navigation, applicantRoleLabel, t])
 
   return (
     <View style={[styles.container, { width: '90%', maxWidth: 1000 }]}>
       {isLoading ? (
         <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
           <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={{ color: '#ffffff', fontSize: 16 }}>Loading application...</Text>
+          <Text style={{ color: '#ffffff', fontSize: 16 }}>{t('applicant.loadingApplication')}</Text>
         </View>
       ) : configError ? (
         <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
-          <Text style={{ color: '#ff4444', fontSize: 18, fontWeight: '700' }}>Failed to Load Application</Text>
+          <Text style={{ color: '#ff4444', fontSize: 18, fontWeight: '700' }}>{t('applicant.failedToLoadApplication')}</Text>
           <Text style={{ color: '#ffffff', textAlign: 'center' }}>{configError}</Text>
         </View>
       ) : (
@@ -126,6 +139,7 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
           onSaveDraft={onSaveDraft}
           onConfirmAttendance={onConfirmAttendance}
           systemLinks={systemLinks}
+          textBlocks={textBlocks}
           isClosed={isClosed}
         />
       )}

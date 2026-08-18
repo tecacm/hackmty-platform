@@ -7,6 +7,7 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { StyledInput } from 'app/components/styled-input'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { sanitizeEmail, sanitizeName, sanitizeString } from 'app/utils/sanitization'
+import { useTranslation } from 'app/i18n'
 
 interface Member {
   id: string
@@ -505,7 +506,7 @@ const styles = StyleSheet.create({
 })
 
 export function TeamsScreen() {
-
+  const { t } = useTranslation()
   const { width } = useWindowDimensions()
 
   const [loading, setLoading] = useState(true)
@@ -1024,7 +1025,7 @@ export function TeamsScreen() {
           {loading ? (
             <View style={styles.innerCard}>
               <ActivityIndicator size="large" color="#c2b75f" style={{ marginVertical: 32 }} />
-              <Text style={{ color: '#666666' }}>Retrieving team details...</Text>
+              <Text style={{ color: '#666666' }}>{t('teams.retrievingTeam')}</Text>
             </View>
           ) : team ? (
             <View style={styles.innerCard}>
@@ -1039,9 +1040,9 @@ export function TeamsScreen() {
 
                 return (
                   <View style={styles.warningBanner}>
-                    <Text style={styles.warningBannerHeader}>ACTION REQUIRED: Application Changes Requested</Text>
+                    <Text style={styles.warningBannerHeader}>{t('teams.actionRequired')}</Text>
                     <Text style={styles.warningBannerSub}>
-                      An admin requested changes on team application(s). Please resolve for accountability:
+                      {t('teams.actionRequiredSub')}
                     </Text>
                     {membersWithChanges.map(member => {
                        const apps = membersApplications.filter(a => a.user_id === member.id)
@@ -1077,22 +1078,22 @@ export function TeamsScreen() {
               })()}
 
               <Text style={styles.titleText}>{team.name}</Text>
-              <Text style={styles.subtitleText}>Manage your hackathon team. Invite others using your team code!</Text>
+              <Text style={styles.subtitleText}>{t('teams.manageTeamSubtitle')}</Text>
 
-              <Text style={styles.label}>Team Join Code</Text>
+              <Text style={styles.label}>{t('teams.teamCode')}</Text>
               <View style={styles.codeRow}>
                 <View style={styles.codeBox}>
                   <Text style={styles.codeText}>{team.code}</Text>
                 </View>
                 <Pressable onPress={handleCopyCode} style={styles.copyBtn}>
-                  <Text style={styles.copyBtnText}>{copied ? 'Copied!' : 'Copy'}</Text>
+                  <Text style={styles.copyBtnText}>{copied ? t('teams.copied') : t('teams.copy')}</Text>
                 </Pressable>
               </View>
 
               <View style={styles.divider} />
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Members ({team.members.length}/{maxTeamSize})</Text>
+                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>{t('teams.members')} ({team.members.length}/{maxTeamSize})</Text>
               </View>
               {(() => {
                 const rows: React.ReactNode[] = []
@@ -1134,10 +1135,10 @@ export function TeamsScreen() {
                             {member.first_name || ''} {member.last_name || ''}
                           </Text>
                           {isOwner && (
-                            <Text style={styles.ownerBadge}>(Owner)</Text>
+                            <Text style={styles.ownerBadge}>{t('teams.owner')}</Text>
                           )}
                           {hasChangesRequested && (
-                            <Text style={styles.actionRequiredBadge}>Action Required</Text>
+                            <Text style={styles.actionRequiredBadge}>{t('teams.actionRequiredBadge')}</Text>
                           )}
                         </View>
                         
@@ -1149,7 +1150,7 @@ export function TeamsScreen() {
                               pressed && { opacity: 0.7 }
                             ]}
                           >
-                            <Text style={styles.kickBtnText}>Kick</Text>
+                            <Text style={styles.kickBtnText}>{t('teams.kick')}</Text>
                           </Pressable>
                         )}
                       </View>
@@ -1179,7 +1180,7 @@ export function TeamsScreen() {
                           <Text style={styles.invitedEmailText} numberOfLines={1}>
                             {invite.email}
                           </Text>
-                          <Text style={styles.pendingBadge}>(Invited)</Text>
+                          <Text style={styles.pendingBadge}>{t('teams.invited')}</Text>
                         </View>
                         
                         {team.creator_id === userId && (
@@ -1190,7 +1191,7 @@ export function TeamsScreen() {
                               pressed && { opacity: 0.7 }
                             ]}
                           >
-                            <Text style={styles.kickBtnText}>Cancel</Text>
+                            <Text style={styles.kickBtnText}>{t('common.cancel')}</Text>
                           </Pressable>
                         )}
                       </View>
@@ -1217,7 +1218,7 @@ export function TeamsScreen() {
                       </View>
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                         <View style={{ flex: 1, justifyContent: 'center' }}>
-                          <Text style={styles.emptySlotText}>Empty Slot</Text>
+                          <Text style={styles.emptySlotText}>{t('teams.emptySlot')}</Text>
                         </View>
                         <Pressable
                           onPress={() => {
@@ -1230,7 +1231,7 @@ export function TeamsScreen() {
                             pressed && { opacity: 0.7 }
                           ]}
                         >
-                          <Text style={styles.inviteBtnRightText}>Invite</Text>
+                          <Text style={styles.inviteBtnRightText}>{t('teams.invite')}</Text>
                         </Pressable>
                       </View>
                     </View>
@@ -1246,21 +1247,21 @@ export function TeamsScreen() {
 
               <PillButton
                 variant="outline-danger"
-                title="Leave Team"
+                title={t('teams.leaveTeam')}
                 isLoading={submitting}
                 onPress={handleLeaveTeam}
               />
             </View>
           ) : (
             <View style={styles.innerCard}>
-              <Text style={styles.titleText}>Project Team</Text>
-              <Text style={styles.subtitleText}>Form a project team to compete in HackMTY. Teams can have up to {maxTeamSize} members.</Text>
+              <Text style={styles.titleText}>{t('teams.title')}</Text>
+              <Text style={styles.subtitleText}>{t('teams.subtitle', { max: maxTeamSize })}</Text>
 
               {error && <Text style={styles.errorText}>{error}</Text>}
 
               {invitations.length > 0 && (
                 <>
-                  <Text style={styles.sectionTitle}>Pending Invitations</Text>
+                  <Text style={styles.sectionTitle}>{t('teams.pendingInvitations')}</Text>
                   {invitations.map((invite, index) => {
                     const isLast = index === invitations.length - 1
                     return (
@@ -1273,7 +1274,7 @@ export function TeamsScreen() {
                       >
                         <View style={{ flex: 1 }}>
                           <Text style={styles.inviteText}>
-                            You have been invited to join <Text style={{ fontWeight: 'bold' }}>{invite.teams?.name || 'a team'}</Text>
+                            {t('teams.invitedToJoin', { team: invite.teams?.name || 'a team' })}
                           </Text>
                         </View>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -1281,13 +1282,13 @@ export function TeamsScreen() {
                             onPress={() => handleAcceptInvitation(invite.id)}
                             style={styles.acceptBtn}
                           >
-                            <Text style={styles.acceptBtnText}>Accept</Text>
+                            <Text style={styles.acceptBtnText}>{t('teams.accept')}</Text>
                           </Pressable>
                           <Pressable
                             onPress={() => handleDeclineInvitation(invite.id)}
                             style={styles.declineBtn}
                           >
-                            <Text style={styles.declineBtnText}>Decline</Text>
+                            <Text style={styles.declineBtnText}>{t('teams.decline')}</Text>
                           </Pressable>
                         </View>
                       </View>
@@ -1297,10 +1298,10 @@ export function TeamsScreen() {
                 </>
               )}
 
-              <Text style={styles.sectionTitle}>Join a Team</Text>
+              <Text style={styles.sectionTitle}>{t('teams.joinTeam')}</Text>
               <View style={styles.inputGroup}>
                 <StyledInput
-                  label="Enter Join Code"
+                  label={t('teams.enterJoinCode')}
                   placeholder="e.g. AB12XY"
                   autoCapitalize="characters"
                   value={joinCodeInput}
@@ -1308,24 +1309,24 @@ export function TeamsScreen() {
                 />
               </View>
               <PillButton
-                title="Join Team"
+                title={t('teams.joinTeam')}
                 onPress={submitting ? undefined : handleJoinTeam}
                 additionalStyle={styles.button}
               />
 
               <View style={styles.divider} />
 
-              <Text style={styles.sectionTitle}>Create a Team</Text>
+              <Text style={styles.sectionTitle}>{t('teams.createTeam')}</Text>
               <View style={styles.inputGroup}>
                 <StyledInput
-                  label="Team Name"
-                  placeholder="Enter unique team name"
+                  label={t('teams.teamName')}
+                  placeholder={t('teams.enterTeamName')}
                   value={teamNameInput}
                   onChangeText={setTeamNameInput}
                 />
               </View>
               <PillButton
-                title="Create Team"
+                title={t('teams.createTeam')}
                 onPress={submitting ? undefined : handleCreateTeam}
                 additionalStyle={styles.button}
               />
@@ -1341,13 +1342,13 @@ export function TeamsScreen() {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Invite Teammate</Text>
+            <Text style={styles.modalTitle}>{t('teams.inviteTeammate')}</Text>
             <Text style={styles.modalSubtitle}>
-              Enter their email to add them to your team. If they don't have an account, they'll join automatically upon signing up.
+              {t('teams.inviteModalDesc')}
             </Text>
 
             <StyledInput
-              label="Email Address"
+              label={t('auth.email')}
               placeholder="teammate@example.com"
               value={inviteEmailInput}
               onChangeText={setInviteEmailInput}
@@ -1376,12 +1377,12 @@ export function TeamsScreen() {
                   pressed && { opacity: 0.8 }
                 ]}
               >
-                <Text style={styles.modalCancelBtnText}>Close</Text>
+                <Text style={styles.modalCancelBtnText}>{t('common.close')}</Text>
               </Pressable>
 
               <PillButton
                 variant="secondary"
-                title="Send Invite"
+                title={t('teams.sendInvite')}
                 isLoading={inviteSubmitting}
                 onPress={handleSendInvite}
                 additionalStyle={{ flex: 1, height: 48 }}

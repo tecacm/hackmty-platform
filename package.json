@@ -15,7 +15,8 @@
   "scripts": {
     "native": "cd apps/expo && yarn start",
     "web": "cd apps/next && yarn next",
-    "web:https": "cd apps/next && yarn next dev --experimental-https"
+    "web:https": "cd apps/next && yarn next dev --experimental-https",
+    "check:i18n": "node packages/app/i18n/validate-i18n.js"
   },
   "packageManager": "yarn@4.7.0",
   "eslintConfig": {

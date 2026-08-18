@@ -21,6 +21,7 @@ import { SimpleTextLink } from 'app/components/simple-text-link'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+import { useTranslation } from 'app/i18n'
 
 type ResetPasswordValues = {
   password: string
@@ -114,6 +115,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 2,
   },
+  title: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    fontFamily: 'Montserrat',
+    marginBottom: 4,
+  },
   subtitle: {
     color: '#e9e3f0',
     fontSize: 13.5,
@@ -150,15 +159,16 @@ const styles = StyleSheet.create({
 })
 
 export function ResetPasswordScreen() {
-  const { navigateTo } = useSmartNavigate();
-  const insets = useSafeArea();
-  const headerHeight = useHeaderHeightSafe();
-  const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const images = [rectoria, pavoreal, ciap, photo2024, skyview];
+  const { t } = useTranslation()
+  const { navigateTo } = useSmartNavigate()
+  const insets = useSafeArea()
+  const headerHeight = useHeaderHeightSafe()
+  const [stableHeaderHeight, setStableHeaderHeight] = useState(0)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const images = [rectoria, pavoreal, ciap, photo2024, skyview]
 
   const {
     control,
@@ -176,9 +186,9 @@ export function ResetPasswordScreen() {
 
   useEffect(() => {
     if (headerHeight > stableHeaderHeight) {
-      setStableHeaderHeight(headerHeight);
+      setStableHeaderHeight(headerHeight)
     }
-  }, [headerHeight, stableHeaderHeight]);
+  }, [headerHeight, stableHeaderHeight])
 
   useEffect(() => {
     async function initializeRecoverySession() {
@@ -189,7 +199,7 @@ export function ResetPasswordScreen() {
 
       try {
         if (!isSupabaseConfigured) {
-          setErrorMessage('Supabase is not configured.')
+          setErrorMessage(t('auth.supabaseNotConfigured'))
           return
         }
 
@@ -237,17 +247,15 @@ export function ResetPasswordScreen() {
         }
 
         if (!activeUser) {
-          setErrorMessage('This reset link is no longer valid. Please request a new password reset email.')
+          setErrorMessage(t('auth.invalidResetLink'))
         }
       } catch (err: any) {
         console.error('Failed to resolve recovery session:', err)
-        // "code verifier not found" happens when an older reset link is opened
-        // after a newer one was requested, invalidating the stored PKCE state.
         const isStaleLink = typeof err?.message === 'string' && /code verifier/i.test(err.message)
         setErrorMessage(
           isStaleLink
-            ? 'This reset link is no longer valid, possibly because a newer one was requested. Please request a new password reset email.'
-            : 'This reset link is no longer valid. Please request a new password reset email.'
+            ? t('auth.invalidResetLinkStale')
+            : t('auth.invalidResetLink')
         )
       } finally {
         setIsInitializing(false)
@@ -257,7 +265,7 @@ export function ResetPasswordScreen() {
     initializeRecoverySession()
   }, [])
 
-  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
+  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24
 
   const goToLogin = () => navigateTo('/login')
 
@@ -270,7 +278,7 @@ export function ResetPasswordScreen() {
 
     try {
       if (!isSupabaseConfigured) {
-        setErrorMessage('Supabase is not configured for this environment.')
+        setErrorMessage(t('auth.supabaseNotConfigured'))
         return
       }
 
@@ -283,7 +291,7 @@ export function ResetPasswordScreen() {
         return
       }
 
-      setStatusMessage('Your password has been reset successfully!')
+      setStatusMessage(t('auth.passwordResetSuccess'))
       setTimeout(() => {
         navigateTo('/login')
       }, 2000)
@@ -311,7 +319,7 @@ export function ResetPasswordScreen() {
         }}
       />
     </>
-  );
+  )
 
   return (
     <ParallaxScrollView
@@ -361,27 +369,28 @@ export function ResetPasswordScreen() {
         {isInitializing ? (
           <View style={{ marginVertical: 16, alignItems: 'center' }}>
             <ActivityIndicator size="large" color="#f0d9b0" />
-            <Text style={styles.initializingText}>Establishing secure reset session...</Text>
+            <Text style={styles.initializingText}>{t('auth.establishingSession')}</Text>
           </View>
         ) : (
           <>
-            <Text style={styles.subtitle}>Enter and confirm your new account password.</Text>
+            <Text style={styles.title}>{t('auth.resetPassword')}</Text>
+            <Text style={styles.subtitle}>{t('auth.resetPasswordSubtitle')}</Text>
             <Controller
               control={control}
               name="password"
               rules={{
-                required: 'Password is required',
+                required: t('auth.passwordRequired'),
                 minLength: {
                   value: 6,
-                  message: 'Password must be at least 6 characters long',
+                  message: t('auth.passwordMinLength'),
                 },
               }}
               render={({ field: { onChange, value } }) => (
                 <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
                   <StyledInput
                     variant="glass"
-                    label="New Password"
-                    placeholder="Enter new password"
+                    label={t('auth.newPassword')}
+                    placeholder={t('auth.newPasswordPlaceholder')}
                     textContentType="password"
                     onChangeText={onChange}
                     value={value}
@@ -396,15 +405,15 @@ export function ResetPasswordScreen() {
               control={control}
               name="confirmPassword"
               rules={{
-                required: 'Please confirm your password',
-                validate: (value) => value === passwordVal || 'Passwords do not match',
+                required: t('auth.passwordRequired'),
+                validate: (value) => value === passwordVal || t('auth.passwordsDoNotMatch'),
               }}
               render={({ field: { onChange, value } }) => (
                 <View style={styles.fieldGroup}>
                   <StyledInput
                     variant="glass"
-                    label="Confirm New Password"
-                    placeholder="Confirm new password"
+                    label={t('auth.confirmNewPassword')}
+                    placeholder={t('auth.confirmNewPasswordPlaceholder')}
                     textContentType="password"
                     onChangeText={onChange}
                     value={value}
@@ -420,14 +429,14 @@ export function ResetPasswordScreen() {
 
             <PillButton
               variant="gradient"
-              title={isSubmitting ? 'Saving...' : 'Save New Password'}
+              title={isSubmitting ? t('auth.savingPassword') : t('auth.saveNewPassword')}
               onPress={handleSubmit(onSubmit)}
               additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
             />
 
             <SimpleTextLink
-              text="Back to "
-              accentText="Login"
+              text={t('auth.alreadyHaveAccount')}
+              accentText={t('auth.login')}
               onPress={goToLogin}
               textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
             />

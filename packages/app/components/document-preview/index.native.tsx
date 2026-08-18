@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet, Image, Linking, ActivityIndicator, Platform } from 'react-native'
 import { PillButton } from '../pill-button'
+import { useTranslation } from 'app/i18n'
 
 let WebViewComponent: any = null
 try {
@@ -35,16 +36,19 @@ export function DocumentPreview({
   title,
   url,
   loading = false,
-  emptyMessage = 'No document uploaded.',
+  emptyMessage,
   height = 320,
 }: DocumentPreviewProps) {
+  const { t } = useTranslation()
+  const resolvedEmptyMessage = emptyMessage || t('common.noDocument')
+
   if (loading) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
         <View style={styles.placeholderContainer}>
           <ActivityIndicator size="small" color="#c2b75f" />
-          <Text style={[styles.placeholderText, { marginTop: 8 }]}>Loading document link...</Text>
+          <Text style={[styles.placeholderText, { marginTop: 8 }]}>{t('common.loadingDocument')}</Text>
         </View>
       </View>
     )
@@ -55,7 +59,7 @@ export function DocumentPreview({
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
         <View style={styles.placeholderContainer}>
-          <Text style={styles.placeholderText}>{emptyMessage}</Text>
+          <Text style={styles.placeholderText}>{resolvedEmptyMessage}</Text>
         </View>
       </View>
     )
@@ -68,7 +72,7 @@ export function DocumentPreview({
       <View style={styles.headerRow}>
         <Text style={styles.title}>{title}</Text>
         <PillButton
-          title="Open ↗"
+          title={t('common.openDocument')}
           onPress={() => Linking.openURL(url)}
           additionalStyle={styles.headerBtn}
         />

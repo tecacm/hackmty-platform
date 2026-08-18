@@ -29,8 +29,10 @@ try {
 } catch (_) {}
 
 import { AppIcon } from 'app/components/app-icon'
+import { useTranslation } from 'app/i18n'
 
 export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
+  const { t } = useTranslation()
   const { announcements, userLikes, loading, refreshing, refresh, toggleLike } = useAnnouncements()
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
   const { navigateTo } = useSmartNavigate()
@@ -53,7 +55,7 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#c2b75f" />
-        <Text style={styles.loadingText}>Loading Announcements Feed...</Text>
+        <Text style={styles.loadingText}>{t('announcements.loadingFeed')}</Text>
       </View>
     )
   }
@@ -61,12 +63,12 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
   if (!canView) {
     return (
       <View style={styles.contentContainer}>
-        <Text style={styles.heading}>Announcements</Text>
+        <Text style={styles.heading}>{t('announcements.title')}</Text>
         <View style={styles.unauthorizedCard}>
           <AppIcon name="lock.fill" color="#1d041f" size={36} />
-          <Text style={styles.unauthorizedTitle}>Access Restricted</Text>
+          <Text style={styles.unauthorizedTitle}>{t('announcements.accessRestricted')}</Text>
           <Text style={styles.unauthorizedText}>
-            You do not have permission to view the announcements feed.
+            {t('announcements.accessRestrictedDesc')}
           </Text>
         </View>
       </View>
@@ -80,16 +82,16 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
         <View style={styles.stickyHeaderContainer}>
           <View style={styles.headerRow}>
             <View style={styles.headerTitleCol}>
-              <Text style={styles.heading}>Announcements</Text>
+              <Text style={styles.heading}>{t('announcements.title')}</Text>
               <Text style={styles.subheading}>
-                Live timeline & official updates from HackMTY staff
+                {t('announcements.subheading')}
               </Text>
             </View>
 
             {canCreate && (
               <View style={styles.createButtonContainer}>
                 <PillButton
-                  title="+ Post"
+                  title={t('announcements.post')}
                   onPress={handleCreatePress}
                   variant="primary"
                   additionalStyle={styles.createPillButton}
@@ -105,13 +107,13 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
         {announcements.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <AppIcon name="camera.fill" color="#5a0061" size={44} />
-            <Text style={styles.emptyStateTitle}>No announcements yet</Text>
+            <Text style={styles.emptyStateTitle}>{t('announcements.noAnnouncements')}</Text>
             <Text style={styles.emptyStateText}>
-              Check back soon! Official updates, schedule changes, and alerts will appear here.
+              {t('announcements.noAnnouncementsDesc')}
             </Text>
             {canCreate && (
               <Pressable onPress={handleCreatePress} style={styles.createFirstButton}>
-                <Text style={styles.createFirstButtonText}>+ Create First Announcement</Text>
+                <Text style={styles.createFirstButtonText}>{t('announcements.createFirst')}</Text>
               </Pressable>
             )}
           </View>

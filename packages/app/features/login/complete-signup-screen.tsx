@@ -22,6 +22,7 @@ import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { FormCheckbox } from 'app/components/form-checkbox'
 import { useForm, Controller } from "react-hook-form"
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+import { useTranslation } from 'app/i18n'
 
 import { sanitizeName } from 'app/utils/sanitization'
 
@@ -78,6 +79,7 @@ const styles = StyleSheet.create({
 })
 
 export function CompleteSignupScreen() {
+  const { t } = useTranslation()
   const { navigateTo } = useSmartNavigate()
   const insets = useSafeArea()
   const headerHeight = useHeaderHeightSafe()
@@ -133,17 +135,19 @@ export function CompleteSignupScreen() {
         const hash = window.location.hash
         let hasSession = false
 
-        // 1. If code exists, exchange code for session
+        // 1. Authorization Code Exchange
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) throw error
           hasSession = true
-        } 
-        // 2. If access_token hash parameter exists, set session manually
-        else if (hash && hash.includes('access_token=')) {
-          const params = new URLSearchParams(hash.substring(1)) // remove '#'
-          const accessToken = params.get('access_token')
-          const refreshToken = params.get('refresh_token')
+        }
+
+        // 2. Hash fragment access token exchange (e.g., #access_token=...&type=invite)
+        if (!hasSession && hash) {
+          const hashParams = new URLSearchParams(hash.replace(/^#/, ''))
+          const accessToken = hashParams.get('access_token')
+          const refreshToken = hashParams.get('refresh_token')
+
           if (accessToken && refreshToken) {
             const { error } = await supabase.auth.setSession({
               access_token: accessToken,
@@ -154,13 +158,12 @@ export function CompleteSignupScreen() {
           }
         }
 
-        // 3. Clean up the URL to prevent subsequent reload loops trying to reuse the single-use token/code
+        // 3. Clean up the URL
         if (hasSession) {
-          const cleanUrl = window.location.pathname
-          window.history.replaceState({}, document.title, cleanUrl)
+          window.history.replaceState({}, document.title, window.location.pathname)
         }
 
-        // 4. Asynchronous state verification check with retry bounds (up to 1.2 seconds)
+        // 4. Asynchronous state verification
         let activeUser: any = null
         for (let i = 0; i < 6; i++) {
           const { data: { user } } = await supabase.auth.getUser()
@@ -178,7 +181,7 @@ export function CompleteSignupScreen() {
         }
       } catch (err: any) {
         console.error('Failed to resolve session:', err)
-        setAuthError(err.message || 'Verification link is expired or invalid.')
+        setAuthError(err.message || 'Invitation authorization failed.')
       } finally {
         setIsInitializing(false)
       }
@@ -188,11 +191,15 @@ export function CompleteSignupScreen() {
   }, [])
 
   const onSubmit = async (formData: CompleteSignupValues) => {
-    if (isSubmitting) return
-    setAuthError(null)
-    setIsSubmitting(true)
+    if (!formData.agreeMLH) {
+      setAuthError(t('auth.mlhRequired'))
+      return
+    }
 
     try {
+      setIsSubmitting(true)
+      setAuthError(null)
+
       if (!isSupabaseConfigured) {
         navigateTo('/')
         return
@@ -238,54 +245,41 @@ export function CompleteSignupScreen() {
     gap: 12,
     width: '100%'
   } as const
-  const nameFieldStyle = isWide ? { flex: 1 } : { width: '100%' as const }
-
-  const background = (
-    <>
-      <Carrousel slideImages={images} />
-      <LinearGradient
-        colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={{
-          position: Platform.OS === 'web' ? 'fixed' : 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: Platform.OS === 'web' ? -200 : 0,
-          height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
-        }}
-      />
-    </>
-  )
+  const nameFieldStyle = {
+    flex: isWide ? 1 : undefined,
+    width: '100%'
+  } as const
 
   return (
     <ParallaxScrollView
-      background={background}
-      style={{ backgroundColor: '#1d041f' }}
-      contentContainerStyle={{
-        alignItems: 'center',
-        gap: 16,
-        paddingTop: topOffset,
-        paddingBottom: insets.bottom + 40,
-        paddingLeft: insets.left,
-        paddingRight: insets.right,
-        overflow: 'visible',
-      }}
+      headerImage={
+        <Carrousel images={images} width={width} height={300} />
+      }
+      headerBackgroundColor={{ dark: '#121212', light: '#ffffff' }}
     >
-      <View style={styles.container}>
-        <View style={styles.shadowStyle}>
+      <View style={[styles.container, { paddingTop: topOffset }]}>
+        <View style={styles.logoContainer}>
           {(() => {
-            const ImageComponent = SolitoImage as any
-            return (
-              <ImageComponent
+            const logo = (
+              <SolitoImage
                 src={logoImage}
-                height={200}
-                width={130}
-                alt="The HackMTY Logo"
-                contentFit="contain"
-                resizeMode="contain"
+                width={120}
+                height={120}
+                alt="HackMTY Logo"
+                style={styles.shadowStyle}
               />
+            )
+            return Platform.OS === 'web' ? (
+              <LinearGradient
+                colors={['#ff67f9', '#df4bf4', '#c2b75f']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.logoCircle}
+              >
+                {logo}
+              </LinearGradient>
+            ) : (
+              logo
             )
           })()}
         </View>
@@ -294,16 +288,16 @@ export function CompleteSignupScreen() {
       {isInitializing ? (
         <View style={{ marginVertical: 32, alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#c2b75f" />
-          <Text style={{ color: '#D8B8FF', marginTop: 12 }}>Establishing secure invite session...</Text>
+          <Text style={{ color: '#D8B8FF', marginTop: 12 }}>{t('auth.establishingInviteSession')}</Text>
         </View>
       ) : (
         <View style={{ alignItems: 'center', width: '80%', maxWidth: 600, gap: 16, paddingHorizontal: 20 }}>
           <View style={{ width: '100%', marginBottom: 8 }}>
-            <Text style={styles.title}>Accept Invitation</Text>
+            <Text style={styles.title}>{t('auth.acceptInvitation')}</Text>
             {invitedEmail ? (
-              <Text style={styles.subtitle}>Complete onboarding signup for {invitedEmail}</Text>
+              <Text style={styles.subtitle}>{t('auth.completeOnboarding', [invitedEmail])}</Text>
             ) : (
-              <Text style={styles.subtitle}>Enter your profile information to join the event.</Text>
+              <Text style={styles.subtitle}>{t('auth.enterProfileToJoin')}</Text>
             )}
           </View>
 
@@ -312,11 +306,11 @@ export function CompleteSignupScreen() {
               <Controller
                 control={control}
                 name="firstName"
-                rules={{ required: 'First name is required' }}
+                rules={{ required: t('auth.firstNameRequired') }}
                 render={({ field: { onChange, value } }) => (
                   <StyledInput
-                    label="First Name"
-                    placeholder="First name"
+                    label={t('auth.firstName')}
+                    placeholder={t('auth.firstNamePlaceholder')}
                     textContentType="name"
                     additionalStyle={styles.shadowStyle}
                     onChangeText={onChange}
@@ -331,11 +325,11 @@ export function CompleteSignupScreen() {
               <Controller
                 control={control}
                 name="lastName"
-                rules={{ required: 'Last name is required' }}
+                rules={{ required: t('auth.lastNameRequired') }}
                 render={({ field: { onChange, value } }) => (
                   <StyledInput
-                    label="Last Name"
-                    placeholder="Last name"
+                    label={t('auth.lastName')}
+                    placeholder={t('auth.lastNamePlaceholder')}
                     textContentType="familyName"
                     additionalStyle={styles.shadowStyle}
                     onChangeText={onChange}
@@ -352,16 +346,16 @@ export function CompleteSignupScreen() {
             control={control}
             name="password"
             rules={{
-              required: 'Password is required',
+              required: t('auth.passwordRequired'),
               minLength: {
                 value: 6,
-                message: 'Password must be at least 6 characters long',
+                message: t('auth.passwordMinLength'),
               },
             }}
             render={({ field: { onChange, value } }) => (
               <StyledInput
-                label="Choose Password"
-                placeholder="Enter password"
+                label={t('auth.choosePassword')}
+                placeholder={t('auth.passwordPlaceholder')}
                 textContentType="password"
                 additionalStyle={styles.shadowStyle}
                 onChangeText={onChange}
@@ -376,13 +370,13 @@ export function CompleteSignupScreen() {
             control={control}
             name="confirmPassword"
             rules={{
-              required: 'Please confirm your password',
-              validate: (value) => value === password || 'The passwords do not match'
+              required: t('auth.confirmPasswordRequired'),
+              validate: (value) => value === password || t('auth.passwordsDoNotMatch')
             }}
             render={({ field: { onChange, value } }) => (
               <StyledInput
-                label="Confirm Password"
-                placeholder="Confirm password"
+                label={t('auth.confirmPassword')}
+                placeholder={t('auth.confirmPasswordPlaceholder')}
                 textContentType="password"
                 additionalStyle={styles.shadowStyle}
                 onChangeText={onChange}
@@ -396,12 +390,12 @@ export function CompleteSignupScreen() {
           <Controller
             control={control}
             name="agreeMLH"
-            rules={{ required: 'You must agree to the MLH Code of Conduct' }}
+            rules={{ required: t('auth.mlhRequired') }}
             render={({ field: { onChange, value } }) => (
               <FormCheckbox
                 value={value}
                 onValueChange={onChange}
-                label="I agree to the MLH Code of Conduct"
+                label={t('auth.mlhAgreement') + t('auth.mlhCodeOfConduct')}
                 additionalStyle={styles.shadowStyle}
                 error={errors.agreeMLH?.message}
               />
@@ -415,7 +409,7 @@ export function CompleteSignupScreen() {
               <FormCheckbox
                 value={value}
                 onValueChange={onChange}
-                label="Subscribe to our mailing list to receive information about our next event"
+                label={t('auth.subscribeMailingList')}
                 additionalStyle={styles.shadowStyle}
               />
             )}
@@ -424,12 +418,12 @@ export function CompleteSignupScreen() {
           {authError ? <Text style={styles.authError}>{authError}</Text> : null}
 
           <PillButton
-            title={isSubmitting ? 'Submitting...' : 'Join Event'}
+            title={isSubmitting ? t('common.submitting') : t('auth.joinEvent')}
             onPress={handleSubmit(onSubmit)}
             additionalStyle={{ marginBottom: 10, opacity: isSubmitting ? 0.7 : 1 }}
           />
 
-          <SimpleTextLink text="Back to Login" onPress={() => navigateTo('/login')} />
+          <SimpleTextLink text={t('auth.backToLogin')} onPress={() => navigateTo('/login')} />
         </View>
       )}
     </ParallaxScrollView>

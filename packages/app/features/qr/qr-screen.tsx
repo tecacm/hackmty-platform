@@ -23,6 +23,8 @@ import { getLocalizedText, formatString, formatTime } from 'app/utils/i18n-helpe
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { EVENT_YEAR, checkEventPassUnlocked } from 'app/utils/event-config'
 import hackmtyLogo from 'app/assets/images/hackmty-logo.webp'
+import { useTranslation } from 'app/i18n'
+import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 
 interface CheckpointItem {
   id: string
@@ -58,6 +60,7 @@ interface CheckInRecord {
 }
 
 export function QRScreen() {
+  const { t, locale } = useTranslation()
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { role: userRole } = useUserPermissions()
   const { width } = useWindowDimensions()
@@ -461,7 +464,7 @@ export function QRScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#c2b75f" />
-        <Text style={styles.loadingText}>Loading Official Pass...</Text>
+        <Text style={styles.loadingText}>{t('qr.loadingPass')}</Text>
       </View>
     )
   }
@@ -482,7 +485,9 @@ export function QRScreen() {
         {/* Event Header with Centered Logo */}
         <View style={styles.headerBadge}>
           <Image source={hackmtyLogo} style={styles.eventLogo} resizeMode="contain" />
-          <Text style={styles.headerSubtitle}>OFFICIAL EVENT PASS • HACKMTY {EVENT_YEAR}</Text>
+          <Text style={styles.headerSubtitle}>
+            {t('qr.officialEventPass', { year: EVENT_YEAR })}
+          </Text>
         </View>
 
         {/* Main Glass Pass Card */}
@@ -517,10 +522,10 @@ export function QRScreen() {
                 />
                 <Text style={styles.statusBannerText}>
                   {hasInitialCheckIn
-                    ? 'Checked In to Event • Badge Active'
+                    ? t('qr.badgeActive')
                     : isAllowed
-                    ? 'Initial Check-in Pending (Visit Registration Desk)'
-                    : 'Attendance Not Confirmed • Confirmation required to check in'}
+                    ? t('qr.initialCheckinPending')
+                    : t('qr.attendanceNotConfirmed')}
                 </Text>
               </View>
             )
@@ -532,8 +537,8 @@ export function QRScreen() {
               label=""
               value={activeTab}
               options={[
-                { label: 'My QR Badge', value: 'pass' },
-                { label: `Meals & Dynamics (${checkpoints.length})`, value: 'activities' },
+                { label: t('qr.myBadge'), value: 'pass' },
+                { label: `${t('qr.mealsDynamics')} (${checkpoints.length})`, value: 'activities' },
               ]}
               onValueChange={(val) => setActiveTab(val as 'pass' | 'activities')}
             />
@@ -545,21 +550,21 @@ export function QRScreen() {
               {(() => {
                 if (!isAllowed) {
                   const lockReason = !isPassUnlocked
-                    ? 'The official event pass will unlock closer to the HackMTY event check-in.'
-                    : 'Attendance confirmation is required to generate your official event QR pass.'
+                    ? t('qr.passLockedReason')
+                    : t('qr.passLockedPendingConfirmation')
 
                   return (
                     <View style={styles.lockedQrWrapper}>
                       <View style={styles.lockedIconCircle}>
                         <AppIcon name="lock.fill" size={34} color="#EF4444" />
                       </View>
-                      <Text style={styles.lockedTitle}>Event Pass Locked</Text>
+                      <Text style={styles.lockedTitle}>{t('qr.passLocked')}</Text>
                       <Text style={styles.lockedSubtitle}>
                         {lockReason}
                       </Text>
                       {!isConfirmed && !isStaff && (
                         <Pressable style={styles.lockedButton} onPress={() => navigateTo('/applications')}>
-                          <Text style={styles.lockedButtonText}>View Application Status</Text>
+                          <Text style={styles.lockedButtonText}>{t('qr.viewApplicationStatus')}</Text>
                         </Pressable>
                       )}
                     </View>
@@ -595,7 +600,7 @@ export function QRScreen() {
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 14 }}>
                   {userRolesList.map((roleStr, idx) => (
                     <View key={`${roleStr}-${idx}`} style={styles.roleBadge}>
-                      <Text style={styles.roleBadgeText}>{roleStr.toUpperCase()}</Text>
+                      <Text style={styles.roleBadgeText}>{getApplicantRoleLabel(roleStr, locale).toUpperCase()}</Text>
                     </View>
                   ))}
                 </View>
@@ -622,13 +627,13 @@ export function QRScreen() {
                   ) : null}
                   {resolvedMajor ? (
                     <View style={styles.infoPill}>
-                      <Text style={styles.infoPillLabel}>Major:</Text>
+                      <Text style={styles.infoPillLabel}>{t('profile.major')}:</Text>
                       <Text style={styles.infoPillText}>{resolvedMajor}</Text>
                     </View>
                   ) : null}
                   {resolvedTshirt ? (
                     <View style={styles.infoPill}>
-                      <Text style={styles.infoPillLabel}>Size:</Text>
+                      <Text style={styles.infoPillLabel}>{t('profile.tshirtSize')}:</Text>
                       <Text style={styles.infoPillText}>{resolvedTshirt.toUpperCase()}</Text>
                     </View>
                   ) : null}
@@ -643,17 +648,17 @@ export function QRScreen() {
                 </View>
 
                 <Text style={styles.qrInstructions}>
-                  Show this QR code at meal stations, check-in desks, and dynamic activity checkpoints.
+                  {t('qr.qrInstructions')}
                 </Text>
               </View>
             </View>
           ) : (
             /* Dynamic Activity & Meal Timeline View */
             <View style={styles.timelineBody}>
-              <Text style={styles.timelineSectionTitle}>Event Schedule & Checkpoint Status</Text>
+              <Text style={styles.timelineSectionTitle}>{t('qr.stationTimeline')}</Text>
 
               {visibleCheckpoints.length === 0 ? (
-                <Text style={styles.emptyText}>No active checkpoints scheduled yet.</Text>
+                <Text style={styles.emptyText}>{t('qr.noCheckpoints')}</Text>
               ) : (
                 visibleCheckpoints.map((cp) => {
                   const typeObj = cp.checkpoint_types
@@ -662,16 +667,19 @@ export function QRScreen() {
                   const isClaimed = !!record
 
                   // Resolve Localized Messages
-                  const titleText = getLocalizedText(cp.title)
-                  const descText = getLocalizedText(cp.description)
+                  const titleText = getLocalizedText(cp.title, locale)
+                  const descText = getLocalizedText(cp.description, locale)
                   const claimedTemplate = getLocalizedText(
-                    cp.already_claimed_message_override || typeObj?.default_already_claimed_message || 'Claimed at %s'
+                    cp.already_claimed_message_override || typeObj?.default_already_claimed_message || (locale === 'es' ? 'Reclamado a las %s' : 'Claimed at %s'),
+                    locale
                   )
                   const successTemplate = getLocalizedText(
-                    cp.success_message_override || typeObj?.default_success_message || 'Checked in at %s'
+                    cp.success_message_override || typeObj?.default_success_message || (locale === 'es' ? 'Registrado a las %s' : 'Checked in at %s'),
+                    locale
                   )
                   const notCheckedInTemplate = getLocalizedText(
-                    cp.not_checked_in_message_override || typeObj?.default_not_checked_in_message || 'Initial check-in required'
+                    cp.not_checked_in_message_override || typeObj?.default_not_checked_in_message || (locale === 'es' ? 'Check-in inicial requerido' : 'Initial check-in required'),
+                    locale
                   )
 
                   let statusText = ''
@@ -691,7 +699,7 @@ export function QRScreen() {
                     statusColor = '#059669'
                     statusIcon = 'checkmark.circle.fill'
                   } else if (isClosed) {
-                    statusText = 'Station Closed'
+                    statusText = t('qr.stationClosed')
                     statusColor = '#dc2626'
                     statusIcon = 'xmark.circle.fill'
                   } else if (!hasInitialCheckIn && requiresCheckin) {
@@ -699,18 +707,18 @@ export function QRScreen() {
                     statusColor = '#dc2626'
                     statusIcon = 'xmark.circle.fill'
                   } else if (isNotUnlockedYet && unlocksAt) {
-                    const unlockFormatted = unlocksAt.toLocaleString(undefined, {
+                    const unlockFormatted = unlocksAt.toLocaleString(locale === 'es' ? 'es-MX' : 'en-US', {
                       weekday: 'short',
                       month: 'short',
                       day: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
                     })
-                    statusText = `Locked (Unlocks ${unlockFormatted})`
+                    statusText = `${t('qr.locked')} (${t('qr.unlocksAt', { time: unlockFormatted })})`
                     statusColor = '#d97706'
                     statusIcon = 'lock.fill'
                   } else {
-                    statusText = 'Available for Check-In'
+                    statusText = t('qr.availableForCheckin')
                     statusColor = '#5a0061'
                     statusIcon = 'clock.fill'
                   }
@@ -792,21 +800,21 @@ export function QRScreen() {
             </Animated.View>
 
             <View style={styles.celebrationTag}>
-              <Text style={styles.celebrationTagText}>CHECK-IN VERIFIED</Text>
+              <Text style={styles.celebrationTagText}>{t('qr.checkinVerified')}</Text>
             </View>
 
             <Text style={styles.celebrationTitle}>
-              {celebration.isEntrance ? 'Welcome to HackMTY 2026! 🎉' : celebration.title}
+              {celebration.isEntrance ? t('qr.welcomeTitle', { year: EVENT_YEAR }) : celebration.title}
             </Text>
 
             <Text style={styles.celebrationSubtitle}>
               {celebration.isEntrance
-                ? 'Your attendee pass is officially validated and active for all event activities, meals, and sponsor stations.'
-                : `Check-in recorded successfully at ${celebration.timestamp}.`}
+                ? t('qr.welcomeSubtitle')
+                : t('qr.checkinRecorded', { time: celebration.timestamp })}
             </Text>
 
             <Pressable style={styles.celebrationButton} onPress={dismissCelebration}>
-              <Text style={styles.celebrationButtonText}>Continue to Pass</Text>
+              <Text style={styles.celebrationButtonText}>{t('qr.celebrationDismiss')}</Text>
             </Pressable>
           </Animated.View>
         </Animated.View>
