@@ -75,16 +75,29 @@ export function selectActiveRoles(
 }
 
 /**
+ * Roles that operate the event and therefore have unconditional access to the
+ * Event Pass: they bypass both the date lock and the attendance-confirmation
+ * requirement. These roles typically have no participant application to confirm.
+ */
+export const OPERATOR_ROLES = ['admin', 'organizer']
+
+/**
+ * Returns true when any of the given roles is an event operator (admin/organizer).
+ * Applicant-staff roles (volunteer, mentor, judge, sponsor) are NOT operators —
+ * they go through the same accept→confirm flow as hackers and must confirm.
+ */
+export function isOperatorRole(roles: string[] = []): boolean {
+  return roles.some((r) => OPERATOR_ROLES.includes((r || '').toLowerCase()))
+}
+
+/**
  * Checks whether the Event Pass is active based on database global_config table and user role.
- * Staff members (admin, organizer, mentor, volunteer, judge, sponsor) always bypass date locks.
+ * Only event operators (admin, organizer) bypass the date lock, for setup & testing.
+ * Applicant-staff (volunteer, mentor, judge, sponsor) and hackers are subject to it.
  */
 export async function checkEventPassUnlocked(userRolesList: string[] = []): Promise<boolean> {
-  const isStaff = userRolesList.some((r) =>
-    ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r.toLowerCase())
-  )
-
-  // Staff members bypass date lock for testing & setup
-  if (isStaff) return true
+  // Operators bypass the date lock for testing & setup
+  if (isOperatorRole(userRolesList)) return true
 
   const configMap = await getGlobalConfigMap()
 
