@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, StyleSheet, Image, Linking, ActivityIndicator, Platform } from 'react-native'
+import { View, Text, StyleSheet, Image, Linking, ActivityIndicator } from 'react-native'
 import { PillButton } from '../pill-button'
 import { useTranslation } from 'app/i18n'
 
@@ -90,10 +90,7 @@ export function DocumentPreview({
         <View style={[styles.pdfFrame, { height: height }]}>
           <WebViewComponent
             source={{
-              uri:
-                Platform.OS === 'ios'
-                  ? url
-                  : `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`,
+              uri: url,
             }}
             style={{ flex: 1, borderRadius: 8 }}
             startInLoadingState={true}

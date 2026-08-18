@@ -86,7 +86,7 @@ export function DocumentPreview({
           />
         ) : (
           <iframe
-            src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`}
+            src={url}
             title={title}
             style={{
               width: '100%',
