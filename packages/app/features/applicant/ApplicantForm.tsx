@@ -257,13 +257,14 @@ export function ApplicantForm({
   const roleFieldNames = new Set(allFields.map((f: any) => f?.name).filter(Boolean))
 
   const fields = allFields.filter((field) => {
-    if (!field.dependsOn) return true
-    if (!roleFieldNames.has(field.dependsOn.field)) return true
-    const dependentValue = (currentValues as Record<string, unknown>)[field.dependsOn.field]
+    const dependsOn = 'dependsOn' in field ? field.dependsOn : undefined
+    if (!dependsOn) return true
+    if (!roleFieldNames.has(dependsOn.field)) return true
+    const dependentValue = (currentValues as Record<string, unknown>)[dependsOn.field]
     if (dependentValue === undefined || dependentValue === null || dependentValue === '') return false
 
-    const op = field.dependsOn.operator || '=='
-    const targetVal = field.dependsOn.value
+    const op = dependsOn.operator || '=='
+    const targetVal = dependsOn.value
 
     if (op === '<') return Number(dependentValue) < Number(targetVal)
     if (op === '<=') return Number(dependentValue) <= Number(targetVal)

@@ -41,6 +41,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  logoCircle: {
+    width: 144,
+    height: 144,
+    borderRadius: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   shadowStyle: {
     ...Platform.select({
       native: {
@@ -252,10 +264,9 @@ export function CompleteSignupScreen() {
 
   return (
     <ParallaxScrollView
-      headerImage={
-        <Carrousel images={images} width={width} height={300} />
+      background={
+        <Carrousel slideImages={images} mode="crossfade" />
       }
-      headerBackgroundColor={{ dark: '#121212', light: '#ffffff' }}
     >
       <View style={[styles.container, { paddingTop: topOffset }]}>
         <View style={styles.logoContainer}>

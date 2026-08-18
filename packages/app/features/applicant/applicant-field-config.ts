@@ -154,7 +154,7 @@ type ApplicantFormField = {
   autocompleteData?: string[]
   fileSelectorProps?: FileSelectorProps
   height?: number
-  dependsOn?: { field: string; value: any; operator?: '=' | '==' | '===' | '!=' | '<' | '<=' | '>' | '>=' }
+  dependsOn?: { field: string; value: any; operator?: '=' | '==' | '===' | '!=' | '!==' | '<' | '<=' | '>' | '>=' }
 }
 
 type ApplicantDividerField = {
