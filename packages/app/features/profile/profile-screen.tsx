@@ -26,7 +26,7 @@ import { formFieldColors } from 'app/components/form-field-styles'
 import { dataReferences, getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
-import { checkEventPassUnlocked, selectActiveRoles } from 'app/utils/event-config'
+import { checkEventPassUnlocked, selectActiveRoles, isOperatorRole } from 'app/utils/event-config'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AppIcon } from 'app/components/app-icon'
 
@@ -284,7 +284,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
           .eq('user_id', user.id)
 
         const rolesList = selectActiveRoles(rolesData).map((r) => r.toLowerCase())
-        const isStaff = rolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r))
+        const isOperator = isOperatorRole(rolesList)
 
         const { data: userAppsData } = await supabase
           .from('applications')
@@ -296,7 +296,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
         )
 
         const isUnlocked = await checkEventPassUnlocked(rolesList)
-        setIsPassAllowed((isStaff || isConfirmed) && isUnlocked)
+        setIsPassAllowed((isOperator || isConfirmed) && isUnlocked)
 
         // Fetch dynamic form field choices
         const { data: fieldsData } = await supabase

@@ -21,7 +21,7 @@ import { StyledSegmented } from 'app/components/styled-segmented'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { getLocalizedText, formatString, formatTime } from 'app/utils/i18n-helpers'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
-import { EVENT_YEAR, checkEventPassUnlocked, selectActiveRoles } from 'app/utils/event-config'
+import { EVENT_YEAR, checkEventPassUnlocked, selectActiveRoles, isOperatorRole } from 'app/utils/event-config'
 import hackmtyLogo from 'app/assets/images/hackmty-logo.webp'
 import { useTranslation } from 'app/i18n'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
@@ -469,9 +469,9 @@ export function QRScreen() {
     )
   }
 
-  const isStaff = userRolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r.toLowerCase()))
+  const isOperator = isOperatorRole(userRolesList)
   const isConfirmed = Boolean(appStatus && (appStatus.status === 'confirmed' || appStatus.confirmedAt !== null))
-  const isAllowed = (isConfirmed || isStaff) && isPassUnlocked
+  const isAllowed = (isConfirmed || isOperator) && isPassUnlocked
 
   const userId = currentUserId || profile?.id || 'guest'
   const qrPayload = `hackmty:${EVENT_YEAR}:user:${userId}`
@@ -494,9 +494,9 @@ export function QRScreen() {
         <View style={styles.passCard}>
           {/* Initial Arrival Status Banner */}
           {(() => {
-            const isStaff = userRolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r.toLowerCase()))
+            const isOperator = isOperatorRole(userRolesList)
             const isConfirmed = appStatus && (appStatus.status === 'confirmed' || appStatus.confirmedAt !== null)
-            const isAllowed = isConfirmed || isStaff
+            const isAllowed = isConfirmed || isOperator
 
             return (
               <View
@@ -562,7 +562,7 @@ export function QRScreen() {
                       <Text style={styles.lockedSubtitle}>
                         {lockReason}
                       </Text>
-                      {!isConfirmed && !isStaff && (
+                      {!isConfirmed && !isOperator && (
                         <Pressable style={styles.lockedButton} onPress={() => navigateTo('/applications')}>
                           <Text style={styles.lockedButtonText}>{t('qr.viewApplicationStatus')}</Text>
                         </Pressable>

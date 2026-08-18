@@ -11,7 +11,7 @@ import tecAcm from 'app/assets/images/tec-acm-purple-gold.webp'
 import { SolitoImage } from 'solito/image'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AppIcon } from 'app/components/app-icon'
-import { checkEventPassUnlocked, selectActiveRoles } from 'app/utils/event-config'
+import { checkEventPassUnlocked, selectActiveRoles, isOperatorRole } from 'app/utils/event-config'
 import { useTranslation } from 'app/i18n'
 
 // Module-level in-memory cache to prevent flashing on component mount / route changes
@@ -144,7 +144,7 @@ export function WebNavbar() {
           .select('role, event_year')
           .eq('user_id', user.id)
         const rolesList = selectActiveRoles(rolesData).map((r) => r.toLowerCase())
-        const isStaff = rolesList.some((r) => ['admin', 'organizer', 'mentor', 'volunteer', 'judge', 'sponsor'].includes(r))
+        const isOperator = isOperatorRole(rolesList)
 
         const { data: userAppsData } = await supabase
           .from('applications')
@@ -155,7 +155,7 @@ export function WebNavbar() {
         )
 
         const isUnlocked = await checkEventPassUnlocked(rolesList)
-        setIsPassAllowed((isStaff || isConfirmed) && isUnlocked)
+        setIsPassAllowed((isOperator || isConfirmed) && isUnlocked)
       } catch (err) {
         console.error('Failed to check event pass access for navbar:', err)
         setIsPassAllowed(false)
