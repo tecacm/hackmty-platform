@@ -164,12 +164,14 @@ export function RoleApplicationScreen() {
       }
 
       if (!isSupabaseConfigured) {
-        const staticTypes = getApplicationTypes().map(type => ({
-          id: type.id,
-          label: type.label,
-          fieldCount: getApplicantFieldsForRole(type.id).length,
-          closeAt: type.close_at || null,
-        }))
+        const staticTypes = getApplicationTypes()
+          .filter((type: any) => type.is_public !== false)
+          .map(type => ({
+            id: type.id,
+            label: type.label,
+            fieldCount: getApplicantFieldsForRole(type.id).length,
+            closeAt: type.close_at || null,
+          }))
         setRolesList(staticTypes)
         setIsRolesLoading(false)
         return
@@ -246,22 +248,26 @@ export function RoleApplicationScreen() {
           })
           setRolesList(formatted)
         } else {
-          const staticTypes = getApplicationTypes().map(type => ({
+          const staticTypes = getApplicationTypes()
+            .filter((type: any) => type.is_public !== false)
+            .map(type => ({
+              id: type.id,
+              label: getApplicantRoleLabel(type.id, locale),
+              fieldCount: getApplicantFieldsForRole(type.id).length,
+              closeAt: type.close_at || null,
+            }))
+          setRolesList(staticTypes)
+        }
+      } catch (err: any) {
+        console.warn('Failed to load application roles from Supabase, using static fallback:', err)
+        const staticTypes = getApplicationTypes()
+          .filter((type: any) => type.is_public !== false)
+          .map(type => ({
             id: type.id,
             label: getApplicantRoleLabel(type.id, locale),
             fieldCount: getApplicantFieldsForRole(type.id).length,
             closeAt: type.close_at || null,
           }))
-          setRolesList(staticTypes)
-        }
-      } catch (err: any) {
-        console.warn('Failed to load application roles from Supabase, using static fallback:', err)
-        const staticTypes = getApplicationTypes().map(type => ({
-          id: type.id,
-          label: getApplicantRoleLabel(type.id, locale),
-          fieldCount: getApplicantFieldsForRole(type.id).length,
-          closeAt: type.close_at || null,
-        }))
         setRolesList(staticTypes)
       } finally {
         setIsRolesLoading(false)
