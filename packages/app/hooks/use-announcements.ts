@@ -5,8 +5,8 @@ import { sendAnnouncement } from 'app/services/notification-service'
 
 export interface AnnouncementItem {
   id: string
-  title: string
-  message: string
+  title: string | { en: string; es?: string } | any
+  message: string | { en: string; es?: string } | any
   media_url?: string | null
   media_type?: 'image' | 'video' | null
   target_roles?: string[] | null
@@ -18,20 +18,30 @@ export interface AnnouncementItem {
 }
 
 export interface CreateAnnouncementInput {
-  title: string
-  message: string
+  title: string | { en: string; es?: string }
+  message: string | { en: string; es?: string }
+  title_es?: string
+  message_es?: string
   targetRoles: string[]
   mediaFile?: any
   mediaType?: 'image' | 'video'
   sendNotifications?: boolean
   notificationChannel?: 'both' | 'push' | 'email' | 'none'
+  removeMedia?: boolean
+  existingMediaUrl?: string | null
 }
 
 const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
   {
     id: 'mock-1',
-    title: '🚀 Welcome to HackMTY 2026!',
-    message: 'Hacking has officially begun! Check the schedule for workshop locations, mentor office hours, and meal times. Good luck to all teams!',
+    title: {
+      en: '🚀 Welcome to HackMTY 2026!',
+      es: '🚀 ¡Bienvenidos a HackMTY 2026!',
+    },
+    message: {
+      en: 'Hacking has officially begun! Check the schedule for workshop locations, mentor office hours, and meal times. Good luck to all teams!',
+      es: '¡El hackathon ha comenzado oficialmente! Consulta el itinerario para talleres, asesorías de mentores y comidas. ¡Mucho éxito a todos los equipos!',
+    },
     target_roles: ['all'],
     author_name: 'HackMTY Staff',
     likes_count: 42,
@@ -39,8 +49,14 @@ const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
   },
   {
     id: 'mock-2',
-    title: '🍕 Dinner is Served in Main Cafeteria',
-    message: 'Head over to the central dining hall for dinner. Vegetarian and gluten-free options are available at Station 3.',
+    title: {
+      en: '🍕 Dinner is Served in Main Cafeteria',
+      es: '🍕 La cena está servida en la cafetería principal',
+    },
+    message: {
+      en: 'Head over to the central dining hall for dinner. Vegetarian and gluten-free options are available at Station 3.',
+      es: 'Pasa al comedor central para la cena. Opciones vegetarianas y sin gluten disponibles en la Estación 3.',
+    },
     target_roles: ['all'],
     author_name: 'Logistics Team',
     likes_count: 29,
@@ -48,8 +64,14 @@ const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
   },
   {
     id: 'mock-3',
-    title: '💡 Mentor Office Hours & Tech Support',
-    message: 'Need help with AI models, cloud deployments, or DB connections? Mentors are available in Zone B. Request assistance via the platform mentor portal.',
+    title: {
+      en: '💡 Mentor Office Hours & Tech Support',
+      es: '💡 Asesorías con Mentores y Soporte Técnico',
+    },
+    message: {
+      en: 'Need help with AI models, cloud deployments, or DB connections? Mentors are available in Zone B. Request assistance via the platform mentor portal.',
+      es: '¿Necesitas ayuda con modelos de IA, despliegue en la nube o bases de datos? Los mentores están listos en la Zona B.',
+    },
     target_roles: ['hacker', 'mentor'],
     author_name: 'Mentorship Team',
     likes_count: 18,
@@ -249,45 +271,64 @@ export function useAnnouncements() {
     fetchAnnouncements(true)
   }, [fetchAnnouncements])
 
+  const getMediaUploadUrl = useCallback(async (mediaFile: any, mediaType: 'image' | 'video') => {
+    if (!mediaFile) return null
+
+    if (!isSupabaseConfigured) {
+      if (mediaFile.uri) return mediaFile.uri
+      return null
+    }
+
+    try {
+      const fileExt = mediaFile.name ? mediaFile.name.split('.').pop() : (mediaType === 'video' ? 'mp4' : 'jpg')
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+      const filePath = `announcements/${fileName}`
+
+      let fileData = mediaFile.file || mediaFile
+      if (typeof mediaFile.uri === 'string' && !mediaFile.file) {
+        if (mediaFile.uri.startsWith('file://') || mediaFile.uri.startsWith('blob:') || mediaFile.uri.startsWith('https://') || mediaFile.uri.startsWith('http://')) {
+          const response = await fetch(mediaFile.uri)
+          fileData = await response.blob()
+        }
+      }
+
+      const { error: uploadErr } = await supabase.storage
+        .from('announcements-media')
+        .upload(filePath, fileData, {
+          contentType: mediaFile.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg'),
+          upsert: true,
+        })
+
+      if (uploadErr) throw uploadErr
+
+      const { data: publicUrlData } = supabase.storage
+        .from('announcements-media')
+        .getPublicUrl(filePath)
+
+      return publicUrlData.publicUrl
+    } catch (err) {
+      console.warn('Failed to upload media file:', err)
+      throw err
+    }
+  }, [])
+
+  const buildLocalizedJson = (value: string | { en?: string; es?: string } | null | undefined, secondaryValue?: string) => {
+    const primary = typeof value === 'string' ? value.trim() : (typeof value === 'object' && value ? (value.en || '').trim() : '')
+    const secondary = typeof value === 'object' && value ? (value.es || '').trim() : (secondaryValue || '').trim()
+    const next: Record<string, string> = {}
+
+    if (primary) next.en = primary
+    if (secondary) next.es = secondary
+
+    return Object.keys(next).length > 0 ? next : { en: '' }
+  }
+
   const createAnnouncement = async (input: CreateAnnouncementInput) => {
     const { title, message, targetRoles, mediaFile, mediaType = 'image', sendNotifications = true } = input
 
     let uploadedMediaUrl: string | null = null
-
-    // 1. Handle media upload if provided
-    if (mediaFile && isSupabaseConfigured) {
-      try {
-        const fileExt = mediaFile.name ? mediaFile.name.split('.').pop() : 'jpg'
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-        const filePath = `announcements/${fileName}`
-
-        let fileData = mediaFile.file || mediaFile
-        if (typeof mediaFile.uri === 'string' && !mediaFile.file && mediaFile.uri.startsWith('file://')) {
-          // Native FormData blob format
-          const response = await fetch(mediaFile.uri)
-          fileData = await response.blob()
-        }
-
-        const { error: uploadErr } = await supabase.storage
-          .from('announcements-media')
-          .upload(filePath, fileData, {
-            contentType: mediaFile.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg'),
-            upsert: true,
-          })
-
-        if (!uploadErr) {
-          const { data: publicUrlData } = supabase.storage
-            .from('announcements-media')
-            .getPublicUrl(filePath)
-          uploadedMediaUrl = publicUrlData.publicUrl
-        } else {
-          console.warn('Media upload warning:', uploadErr.message)
-        }
-      } catch (err) {
-        console.warn('Failed to upload media file:', err)
-      }
-    } else if (mediaFile?.uri && !isSupabaseConfigured) {
-      uploadedMediaUrl = mediaFile.uri
+    if (mediaFile) {
+      uploadedMediaUrl = await getMediaUploadUrl(mediaFile, mediaType)
     }
 
     // 2. Resolve author profile name & avatar URL
@@ -317,9 +358,12 @@ export function useAnnouncements() {
       } catch (e) {}
     }
 
+    const finalTitle = buildLocalizedJson(title, input.title_es)
+    const finalMessage = buildLocalizedJson(message, input.message_es)
+
     const payload = {
-      title,
-      message,
+      title: finalTitle,
+      message: finalMessage,
       media_url: uploadedMediaUrl,
       media_type: uploadedMediaUrl ? mediaType : null,
       target_roles: targetRoles.length > 0 ? targetRoles : ['all'],
@@ -334,12 +378,12 @@ export function useAnnouncements() {
         .from('announcements')
         .insert(payload)
         .select()
-        .single()
 
       if (dbErr) throw dbErr
 
-      if (data) {
-        setRawAnnouncements(prev => [data, ...prev])
+      const inserted = Array.isArray(data) ? data[0] : data
+      if (inserted) {
+        setRawAnnouncements(prev => [inserted, ...prev])
       }
     } else {
       const mockItem: AnnouncementItem = {
@@ -355,9 +399,16 @@ export function useAnnouncements() {
     const resolvedChannel = input.notificationChannel || (sendNotifications ? 'both' : 'none')
     if (resolvedChannel !== 'none') {
       try {
+        const notifTitle = typeof finalTitle === 'object' && finalTitle !== null
+          ? (finalTitle.en || finalTitle.es || '')
+          : String(finalTitle || '')
+        const notifMsg = typeof finalMessage === 'object' && finalMessage !== null
+          ? (finalMessage.en || finalMessage.es || '')
+          : String(finalMessage || '')
+
         await sendAnnouncement({
-          title,
-          message,
+          title: notifTitle,
+          message: notifMsg,
           badge: 'HackMTY Announcement',
           targetRoles,
           channel: resolvedChannel,
@@ -367,6 +418,64 @@ export function useAnnouncements() {
       }
     }
 
+    return true
+  }
+
+  const updateAnnouncement = async (id: string, input: CreateAnnouncementInput) => {
+    const { title, message, targetRoles, mediaFile, mediaType = 'image', sendNotifications = true, removeMedia = false, existingMediaUrl } = input
+
+    let uploadedMediaUrl: string | null = existingMediaUrl ?? null
+
+    if (removeMedia) {
+      uploadedMediaUrl = null
+    } else if (mediaFile) {
+      uploadedMediaUrl = await getMediaUploadUrl(mediaFile, mediaType)
+    }
+
+    const finalTitle = buildLocalizedJson(title, input.title_es)
+    const finalMessage = buildLocalizedJson(message, input.message_es)
+
+    const payload = {
+      title: finalTitle,
+      message: finalMessage,
+      media_url: uploadedMediaUrl,
+      media_type: uploadedMediaUrl ? mediaType : null,
+      target_roles: targetRoles.length > 0 ? targetRoles : ['all'],
+      updated_at: new Date().toISOString(),
+    }
+
+    if (isSupabaseConfigured) {
+      const { data, error: dbErr } = await supabase
+        .from('announcements')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .maybeSingle()
+
+      if (dbErr) throw dbErr
+
+      if (!data) throw new Error('Announcement was not found or you no longer have permission to edit it.')
+
+      const updated = data
+      setRawAnnouncements(prev => prev.map(item => (item.id === id ? { ...item, ...updated } : item)))
+      return updated
+    }
+
+    setRawAnnouncements(prev => prev.map(item => (item.id === id ? {
+      ...item,
+      ...payload,
+      title: finalTitle,
+      message: finalMessage,
+      media_url: uploadedMediaUrl,
+      media_type: uploadedMediaUrl ? mediaType : null,
+    } : item)))
+
+    if (removeMedia && !mediaFile && !isSupabaseConfigured) {
+      setRawAnnouncements(prev => prev.map(item => (item.id === id ? { ...item, media_url: null, media_type: null } : item)))
+    }
+
+    // Editing an announcement should not re-notify users. Update requests only persist the
+    // changed content and/or media and keep the audience experience quiet.
     return true
   }
 
@@ -436,6 +545,7 @@ export function useAnnouncements() {
     error,
     refresh,
     createAnnouncement,
+    updateAnnouncement,
     toggleLike,
   }
 }

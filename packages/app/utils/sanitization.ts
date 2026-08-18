@@ -6,6 +6,12 @@
  * Strip dangerous control characters (including NULL bytes) and trim leading/trailing whitespace.
  */
 export function sanitizeString(val: unknown): string {
+  if (typeof val === 'object' && val !== null) {
+    const objVal = (val as any).en || (val as any).es || Object.values(val)[0]
+    if (typeof objVal === 'string') {
+      return objVal.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim()
+    }
+  }
   if (typeof val !== 'string') return ''
   return val.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim()
 }

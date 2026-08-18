@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, TextStyle, ViewStyle } from 'react-n
 import * as DocumentPicker from 'expo-document-picker'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
+import { useTranslation } from 'app/i18n'
 
 type StyledFileInputProps = {
   label: string
@@ -174,6 +175,8 @@ export function StyledFileInput({
     }
   }
 
+  const { t } = useTranslation()
+
   return (
     <View style={formFieldStyles.container}>
       <Text style={[formFieldStyles.label, additionalStyle]}>
@@ -193,9 +196,9 @@ export function StyledFileInput({
         ]}
       >
         <Text style={[styles.triggerText, !value && styles.placeholderText, isDisabled && { color: '#a4a7ae' }]}>
-          {isUploading ? 'Uploading file...' : getDisplayLabel(value, placeholder)}
+          {isUploading ? t('common.uploadingFile') : getDisplayLabel(value, placeholder)}
         </Text>
-        <Text style={[styles.actionText, isDisabled && { color: '#a4a7ae' }]}>{isUploading ? 'Uploading...' : 'Browse'}</Text>
+        <Text style={[styles.actionText, isDisabled && { color: '#a4a7ae' }]}>{isUploading ? t('common.uploading') : t('common.browse')}</Text>
       </Pressable>
       {subtitle && (typeof subtitle === 'string' ? <Text style={formFieldStyles.helperText}>{subtitle}</Text> : subtitle)}
       {!!(localError || error) && <Text style={formFieldStyles.errorText}>{localError || error}</Text>}

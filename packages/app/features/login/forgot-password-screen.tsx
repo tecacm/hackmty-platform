@@ -21,8 +21,8 @@ import { SimpleTextLink } from 'app/components/simple-text-link'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
-
 import { sanitizeEmail } from 'app/utils/sanitization'
+import { useTranslation } from 'app/i18n'
 
 type ForgotPasswordValues = {
   email: string
@@ -144,14 +144,15 @@ const styles = StyleSheet.create({
 })
 
 export function ForgotPasswordScreen() {
-  const { navigateTo } = useSmartNavigate();
-  const insets = useSafeArea();
-  const headerHeight = useHeaderHeightSafe();
-  const [stableHeaderHeight, setStableHeaderHeight] = useState(0);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const images = [rectoria, pavoreal, ciap, photo2024, skyview];
+  const { t } = useTranslation()
+  const { navigateTo } = useSmartNavigate()
+  const insets = useSafeArea()
+  const headerHeight = useHeaderHeightSafe()
+  const [stableHeaderHeight, setStableHeaderHeight] = useState(0)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const images = [rectoria, pavoreal, ciap, photo2024, skyview]
 
   const {
     control,
@@ -165,11 +166,11 @@ export function ForgotPasswordScreen() {
 
   useEffect(() => {
     if (headerHeight > stableHeaderHeight) {
-      setStableHeaderHeight(headerHeight);
+      setStableHeaderHeight(headerHeight)
     }
-  }, [headerHeight, stableHeaderHeight]);
+  }, [headerHeight, stableHeaderHeight])
 
-  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24;
+  const topOffset = Math.max(stableHeaderHeight, insets.top) + 24
 
   const goToLogin = () => navigateTo('/login')
 
@@ -182,7 +183,7 @@ export function ForgotPasswordScreen() {
 
     try {
       if (!isSupabaseConfigured) {
-        setErrorMessage('Supabase is not configured for this environment.')
+        setErrorMessage(t('auth.supabaseNotConfigured'))
         return
       }
 
@@ -201,7 +202,7 @@ export function ForgotPasswordScreen() {
         return
       }
 
-      setStatusMessage('Password recovery link has been sent to your email!')
+      setStatusMessage(t('auth.recoverySent'))
     } catch {
       setErrorMessage('Unable to send recovery email. Please try again.')
     } finally {
@@ -226,7 +227,7 @@ export function ForgotPasswordScreen() {
         }}
       />
     </>
-  );
+  )
 
   return (
     <ParallaxScrollView
@@ -272,12 +273,12 @@ export function ForgotPasswordScreen() {
             style={styles.divider}
           />
         </View>
-        <Text style={styles.subtitle}>Enter your email address to receive a link to reset your password.</Text>
+        <Text style={styles.subtitle}>{t('auth.forgotPasswordSubtitle')}</Text>
         <Controller
           control={control}
           name="email"
           rules={{
-            required: 'Email is required',
+            required: t('auth.emailRequired'),
             pattern: {
               value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
               message: 'Invalid email',
@@ -287,8 +288,8 @@ export function ForgotPasswordScreen() {
             <View style={[styles.fieldGroup, styles.fieldGroupFirst]}>
               <StyledInput
                 variant="glass"
-                label="Email Address"
-                placeholder="Enter your email"
+                label={t('auth.email')}
+                placeholder={t('auth.emailPlaceholder')}
                 textContentType="emailAddress"
                 keyboardType="email-address"
                 onChangeText={onChange}
@@ -305,14 +306,14 @@ export function ForgotPasswordScreen() {
 
         <PillButton
           variant="gradient"
-          title={isSubmitting ? 'Sending link...' : 'Send Recovery Link'}
+          title={isSubmitting ? t('auth.sendingLink') : t('auth.sendRecoveryLink')}
           onPress={handleSubmit(onSubmit)}
           additionalStyle={{ opacity: isSubmitting ? 0.7 : 1 }}
         />
 
         <SimpleTextLink
-          text="Back to "
-          accentText="Login"
+          text={t('auth.alreadyHaveAccount')}
+          accentText={t('auth.login')}
           onPress={goToLogin}
           textStyle={{ fontSize: 13.5, fontWeight: '500', letterSpacing: 0, fontFamily: 'Montserrat' }}
         />

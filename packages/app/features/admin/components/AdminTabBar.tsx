@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { View, Text, Pressable } from 'react-native'
+import { useTranslation } from 'app/i18n'
 
 export type AdminTabType = 'applications' | 'users' | 'roles' | 'forms' | 'checkin' | 'config'
 
@@ -18,18 +19,20 @@ export function AdminTabBar({
   usersCount,
   onTabChange,
 }: AdminTabBarProps) {
+  const { t } = useTranslation()
+
   const handleSelectTab = (tab: AdminTabType) => {
     setAdminTab(tab)
     if (onTabChange) onTabChange(tab)
   }
 
   const tabs: Array<{ id: AdminTabType; label: string; badge?: string | number }> = [
-    { id: 'checkin', label: 'Check-In Scanner' },
-    { id: 'applications', label: 'Submissions', badge: appsCount },
-    { id: 'users', label: 'User Directory', badge: usersCount },
-    { id: 'roles', label: 'Roles & Access' },
-    { id: 'forms', label: 'Form Builder' },
-    { id: 'config', label: 'Global Config' },
+    { id: 'checkin', label: t('admin.checkInScanner') },
+    { id: 'applications', label: t('admin.submissions'), badge: appsCount },
+    { id: 'users', label: t('admin.userDirectory'), badge: usersCount },
+    { id: 'roles', label: t('admin.rolesAccess') },
+    { id: 'forms', label: t('admin.formBuilder') },
+    { id: 'config', label: t('admin.globalConfig') },
   ]
 
   return (

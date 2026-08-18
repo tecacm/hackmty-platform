@@ -16,6 +16,7 @@ import {
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 import { AppIcon } from 'app/components/app-icon'
 import { invalidateGlobalEventConfigCache } from 'app/utils/event-config'
+import { useTranslation } from 'app/i18n'
 
 export interface ConfigItem {
   key: string
@@ -49,6 +50,7 @@ function fromDatetimeLocal(localValue: string): string {
 }
 
 export function GlobalConfigTab() {
+  const { t } = useTranslation()
   const [configs, setConfigs] = useState<ConfigItem[]>([])
   const [draftValues, setDraftValues] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
@@ -231,7 +233,7 @@ export function GlobalConfigTab() {
           >
             <AppIcon name={isTrue ? 'checkmark.circle.fill' : 'xmark.circle.fill'} size={18} color={isTrue ? '#166534' : '#991b1b'} />
             <Text style={[styles.booleanToggleText, { color: isTrue ? '#166534' : '#991b1b' }]}>
-              {isTrue ? 'ENABLED (true)' : 'DISABLED (false)'}
+              {isTrue ? t('admin.enabled') : t('admin.disabled')}
             </Text>
           </Pressable>
         </View>
@@ -291,7 +293,7 @@ export function GlobalConfigTab() {
             />
           )}
           {!!formattedPreview && (
-            <Text style={styles.datePreviewText}>Local Time: {formattedPreview}</Text>
+            <Text style={styles.datePreviewText}>{t('admin.localTime', [formattedPreview])}</Text>
           )}
         </View>
       )
@@ -330,15 +332,15 @@ export function GlobalConfigTab() {
         <View style={styles.cardHeader}>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={styles.cardTitle}>Global Platform Configuration</Text>
+              <Text style={styles.cardTitle}>{t('admin.globalConfigTitle')}</Text>
               {isDirty && (
                 <View style={styles.dirtyBadge}>
-                  <Text style={styles.dirtyBadgeText}>Unsaved Changes</Text>
+                  <Text style={styles.dirtyBadgeText}>{t('admin.unsavedChanges')}</Text>
                 </View>
               )}
             </View>
             <Text style={styles.cardSubtitle}>
-              Configure platform parameters, event start timestamps, pass visibility locks, and max team limits.
+              {t('admin.globalConfigSubtitle')}
             </Text>
           </View>
 
@@ -346,7 +348,7 @@ export function GlobalConfigTab() {
           <View style={styles.headerActions}>
             {isDirty && (
               <Pressable onPress={handleDiscardChanges} style={styles.discardBtn} disabled={saving}>
-                <Text style={styles.discardBtnText}>Discard</Text>
+                <Text style={styles.discardBtnText}>{t('admin.discard')}</Text>
               </Pressable>
             )}
             <Pressable
@@ -359,13 +361,13 @@ export function GlobalConfigTab() {
               ) : (
                 <>
                   <AppIcon name="checkmark" size={16} color="#ffffff" />
-                  <Text style={styles.saveAllBtnText}>Save All Changes</Text>
+                  <Text style={styles.saveAllBtnText}>{t('admin.saveAllChanges')}</Text>
                 </>
               )}
             </Pressable>
             <Pressable onPress={() => setIsModalOpen(true)} style={styles.addKeyBtn}>
               <AppIcon name="plus.circle.fill" size={16} color="#5a0061" />
-              <Text style={styles.addKeyBtnText}>+ Add Key</Text>
+              <Text style={styles.addKeyBtnText}>{t('admin.addKey')}</Text>
             </Pressable>
           </View>
         </View>
@@ -374,13 +376,13 @@ export function GlobalConfigTab() {
         {loading ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color="#7c3aed" />
-            <Text style={styles.loadingText}>Loading global database configuration...</Text>
+            <Text style={styles.loadingText}>{t('admin.loadingConfig')}</Text>
           </View>
         ) : configs.length === 0 ? (
           <View style={styles.emptyBox}>
             <AppIcon name="pencil" size={32} color="#94a3b8" />
-            <Text style={styles.emptyTitle}>No Global Config Keys Found</Text>
-            <Text style={styles.emptySub}>Click "+ Add Key" above to insert your first platform configuration key.</Text>
+            <Text style={styles.emptyTitle}>{t('admin.noConfigKeys')}</Text>
+            <Text style={styles.emptySub}>{t('admin.noConfigKeysDesc')}</Text>
           </View>
         ) : (
           <View style={styles.configList}>
@@ -429,16 +431,16 @@ export function GlobalConfigTab() {
         {/* Bottom Save Bar (Visible when dirty) */}
         {isDirty && (
           <View style={styles.bottomSaveBar}>
-            <Text style={styles.bottomSaveText}>You have unsaved changes to global configuration keys.</Text>
+            <Text style={styles.bottomSaveText}>{t('admin.unsavedChangesBar')}</Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Pressable onPress={handleDiscardChanges} style={styles.discardBtn} disabled={saving}>
-                <Text style={styles.discardBtnText}>Discard</Text>
+                <Text style={styles.discardBtnText}>{t('admin.discard')}</Text>
               </Pressable>
               <Pressable onPress={handleSaveAll} style={styles.saveAllBtn} disabled={saving}>
                 {saving ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <Text style={styles.saveAllBtnText}>Save All Changes</Text>
+                  <Text style={styles.saveAllBtnText}>{t('admin.saveAllChanges')}</Text>
                 )}
               </Pressable>
             </View>
@@ -452,13 +454,13 @@ export function GlobalConfigTab() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Add Global Config Key</Text>
+                <Text style={styles.modalTitle}>{t('admin.addGlobalConfigKey')}</Text>
                 <Pressable onPress={() => setIsModalOpen(false)}>
                   <AppIcon name="xmark" size={20} color="#64748b" />
                 </Pressable>
               </View>
 
-              <Text style={styles.fieldLabel}>Key Identifier (Snake Case)</Text>
+              <Text style={styles.fieldLabel}>{t('admin.keyIdentifier')}</Text>
               <TextInput
                 value={newKey}
                 onChangeText={setNewKey}
@@ -468,7 +470,7 @@ export function GlobalConfigTab() {
                 autoCapitalize="none"
               />
 
-              <Text style={styles.fieldLabel}>Display Title</Text>
+              <Text style={styles.fieldLabel}>{t('admin.displayTitle')}</Text>
               <TextInput
                 value={newTitle}
                 onChangeText={setNewTitle}
@@ -477,7 +479,7 @@ export function GlobalConfigTab() {
                 style={styles.modalInput}
               />
 
-              <Text style={styles.fieldLabel}>Description</Text>
+              <Text style={styles.fieldLabel}>{t('admin.description')}</Text>
               <TextInput
                 value={newDesc}
                 onChangeText={setNewDesc}
@@ -486,22 +488,22 @@ export function GlobalConfigTab() {
                 style={styles.modalInput}
               />
 
-              <Text style={styles.fieldLabel}>Value Data Type</Text>
+              <Text style={styles.fieldLabel}>{t('admin.valueDataType')}</Text>
               <View style={styles.typeSelectorRow}>
-                {(['string', 'boolean', 'datetime', 'number'] as const).map((t) => (
+                {(['string', 'boolean', 'datetime', 'number'] as const).map((typeOpt) => (
                   <Pressable
-                    key={t}
-                    onPress={() => setNewType(t)}
-                    style={[styles.typeChip, newType === t && styles.typeChipActive]}
+                    key={typeOpt}
+                    onPress={() => setNewType(typeOpt)}
+                    style={[styles.typeChip, newType === typeOpt && styles.typeChipActive]}
                   >
-                    <Text style={[styles.typeChipText, newType === t && styles.typeChipTextActive]}>
-                      {t.toUpperCase()}
+                    <Text style={[styles.typeChipText, newType === typeOpt && styles.typeChipTextActive]}>
+                      {typeOpt.toUpperCase()}
                     </Text>
                   </Pressable>
                 ))}
               </View>
 
-              <Text style={styles.fieldLabel}>Initial Value</Text>
+              <Text style={styles.fieldLabel}>{t('admin.initialValue')}</Text>
               <TextInput
                 value={newValue}
                 onChangeText={setNewValue}
@@ -513,13 +515,13 @@ export function GlobalConfigTab() {
 
               <View style={styles.modalFooter}>
                 <Pressable onPress={() => setIsModalOpen(false)} style={styles.modalCancelBtn}>
-                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                  <Text style={styles.modalCancelBtnText}>{t('admin.cancel')}</Text>
                 </Pressable>
                 <Pressable onPress={handleCreateConfig} style={styles.modalSubmitBtn} disabled={isAdding}>
                   {isAdding ? (
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <Text style={styles.modalSubmitBtnText}>Create Setting</Text>
+                    <Text style={styles.modalSubmitBtnText}>{t('admin.createSetting')}</Text>
                   )}
                 </Pressable>
               </View>

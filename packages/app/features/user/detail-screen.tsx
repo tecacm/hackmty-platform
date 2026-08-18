@@ -21,6 +21,7 @@ import { PillButton } from 'app/components/pill-button'
 import { DocumentPreview } from 'app/components/document-preview'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { sanitizeString } from 'app/utils/sanitization'
+import { useTranslation } from 'app/i18n'
 
 interface Application {
   id: string
@@ -39,6 +40,7 @@ interface Application {
 }
 
 export function UserDetailScreen() {
+  const { t, locale } = useTranslation()
   const insets = useSafeArea()
   const params = useParams()
   const searchParams = useSearchParams()
@@ -459,12 +461,12 @@ export function UserDetailScreen() {
     return (
       <View style={[styles.centerContainer]}>
         <View style={styles.accessDeniedCard}>
-          <Text style={styles.accessDeniedTitle}>Access Denied</Text>
+          <Text style={styles.accessDeniedTitle}>{t('admin.accessDenied')}</Text>
           <Text style={styles.accessDeniedSubtitle}>
-            You do not have administrative permissions to review application documents.
+            {t('admin.accessDeniedSubtitle')}
           </Text>
           <PillButton
-            title="Return Home"
+            title={t('admin.returnHome')}
             onPress={() => navigateTo('/home')}
             additionalStyle={{ width: 200, height: 50, marginTop: 10 }}
           />
@@ -481,23 +483,23 @@ export function UserDetailScreen() {
     if (status === 'accepted') {
       bgColor = '#f0fdf4'
       textColor = '#15803d'
-      label = 'ACCEPTED'
+      label = t('admin.accepted').toUpperCase()
     } else if (status === 'rejected') {
       bgColor = '#fef2f2'
       textColor = '#b91c1c'
-      label = 'REJECTED'
+      label = t('admin.rejected').toUpperCase()
     } else if (status === 'changes_requested') {
       bgColor = '#fffbeb'
       textColor = '#b45309'
-      label = 'CHANGES REQ'
+      label = t('admin.changesRequested').toUpperCase()
     } else if (status === 'submitted') {
       bgColor = '#ecfeff'
       textColor = '#0e7490'
-      label = 'SUBMITTED'
+      label = t('admin.submitted').toUpperCase()
     } else if (status === 'draft') {
       bgColor = '#f3e8ff'
       textColor = '#7e22ce'
-      label = 'DRAFT'
+      label = t('applicant.statusDraft').toUpperCase()
     }
 
     return (
@@ -518,10 +520,10 @@ export function UserDetailScreen() {
           {Platform.OS === 'web' ? (
             <View style={styles.detailHeaderActionsRow}>
               <Pressable onPress={() => navigateTo('/admin')} style={styles.backBtn}>
-                <Text style={styles.backBtnText}>← Back to Admin Dashboard</Text>
+                <Text style={styles.backBtnText}>{t('admin.backToAdmin')}</Text>
               </Pressable>
               <PillButton
-                title="↻ Refresh"
+                title={`↻ ${t('admin.refresh')}`}
                 onPress={fetchApplicationDetails}
                 isLoading={loading}
                 additionalStyle={styles.detailRefreshBtn}
@@ -530,7 +532,7 @@ export function UserDetailScreen() {
           ) : (
             <View style={styles.mobileRefreshContainer}>
               <PillButton
-                title="↻ Refresh"
+                title={`↻ ${t('admin.refresh')}`}
                 onPress={fetchApplicationDetails}
                 isLoading={loading}
                 additionalStyle={styles.detailRefreshBtn}
@@ -541,7 +543,7 @@ export function UserDetailScreen() {
           {/* Role Switcher if user has multiple applications */}
           {!loading && userApps.length > 1 && (
             <View style={styles.roleSwitcherContainer}>
-              <Text style={styles.roleSwitcherLabel}>Candidate has multiple applications. Select role review:</Text>
+              <Text style={styles.roleSwitcherLabel}>{t('admin.candidateMultipleApps')}</Text>
               <View style={styles.roleSwitcherTabs}>
                 {userApps.map((userApp, idx) => {
                   const isActive = idx === activeAppIndex
@@ -564,7 +566,7 @@ export function UserDetailScreen() {
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#c2b75f" />
-              <Text style={styles.loadingText}>Fetching application data...</Text>
+              <Text style={styles.loadingText}>{t('admin.fetchingApplicationData')}</Text>
             </View>
           ) : error || !app ? (
             <View style={styles.errorContainer}>
@@ -626,17 +628,17 @@ export function UserDetailScreen() {
                   const feedbackHistory = Array.isArray(app.admin_feedback) ? app.admin_feedback : []
                   return feedbackHistory.length > 0 ? (
                     <View style={styles.historyCard}>
-                      <Text style={styles.historyCardTitle}>Changes Request History</Text>
+                      <Text style={styles.historyCardTitle}>{t('applicant.changesRequestHistory')}</Text>
                       {feedbackHistory.map((item: any, idx: number) => {
-                        const reqDate = item.requested_at ? new Date(item.requested_at).toLocaleString() : 'Unknown date'
-                        const resDate = item.resolved_at ? new Date(item.resolved_at).toLocaleString() : 'Pending resolution'
+                        const reqDate = item.requested_at ? new Date(item.requested_at).toLocaleString(locale === 'es' ? 'es-MX' : 'en-US') : t('applicant.unknownDate')
+                        const resDate = item.resolved_at ? new Date(item.resolved_at).toLocaleString(locale === 'es' ? 'es-MX' : 'en-US') : t('applicant.pendingResolution')
                         return (
                           <View key={idx} style={[styles.historyRow, idx > 0 && styles.historyRowBorder]}>
                             <Text style={styles.historyText}>"{item.feedback}"</Text>
                             <View style={styles.historyMetaRow}>
-                              <Text style={styles.historyMetaText}>Requested: {reqDate}</Text>
+                              <Text style={styles.historyMetaText}>{t('applicant.requested')}: {reqDate}</Text>
                               <Text style={[styles.historyMetaText, !item.resolved_at && styles.historyPendingText]}>
-                                Resolved: {resDate}
+                                {t('applicant.resolved')}: {resDate}
                               </Text>
                             </View>
                           </View>

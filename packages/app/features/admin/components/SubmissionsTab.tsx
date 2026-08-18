@@ -15,6 +15,7 @@ import { PillButton } from '../../../components/pill-button'
 import { AppIcon } from '../../../components/app-icon'
 import { AdminPaginationBar } from './AdminPaginationBar'
 import { ApplicationRow } from './ApplicationRow'
+import { useTranslation } from 'app/i18n'
 
 interface SubmissionsTabProps {
   stats: {
@@ -98,6 +99,7 @@ export function SubmissionsTab({
   onOpenSecretLinks,
   onRefresh,
 }: SubmissionsTabProps) {
+  const { t } = useTranslation()
   const { width } = useWindowDimensions()
   const isSmallScreen = width > 0 && width < 640
 
@@ -127,27 +129,27 @@ export function SubmissionsTab({
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
           <Text style={styles.statCount}>{stats?.total ?? 0}</Text>
-          <Text style={styles.statLabel}>Total</Text>
+          <Text style={styles.statLabel}>{t('admin.total')}</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={[styles.statCount, { color: '#7c3aed' }]}>{stats?.confirmed ?? 0}</Text>
-          <Text style={styles.statLabel}>Confirmed</Text>
+          <Text style={styles.statLabel}>{t('admin.confirmed')}</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={[styles.statCount, { color: '#16a34a' }]}>{stats?.accepted ?? 0}</Text>
-          <Text style={styles.statLabel}>Accepted</Text>
+          <Text style={styles.statLabel}>{t('admin.accepted')}</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={[styles.statCount, { color: '#2563eb' }]}>{stats?.submitted ?? 0}</Text>
-          <Text style={styles.statLabel}>Submitted</Text>
+          <Text style={styles.statLabel}>{t('admin.submitted')}</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={[styles.statCount, { color: '#d97706' }]}>{stats?.changesRequested ?? 0}</Text>
-          <Text style={styles.statLabel}>Changes Req</Text>
+          <Text style={styles.statLabel}>{t('admin.changesRequested')}</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={[styles.statCount, { color: '#dc2626' }]}>{stats?.rejected ?? 0}</Text>
-          <Text style={styles.statLabel}>Rejected</Text>
+          <Text style={styles.statLabel}>{t('admin.rejected')}</Text>
         </View>
       </View>
 
@@ -158,7 +160,7 @@ export function SubmissionsTab({
             <AppIcon name="magnifyingglass" size={16} color="#64748b" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search candidate, email, university, team..."
+              placeholder={t('admin.searchCandidatePlaceholder')}
               placeholderTextColor="#94a3b8"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -181,7 +183,7 @@ export function SubmissionsTab({
               style={styles.dropdownBtn}
             >
               <Text style={styles.dropdownBtnText}>
-                ROLE: {(selectedType || 'all').toUpperCase()}
+                {t('admin.roleFilter', [(selectedType || 'all').toUpperCase()])}
               </Text>
             </Pressable>
           </View>
@@ -196,13 +198,13 @@ export function SubmissionsTab({
               style={styles.dropdownBtn}
             >
               <Text style={styles.dropdownBtnText}>
-                STATUS: {(selectedStatus || 'all').toUpperCase().replace('_', ' ')}
+                {t('admin.statusFilter', [(selectedStatus || 'all').toUpperCase().replace('_', ' ')])}
               </Text>
             </Pressable>
           </View>
 
           <PillButton
-            title={groupByTeams ? '✓ Grouped Teams' : 'Group by Teams'}
+            title={groupByTeams ? t('admin.groupedTeams') : t('admin.groupByTeams')}
             onPress={() => setGroupByTeams(!groupByTeams)}
             variant={groupByTeams ? 'primary' : 'outline-primary'}
             additionalStyle={styles.groupBtn}
@@ -211,7 +213,7 @@ export function SubmissionsTab({
 
           {onOpenSecretLinks ? (
             <PillButton
-              title="Secret Links"
+              title={t('admin.secretLinks')}
               onPress={onOpenSecretLinks}
               variant="outline-primary"
               additionalStyle={{ height: 44, paddingHorizontal: 14, width: 'auto' }}
@@ -221,7 +223,7 @@ export function SubmissionsTab({
 
           {onRefresh ? (
             <PillButton
-              title="↻ Refresh"
+              title={`↻ ${t('admin.refresh')}`}
               onPress={onRefresh}
               isLoading={loading}
               variant="outline-primary"
@@ -236,7 +238,7 @@ export function SubmissionsTab({
           <View style={[styles.tagInputWrapper, isSmallScreen && styles.fullWidth]}>
             <TextInput
               style={styles.tagTextInput}
-              placeholder="Include tag (e.g. Python, MIT)..."
+              placeholder={t('admin.includeTagPlaceholder')}
               placeholderTextColor="#94a3b8"
               value={includeInput}
               onChangeText={setIncludeInput}
@@ -244,7 +246,7 @@ export function SubmissionsTab({
             />
             <PillButton
               variant="success"
-              title={isSmallScreen ? '+' : '+ Must Have'}
+              title={isSmallScreen ? '+' : t('admin.mustHave')}
               onPress={addIncludeTag}
               additionalStyle={[styles.tagActionBtn, isSmallScreen && styles.tagActionBtnSmall, { backgroundColor: '#16a34a' }]}
               fontSize={isSmallScreen ? 16 : 11}
@@ -254,7 +256,7 @@ export function SubmissionsTab({
           <View style={[styles.tagInputWrapper, isSmallScreen && styles.fullWidth]}>
             <TextInput
               style={styles.tagTextInput}
-              placeholder="Exclude tag (e.g. Java, High School)..."
+              placeholder={t('admin.excludeTagPlaceholder')}
               placeholderTextColor="#94a3b8"
               value={excludeInput}
               onChangeText={setExcludeInput}
@@ -262,7 +264,7 @@ export function SubmissionsTab({
             />
             <PillButton
               variant="danger"
-              title={isSmallScreen ? '-' : '- Exclude'}
+              title={isSmallScreen ? '-' : t('admin.exclude')}
               onPress={addExcludeTag}
               additionalStyle={[styles.tagActionBtn, isSmallScreen && styles.tagActionBtnSmall, { backgroundColor: '#dc2626' }]}
               fontSize={isSmallScreen ? 18 : 11}
@@ -292,7 +294,7 @@ export function SubmissionsTab({
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#5a0061" />
-            <Text style={styles.loadingText}>Fetching candidate applications...</Text>
+            <Text style={styles.loadingText}>{t('admin.fetchingCandidates')}</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
@@ -300,7 +302,7 @@ export function SubmissionsTab({
           </View>
         ) : filteredApps.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No applications found matching criteria.</Text>
+            <Text style={styles.emptyText}>{t('admin.noApplicationsFound')}</Text>
           </View>
         ) : groupByTeams ? (
           <>
@@ -321,7 +323,7 @@ export function SubmissionsTab({
                         </Text>
                         <View style={styles.memberBadge}>
                           <Text style={styles.memberBadgeText}>
-                            {teamApps.length} {teamApps.length === 1 ? 'Member' : 'Members'}
+                            {teamApps.length} {teamApps.length === 1 ? t('admin.member') : t('admin.members')}
                           </Text>
                         </View>
                       </View>
