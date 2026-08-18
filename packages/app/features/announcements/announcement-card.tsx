@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { View, Text, StyleSheet, Platform, Pressable, Modal, Animated, Dimensions, Image } from 'react-native'
+import { View, Text, StyleSheet, Platform, Pressable, Modal, Animated, Image, Dimensions, useWindowDimensions } from 'react-native'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AnnouncementMedia } from 'app/components/announcement-media'
 import type { AnnouncementItem } from 'app/hooks/use-announcements'
@@ -17,6 +17,8 @@ import { AppIcon } from 'app/components/app-icon'
 import { useTranslation } from 'app/i18n'
 import { getLocalizedText } from 'app/utils/i18n-helpers'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
+import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 
 function formatRelativeTime(dateString: string, t: (k: string, p?: any) => string): string {
   try {
@@ -46,6 +48,11 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
   screenFocused = true,
 }: AnnouncementCardProps) {
   const { t, locale } = useTranslation()
+  const { hasPermission } = useUserPermissions()
+  const { navigateTo } = useSmartNavigate()
+  const { width } = useWindowDimensions()
+  const isSmallScreen = width > 0 && width < 640
+  const canEdit = hasPermission('announcements', 'create')
   const [liked, setLiked] = useState(isLiked)
   const [likesCount, setLikesCount] = useState(announcement.likes_count || 0)
   const [fullscreenVisible, setFullscreenVisible] = useState(false)
@@ -252,7 +259,7 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
           {/* Message Content */}
           <Text style={styles.announcementMessage}>{getLocalizedText(announcement.message, locale)}</Text>
 
-          {/* Card Footer: Author signature & Heart button */}
+          {/* Card Footer: Author signature & action buttons */}
           <View style={styles.cardFooter}>
             <View style={styles.authorInfo}>
               <View style={styles.authorAvatar}>
@@ -271,26 +278,44 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
               </View>
             </View>
 
-            {/* Like Heart Button */}
-            <Pressable
-              onPress={handleLikePress}
-              accessibilityRole="button"
-              accessibilityLabel={liked ? "Unlike announcement" : "Like announcement"}
-              style={({ hovered }: any) => [
-                styles.likeButton,
-                liked && styles.likeButtonActive,
-                hovered && styles.likeButtonHovered,
-              ]}
-            >
-              <AppIcon
-                name={liked ? 'heart.fill' : 'heart'}
-                color={liked ? '#7a47a2' : '#8c7b8e'}
-                size={16}
-              />
-              <Text style={[styles.likeCountText, liked && styles.likeCountTextActive]}>
-                {likesCount}
-              </Text>
-            </Pressable>
+            <View style={styles.actionsContainer}>
+              {canEdit && (
+                <Pressable
+                  onPress={() => navigateTo({ pathname: '/announcements/create', query: { editId: announcement.id } })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit announcement"
+                  style={({ hovered }: any) => [
+                    styles.editButton,
+                    isSmallScreen && styles.editButtonCompact,
+                    hovered && styles.editButtonHovered,
+                  ]}
+                >
+                  <AppIcon name="pencil" color="#5a0061" size={14} />
+                  {!isSmallScreen && <Text style={styles.editButtonText}>{t('admin.edit')}</Text>}
+                </Pressable>
+              )}
+
+              {/* Like Heart Button */}
+              <Pressable
+                onPress={handleLikePress}
+                accessibilityRole="button"
+                accessibilityLabel={liked ? "Unlike announcement" : "Like announcement"}
+                style={({ hovered }: any) => [
+                  styles.likeButton,
+                  liked && styles.likeButtonActive,
+                  hovered && styles.likeButtonHovered,
+                ]}
+              >
+                <AppIcon
+                  name={liked ? 'heart.fill' : 'heart'}
+                  color={liked ? '#7a47a2' : '#8c7b8e'}
+                  size={16}
+                />
+                <Text style={[styles.likeCountText, liked && styles.likeCountTextActive]}>
+                  {likesCount}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </View>
@@ -595,6 +620,42 @@ const styles = StyleSheet.create({
   authorSubtext: {
     color: '#8c7b8e',
     fontSize: 10.5,
+    fontFamily: 'Montserrat',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginLeft: 'auto',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 18,
+    backgroundColor: '#f7e9fb',
+    borderWidth: 1,
+    borderColor: 'rgba(90, 0, 97, 0.2)',
+    ...Platform.select({
+      web: { cursor: 'pointer', transition: 'all 0.2s ease' } as any,
+    }),
+  },
+  editButtonCompact: {
+    paddingHorizontal: 8,
+    minWidth: 34,
+    minHeight: 30,
+  },
+  editButtonHovered: {
+    backgroundColor: '#f0dff9',
+  },
+  editButtonText: {
+    color: '#5a0061',
+    fontSize: 12,
+    fontWeight: '700',
     fontFamily: 'Montserrat',
   },
   likeButton: {

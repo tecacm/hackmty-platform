@@ -27,6 +27,8 @@ export interface CreateAnnouncementInput {
   mediaType?: 'image' | 'video'
   sendNotifications?: boolean
   notificationChannel?: 'both' | 'push' | 'email' | 'none'
+  removeMedia?: boolean
+  existingMediaUrl?: string | null
 }
 
 const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
@@ -269,45 +271,64 @@ export function useAnnouncements() {
     fetchAnnouncements(true)
   }, [fetchAnnouncements])
 
+  const getMediaUploadUrl = useCallback(async (mediaFile: any, mediaType: 'image' | 'video') => {
+    if (!mediaFile) return null
+
+    if (!isSupabaseConfigured) {
+      if (mediaFile.uri) return mediaFile.uri
+      return null
+    }
+
+    try {
+      const fileExt = mediaFile.name ? mediaFile.name.split('.').pop() : (mediaType === 'video' ? 'mp4' : 'jpg')
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+      const filePath = `announcements/${fileName}`
+
+      let fileData = mediaFile.file || mediaFile
+      if (typeof mediaFile.uri === 'string' && !mediaFile.file) {
+        if (mediaFile.uri.startsWith('file://') || mediaFile.uri.startsWith('blob:') || mediaFile.uri.startsWith('https://') || mediaFile.uri.startsWith('http://')) {
+          const response = await fetch(mediaFile.uri)
+          fileData = await response.blob()
+        }
+      }
+
+      const { error: uploadErr } = await supabase.storage
+        .from('announcements-media')
+        .upload(filePath, fileData, {
+          contentType: mediaFile.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg'),
+          upsert: true,
+        })
+
+      if (uploadErr) throw uploadErr
+
+      const { data: publicUrlData } = supabase.storage
+        .from('announcements-media')
+        .getPublicUrl(filePath)
+
+      return publicUrlData.publicUrl
+    } catch (err) {
+      console.warn('Failed to upload media file:', err)
+      throw err
+    }
+  }, [])
+
+  const buildLocalizedJson = (value: string | { en?: string; es?: string } | null | undefined, secondaryValue?: string) => {
+    const primary = typeof value === 'string' ? value.trim() : (typeof value === 'object' && value ? (value.en || '').trim() : '')
+    const secondary = typeof value === 'object' && value ? (value.es || '').trim() : (secondaryValue || '').trim()
+    const next: Record<string, string> = {}
+
+    if (primary) next.en = primary
+    if (secondary) next.es = secondary
+
+    return Object.keys(next).length > 0 ? next : { en: '' }
+  }
+
   const createAnnouncement = async (input: CreateAnnouncementInput) => {
     const { title, message, targetRoles, mediaFile, mediaType = 'image', sendNotifications = true } = input
 
     let uploadedMediaUrl: string | null = null
-
-    // 1. Handle media upload if provided
-    if (mediaFile && isSupabaseConfigured) {
-      try {
-        const fileExt = mediaFile.name ? mediaFile.name.split('.').pop() : 'jpg'
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-        const filePath = `announcements/${fileName}`
-
-        let fileData = mediaFile.file || mediaFile
-        if (typeof mediaFile.uri === 'string' && !mediaFile.file && mediaFile.uri.startsWith('file://')) {
-          // Native FormData blob format
-          const response = await fetch(mediaFile.uri)
-          fileData = await response.blob()
-        }
-
-        const { error: uploadErr } = await supabase.storage
-          .from('announcements-media')
-          .upload(filePath, fileData, {
-            contentType: mediaFile.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg'),
-            upsert: true,
-          })
-
-        if (!uploadErr) {
-          const { data: publicUrlData } = supabase.storage
-            .from('announcements-media')
-            .getPublicUrl(filePath)
-          uploadedMediaUrl = publicUrlData.publicUrl
-        } else {
-          console.warn('Media upload warning:', uploadErr.message)
-        }
-      } catch (err) {
-        console.warn('Failed to upload media file:', err)
-      }
-    } else if (mediaFile?.uri && !isSupabaseConfigured) {
-      uploadedMediaUrl = mediaFile.uri
+    if (mediaFile) {
+      uploadedMediaUrl = await getMediaUploadUrl(mediaFile, mediaType)
     }
 
     // 2. Resolve author profile name & avatar URL
@@ -337,14 +358,8 @@ export function useAnnouncements() {
       } catch (e) {}
     }
 
-    let finalTitle: any = title
-    if (typeof title === 'string' && input.title_es?.trim()) {
-      finalTitle = { en: title.trim(), es: input.title_es.trim() }
-    }
-    let finalMessage: any = message
-    if (typeof message === 'string' && input.message_es?.trim()) {
-      finalMessage = { en: message.trim(), es: input.message_es.trim() }
-    }
+    const finalTitle = buildLocalizedJson(title, input.title_es)
+    const finalMessage = buildLocalizedJson(message, input.message_es)
 
     const payload = {
       title: finalTitle,
@@ -363,12 +378,12 @@ export function useAnnouncements() {
         .from('announcements')
         .insert(payload)
         .select()
-        .single()
 
       if (dbErr) throw dbErr
 
-      if (data) {
-        setRawAnnouncements(prev => [data, ...prev])
+      const inserted = Array.isArray(data) ? data[0] : data
+      if (inserted) {
+        setRawAnnouncements(prev => [inserted, ...prev])
       }
     } else {
       const mockItem: AnnouncementItem = {
@@ -403,6 +418,64 @@ export function useAnnouncements() {
       }
     }
 
+    return true
+  }
+
+  const updateAnnouncement = async (id: string, input: CreateAnnouncementInput) => {
+    const { title, message, targetRoles, mediaFile, mediaType = 'image', sendNotifications = true, removeMedia = false, existingMediaUrl } = input
+
+    let uploadedMediaUrl: string | null = existingMediaUrl ?? null
+
+    if (removeMedia) {
+      uploadedMediaUrl = null
+    } else if (mediaFile) {
+      uploadedMediaUrl = await getMediaUploadUrl(mediaFile, mediaType)
+    }
+
+    const finalTitle = buildLocalizedJson(title, input.title_es)
+    const finalMessage = buildLocalizedJson(message, input.message_es)
+
+    const payload = {
+      title: finalTitle,
+      message: finalMessage,
+      media_url: uploadedMediaUrl,
+      media_type: uploadedMediaUrl ? mediaType : null,
+      target_roles: targetRoles.length > 0 ? targetRoles : ['all'],
+      updated_at: new Date().toISOString(),
+    }
+
+    if (isSupabaseConfigured) {
+      const { data, error: dbErr } = await supabase
+        .from('announcements')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .maybeSingle()
+
+      if (dbErr) throw dbErr
+
+      if (!data) throw new Error('Announcement was not found or you no longer have permission to edit it.')
+
+      const updated = data
+      setRawAnnouncements(prev => prev.map(item => (item.id === id ? { ...item, ...updated } : item)))
+      return updated
+    }
+
+    setRawAnnouncements(prev => prev.map(item => (item.id === id ? {
+      ...item,
+      ...payload,
+      title: finalTitle,
+      message: finalMessage,
+      media_url: uploadedMediaUrl,
+      media_type: uploadedMediaUrl ? mediaType : null,
+    } : item)))
+
+    if (removeMedia && !mediaFile && !isSupabaseConfigured) {
+      setRawAnnouncements(prev => prev.map(item => (item.id === id ? { ...item, media_url: null, media_type: null } : item)))
+    }
+
+    // Editing an announcement should not re-notify users. Update requests only persist the
+    // changed content and/or media and keep the audience experience quiet.
     return true
   }
 
@@ -472,6 +545,7 @@ export function useAnnouncements() {
     error,
     refresh,
     createAnnouncement,
+    updateAnnouncement,
     toggleLike,
   }
 }
