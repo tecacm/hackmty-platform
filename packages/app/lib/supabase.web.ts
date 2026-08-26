@@ -11,3 +11,5 @@ export const supabase = createBrowserClient(
   supabaseUrl || 'https://localhost.supabase.co',
   supabaseAnonKey || 'missing-supabase-anon-key'
 )
+
+export { fetchAllRows } from './supabase-pagination'
