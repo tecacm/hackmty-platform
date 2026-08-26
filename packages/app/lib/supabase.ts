@@ -61,3 +61,6 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
     }
   })
 }
+
+export { fetchAllRows } from './supabase-pagination'
+

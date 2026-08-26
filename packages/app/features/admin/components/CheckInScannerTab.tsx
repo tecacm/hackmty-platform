@@ -14,7 +14,7 @@ import {
   Alert,
   Platform,
 } from 'react-native'
-import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
+import { supabase, isSupabaseConfigured, fetchAllRows } from 'app/lib/supabase'
 import { AppIcon } from 'app/components/app-icon'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { QRCameraScanner } from 'app/components/qr-camera-scanner'
@@ -320,9 +320,10 @@ export function CheckInScannerTab() {
     if (!isSupabaseConfigured || !stationId) return
     setHistoryLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('check_ins')
-        .select(`
+      const data = await fetchAllRows((rangeFrom, rangeTo) =>
+        supabase
+          .from('check_ins')
+          .select(`
           id,
           user_id,
           checkpoint_id,
@@ -339,10 +340,11 @@ export function CheckInScannerTab() {
             dietary_restrictions
           )
         `)
-        .eq('checkpoint_id', stationId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
+          .eq('checkpoint_id', stationId)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
+          .range(rangeFrom, rangeTo)
+      )
 
       // Enrich with auth directory emails if available
       const { data: directoryEmails } = await supabase.rpc('get_admin_directory_emails')
