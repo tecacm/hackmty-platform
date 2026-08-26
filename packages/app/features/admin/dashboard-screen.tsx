@@ -14,7 +14,7 @@ import {
 import { PillButton } from '../../components/pill-button'
 import { AdminTabBar, AdminTabType } from './components/AdminTabBar'
 import { AppIcon } from 'app/components/app-icon'
-import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
+import { isSupabaseConfigured, supabase, fetchAllRows } from 'app/lib/supabase'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { useTranslation } from 'app/i18n'
@@ -568,20 +568,27 @@ export function AdminDashboardScreen() {
     if (!isSupabaseConfigured) return
     setUsersLoading(true)
     try {
-      const { data: profiles, error: profErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const profiles = await fetchAllRows((from, to) =>
+        supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, to)
+      )
 
-      if (profErr) throw profErr
+      const rolesData = await fetchAllRows((from, to) =>
+        supabase
+          .from('user_roles')
+          .select('user_id, role, event_year')
+          .range(from, to)
+      )
 
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('user_id, role, event_year')
-
-      const { data: appsData } = await supabase
-        .from('applications')
-        .select('user_id, application_type_id, status, answers')
+      const appsData = await fetchAllRows((from, to) =>
+        supabase
+          .from('applications')
+          .select('user_id, application_type_id, status, answers')
+          .range(from, to)
+      )
 
       const { data: directoryEmails, error: directoryEmailsError } = await supabase
         .rpc('get_admin_directory_emails')
@@ -862,30 +869,36 @@ export function AdminDashboardScreen() {
         return
       }
 
-      const { data: appsData, error: fetchErr } = await supabase
-        .from('applications')
-        .select(`
-          id,
-          status,
-          confirmed_at,
-          admin_feedback,
-          application_type_id,
-          answers,
-          user_id,
-          profiles (
+      const appsData = await fetchAllRows((from, to) =>
+        supabase
+          .from('applications')
+          .select(`
             id,
-            first_name,
-            last_name,
-            team_id
-          )
-        `)
+            status,
+            confirmed_at,
+            admin_feedback,
+            application_type_id,
+            answers,
+            user_id,
+            profiles (
+              id,
+              first_name,
+              last_name,
+              team_id
+            )
+          `)
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
 
-      if (fetchErr) throw fetchErr
-
-      const { data: teamProfilesData } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, team_id')
-        .not('team_id', 'is', null)
+      const teamProfilesData = await fetchAllRows((from, to) =>
+        supabase
+          .from('profiles')
+          .select('id, first_name, last_name, team_id')
+          .not('team_id', 'is', null)
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
 
       const { data: typesData } = await supabase
         .from('application_types')
