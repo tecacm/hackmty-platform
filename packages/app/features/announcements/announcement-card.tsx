@@ -218,7 +218,7 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
                   />
                 </View>
                 <Text style={styles.bannerTitleText} numberOfLines={2}>
-                  {announcement.title}
+                  {getLocalizedText(announcement.title, locale)}
                 </Text>
               </View>
             )}

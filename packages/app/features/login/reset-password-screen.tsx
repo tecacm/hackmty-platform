@@ -12,7 +12,7 @@ import skyview from 'app/assets/images/login-screen/skyview.webp'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { Carrousel } from 'app/components/carrousel'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Platform } from 'react-native'
 import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import { StyledInput } from 'app/components/styled-input'
@@ -22,6 +22,7 @@ import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { useTranslation } from 'app/i18n'
+import { BlurTargetView, BlurView } from 'expo-blur';
 
 type ResetPasswordValues = {
   password: string
@@ -43,15 +44,10 @@ const styles = StyleSheet.create({
     gap: 13,
     ...Platform.select({
       web: {
-        backgroundImage:
-          'linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.14) 100%)',
-        backdropFilter: 'blur(34px) saturate(190%) brightness(1.08) contrast(1.03)',
-        WebkitBackdropFilter: 'blur(34px) saturate(190%) brightness(1.08) contrast(1.03)',
         boxShadow:
           '0 30px 70px -18px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.15), inset 0 1.5px 1px rgba(255,255,255,.75), inset 0 -14px 26px -18px rgba(255,255,255,.2), inset 0 0 0 1px rgba(255,255,255,.1), 0 0 50px -8px rgba(240,217,176,.35)',
       } as any,
       native: {
-        backgroundColor: 'rgba(60, 40, 80, 0.55)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 20 },
         shadowOpacity: 0.4,
@@ -169,6 +165,7 @@ export function ResetPasswordScreen() {
   const [isInitializing, setIsInitializing] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const images = [rectoria, pavoreal, ciap, photo2024, skyview]
+  const targetRef = useRef<View | null>(null);
 
   const {
     control,
@@ -303,7 +300,7 @@ export function ResetPasswordScreen() {
   }
 
   const background = (
-    <>
+    <BlurTargetView ref={targetRef} style={StyleSheet.absoluteFill}>
       <Carrousel slideImages={images} mode="crossfade" />
       <LinearGradient
         colors={['rgba(20, 10, 40, 0.35)', 'rgba(20, 10, 40, 0.55)']}
@@ -318,7 +315,7 @@ export function ResetPasswordScreen() {
           height: Platform.OS === 'web' ? ('calc(100vh + 200px)' as any) : '100%',
         }}
       />
-    </>
+    </BlurTargetView>
   )
 
   return (
@@ -335,7 +332,7 @@ export function ResetPasswordScreen() {
         overflow: 'visible',
       }}
     >
-      <View style={styles.glassCard}>
+      <BlurView style={styles.glassCard} blurTarget={targetRef} intensity={40} blurMethod="dimezisBlurView">
         <View style={styles.glassCardGlow} pointerEvents="none" />
         <View style={styles.glassCardRing} pointerEvents="none" />
         <View style={{ width: 98, height: 140, flexShrink: 0 }}>
@@ -442,7 +439,7 @@ export function ResetPasswordScreen() {
             />
           </>
         )}
-      </View>
+      </BlurView>
     </ParallaxScrollView>
   )
 }
