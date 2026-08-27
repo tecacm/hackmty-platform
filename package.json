@@ -38,7 +38,6 @@
     "@react-native-menu/menu": "^2.0.0",
     "@react-native-segmented-control/segmented-control": "^2.5.7",
     "@react-native-vector-icons/material-icons": "^13.1.2",
-    "@react-navigation/bottom-tabs": "^8.0.0-alpha.43",
     "expo-blur": "^57.0.2",
     "expo-glass-effect": "^57.0.1",
     "expo-linear-gradient": "57.0.1",

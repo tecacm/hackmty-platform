@@ -32,6 +32,7 @@ export function NavigationProvider({
               'reset-password': 'reset-password',
               'complete-signup': 'complete-signup',
               admin: 'admin',
+              qr: 'qr',
             },
           },
         }),

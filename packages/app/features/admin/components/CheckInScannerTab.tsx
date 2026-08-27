@@ -13,6 +13,7 @@ import {
   Image,
   Alert,
   Platform,
+  useWindowDimensions,
 } from 'react-native'
 import { supabase, isSupabaseConfigured, fetchAllRows } from 'app/lib/supabase'
 import { AppIcon } from 'app/components/app-icon'
@@ -127,6 +128,11 @@ export function CheckInScannerTab() {
   const { t, locale } = useTranslation()
   const { role } = useUserPermissions()
   const canManageStations = ['admin', 'organizer'].includes((role || '').toLowerCase())
+
+  const { width } = useWindowDimensions()
+  // Collapse the station-header action buttons to icons and stack the title on its
+  // own row on narrow viewports (web + native).
+  const isNarrowHeader = width > 0 && width < 720
 
   const [checkpoints, setCheckpoints] = React.useState<Checkpoint[]>([])
   const [selectedStationId, setSelectedStationId] = React.useState<string | null>(null)
@@ -1109,54 +1115,110 @@ export function CheckInScannerTab() {
         /* STEP 2: ACTIVE STATION SCANNER VIEW */
         <View style={styles.activeScannerContainer}>
           {/* Header Bar with Back Button */}
-          <View style={styles.activeHeaderBar}>
-            <Pressable
-              onPress={() => {
-                setSelectedStationId(null)
-                setLastResult(null)
-              }}
-              style={styles.backToHubBtn}
-            >
-              <AppIcon name="chevron.left" size={16} color="#c2b75f" />
-              <Text style={styles.backToHubBtnText}>{`← ${t('admin.checkinAllStationsShort')}`}</Text>
-            </Pressable>
+          {isNarrowHeader ? (
+            <View style={styles.activeHeaderBarNarrow}>
+              {/* Controls row: icon-only actions */}
+              <View style={styles.narrowHeaderControls}>
+                <Pressable
+                  onPress={() => {
+                    setSelectedStationId(null)
+                    setLastResult(null)
+                  }}
+                  style={styles.headerIconBtn}
+                  accessibilityLabel={t('admin.checkinAllStationsShort')}
+                >
+                  <AppIcon name="chevron.left" size={18} color="#c2b75f" />
+                </Pressable>
 
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Text style={styles.activeStationTitle}>{getLocalizedText(selectedStation.title, locale)}</Text>
-                <View style={styles.stationCategoryBadge}>
-                  <Text style={styles.stationCategoryBadgeText}>{(selectedStation.type_id || 'station').toUpperCase()}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countNumber}>{stationCheckInCount}</Text>
+                    <Text style={styles.countLabel}>{t('admin.checkinScanned')}</Text>
+                  </View>
+                  {canManageStations && selectedStation && (
+                    <>
+                      <Pressable
+                        onPress={() => handleOpenEditModal(selectedStation)}
+                        style={styles.activeHeaderActionBtn}
+                        accessibilityLabel={t('admin.checkinEdit')}
+                      >
+                        <AppIcon name="pencil" size={16} color="#475569" />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setStationToDelete(selectedStation)}
+                        style={styles.activeHeaderDeleteBtn}
+                        accessibilityLabel={t('admin.checkinDelete')}
+                      >
+                        <AppIcon name="trash" size={16} color="#dc2626" />
+                      </Pressable>
+                    </>
+                  )}
                 </View>
               </View>
-              <Text style={styles.activeStationSub}>
-                {t('admin.checkinLocationDetail', [selectedStation.location || t('admin.checkinVenueFallback'), selectedStation.requires_initial_checkin_override ?? selectedStation.checkpoint_types?.requires_initial_checkin ? t('admin.checkinArrivalRequired') : t('admin.checkinOpenAccess')])}
-              </Text>
-            </View>
 
-            {canManageStations && selectedStation && (
-              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-                <Pressable
-                  onPress={() => handleOpenEditModal(selectedStation)}
-                  style={styles.activeHeaderActionBtn}
-                >
-                  <AppIcon name="pencil" size={14} color="#475569" />
-                  <Text style={styles.activeHeaderActionBtnText}>{t('admin.checkinEdit')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setStationToDelete(selectedStation)}
-                  style={styles.activeHeaderDeleteBtn}
-                >
-                  <AppIcon name="trash" size={14} color="#dc2626" />
-                  <Text style={styles.activeHeaderDeleteBtnText}>{t('admin.checkinDelete')}</Text>
-                </Pressable>
+              {/* Title + classification on their own row */}
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Text style={styles.activeStationTitle}>{getLocalizedText(selectedStation.title, locale)}</Text>
+                  <View style={styles.stationCategoryBadge}>
+                    <Text style={styles.stationCategoryBadgeText}>{(selectedStation.type_id || 'station').toUpperCase()}</Text>
+                  </View>
+                </View>
+                <Text style={styles.activeStationSub}>
+                  {t('admin.checkinLocationDetail', [selectedStation.location || t('admin.checkinVenueFallback'), selectedStation.requires_initial_checkin_override ?? selectedStation.checkpoint_types?.requires_initial_checkin ? t('admin.checkinArrivalRequired') : t('admin.checkinOpenAccess')])}
+                </Text>
               </View>
-            )}
-
-            <View style={styles.countBadge}>
-              <Text style={styles.countNumber}>{stationCheckInCount}</Text>
-              <Text style={styles.countLabel}>{t('admin.checkinScanned')}</Text>
             </View>
-          </View>
+          ) : (
+            <View style={styles.activeHeaderBar}>
+              <Pressable
+                onPress={() => {
+                  setSelectedStationId(null)
+                  setLastResult(null)
+                }}
+                style={styles.backToHubBtn}
+              >
+                <AppIcon name="chevron.left" size={16} color="#c2b75f" />
+                <Text style={styles.backToHubBtnText}>{`← ${t('admin.checkinAllStationsShort')}`}</Text>
+              </Pressable>
+
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Text style={styles.activeStationTitle}>{getLocalizedText(selectedStation.title, locale)}</Text>
+                  <View style={styles.stationCategoryBadge}>
+                    <Text style={styles.stationCategoryBadgeText}>{(selectedStation.type_id || 'station').toUpperCase()}</Text>
+                  </View>
+                </View>
+                <Text style={styles.activeStationSub}>
+                  {t('admin.checkinLocationDetail', [selectedStation.location || t('admin.checkinVenueFallback'), selectedStation.requires_initial_checkin_override ?? selectedStation.checkpoint_types?.requires_initial_checkin ? t('admin.checkinArrivalRequired') : t('admin.checkinOpenAccess')])}
+                </Text>
+              </View>
+
+              {canManageStations && selectedStation && (
+                <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                  <Pressable
+                    onPress={() => handleOpenEditModal(selectedStation)}
+                    style={styles.activeHeaderActionBtn}
+                  >
+                    <AppIcon name="pencil" size={14} color="#475569" />
+                    <Text style={styles.activeHeaderActionBtnText}>{t('admin.checkinEdit')}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setStationToDelete(selectedStation)}
+                    style={styles.activeHeaderDeleteBtn}
+                  >
+                    <AppIcon name="trash" size={14} color="#dc2626" />
+                    <Text style={styles.activeHeaderDeleteBtnText}>{t('admin.checkinDelete')}</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              <View style={styles.countBadge}>
+                <Text style={styles.countNumber}>{stationCheckInCount}</Text>
+                <Text style={styles.countLabel}>{t('admin.checkinScanned')}</Text>
+              </View>
+            </View>
+          )}
 
           {/* Scanner Controls */}
           <View style={styles.scanSection}>
@@ -2560,6 +2622,29 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#cbd5e1',
+  },
+  activeHeaderBarNarrow: {
+    backgroundColor: '#ffffff',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 12,
+  },
+  narrowHeaderControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  headerIconBtn: {
+    backgroundColor: '#f1f5f9',
+    padding: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backToHubBtnText: {
     color: '#5a0061',

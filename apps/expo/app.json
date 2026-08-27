@@ -25,6 +25,12 @@
       "expo-status-bar",
       "expo-notifications",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow HackMTY to use the camera to scan attendee QR badges."
+        }
+      ],
+      [
         "expo-video",
         {
           "supportsBackgroundPlayback": false

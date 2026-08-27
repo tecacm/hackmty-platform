@@ -37,6 +37,22 @@ export function usePushNotifications() {
   const registerPushToken = async () => {
     if (!isSupabaseConfigured) return
 
+    // Remote push notifications were removed from Expo Go on ANDROID in SDK 53+, where
+    // touching expo-notifications throws / surfaces a native error. iOS Expo Go still
+    // supports it, and real dev/standalone builds support both — so only skip on
+    // Android + Expo Go.
+    try {
+      const Constants = require('expo-constants').default
+      const isExpoGo =
+        Constants?.executionEnvironment === 'storeClient' || Constants?.appOwnership === 'expo'
+      if (isExpoGo && Platform.OS === 'android') {
+        console.log('[Push] Skipping push registration on Android in Expo Go (remote push unsupported).')
+        return
+      }
+    } catch (e) {
+      // expo-constants unavailable — fall through and let the guarded logic below run.
+    }
+
     try {
       let Notifications: any = null
       try {
