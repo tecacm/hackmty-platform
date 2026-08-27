@@ -29,6 +29,9 @@ const SubmissionsTab = lazy(() =>
 const UserDirectoryTab = lazy(() =>
   import('./components/UserDirectoryTab').then((mod) => ({ default: mod.UserDirectoryTab }))
 )
+const DemographicsTab = lazy(() =>
+  import('./components/DemographicsTab').then((mod) => ({ default: mod.DemographicsTab }))
+)
 const RolesAccessTab = lazy(() =>
   import('./components/RolesAccessTab').then((mod) => ({ default: mod.RolesAccessTab }))
 )
@@ -1340,6 +1343,8 @@ export function AdminDashboardScreen() {
                 setUserPage={setUserPage}
                 setUserPageSize={setUserPageSize}
               />
+            ) : adminTab === 'insights' ? (
+              <DemographicsTab />
             ) : adminTab === 'config' ? (
               <GlobalConfigTab />
             ) : (

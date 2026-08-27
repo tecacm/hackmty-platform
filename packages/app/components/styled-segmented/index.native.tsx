@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TextStyle, ViewStyle, TextInput, Platform } from 'react-native'
 import { formFieldColors, formFieldStyles } from '../form-field-styles'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { MaterialIcons } from '@expo/vector-icons'
 import type { ComponentType, ReactNode } from 'react'
 import { Platform, View, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
@@ -205,20 +206,79 @@ function AdminNavigator() {
 }
 
 function TabNavigator() {
-  const { hasPermission } = useUserPermissions()
+  const { hasPermission, loading: permissionsLoading } = useUserPermissions()
   const showApplicationTab = hasPermission('applications', 'view')
+
+  // Android has no SF Symbols and the native Material Symbol module isn't in Expo Go,
+  // so instead of react-navigation's `materialSymbol` icon (which resolves to an
+  // undefined image source here and blanks the tab / crashes the native tab bar), we
+  // pre-render each icon to an image source via @expo/vector-icons and pass it as a
+  // `type: 'image'` descriptor. iOS keeps native SF Symbols.
+  const [androidIcons, setAndroidIcons] = useState<Record<string, any>>({})
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') return
+    let mounted = true
+    const defs: Array<[string, string]> = [
+      ['home', 'campaign'],
+      ['applications', 'assignment'],
+      ['teams', 'groups'],
+      ['profile', 'person'],
+      ['admin', 'admin-panel-settings'],
+    ]
+    Promise.all(
+      defs.map(async ([key, icon]) => {
+        try {
+          const source = await (MaterialIcons as any).getImageSource(icon, 26, '#c2b75f')
+          return [key, source] as const
+        } catch {
+          return [key, null] as const
+        }
+      })
+    ).then((entries) => {
+      if (!mounted) return
+      const map: Record<string, any> = {}
+      entries.forEach(([k, v]) => {
+        if (v) map[k] = v
+      })
+      setAndroidIcons(map)
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  // Valid `type: 'image'` descriptor once the icon image is ready, otherwise undefined
+  // (no icon) — never the broken materialSymbol path.
+  const androidTabIcon = (key: string) =>
+    androidIcons[key] ? ({ type: 'image', source: androidIcons[key] } as any) : undefined
+
+  // The tab set is derived from permissions. If we render the native tab bar before
+  // permissions resolve, only the ungated (Profile) tab exists, then Feed/Admin/etc.
+  // are ADDED after load — and react-native-screens' native Android tabs mishandle a
+  // mutating tab set (selection jumps to index 0, newly-added tab screens render white
+  // until a navigation event remounts them). iOS tolerates it. So wait for permissions
+  // to load and mount the tab navigator once with its final, stable set of tabs.
+  if (permissionsLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1d041f' }}>
+        <ActivityIndicator size="large" color="#c2b75f" />
+      </View>
+    )
+  }
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        lazy: false,
         tabBarStyle: {
           backgroundColor: '#1d041f',
         },
         tabBarActiveTintColor: '#c2b75f',
         tabBarInactiveTintColor: '#a3a3a3',
         tabBarMinimizeBehavior: 'onScrollDown'      
-      }}
+      } as any}
     >
       {/* 1st Tab: Feed / Announcements */}
       {hasPermission('announcements', 'view') && (
@@ -233,10 +293,7 @@ function TabNavigator() {
                 type: 'sfSymbol',
                 name: 'megaphone.fill',
               },
-              android: {
-                type: 'materialSymbol',
-                name: 'campaign',
-              },
+              android: androidTabIcon('home'),
             }) as any,
           }}
         />
@@ -254,10 +311,7 @@ function TabNavigator() {
                 type: 'sfSymbol',
                 name: 'doc.text',
               },
-              android: {
-                type: 'materialSymbol',
-                name: 'assignment',
-              },
+              android: androidTabIcon('applications'),
             }) as any,
           }}
         />
@@ -275,10 +329,7 @@ function TabNavigator() {
                 type: 'sfSymbol',
                 name: 'person.3.fill',
               },
-              android: {
-                type: 'materialSymbol',
-                name: 'groups',
-              },
+              android: androidTabIcon('teams'),
             }) as any,
           }}
         />
@@ -296,10 +347,7 @@ function TabNavigator() {
               type: 'sfSymbol',
               name: 'person.fill',
             },
-            android: {
-              type: 'materialSymbol',
-              name: 'person',
-            },
+            android: androidTabIcon('profile'),
           }) as any,
         }}
       />
@@ -316,10 +364,7 @@ function TabNavigator() {
                 type: 'sfSymbol',
                 name: 'shield.fill',
               },
-              android: {
-                type: 'materialSymbol',
-                name: 'admin_panel_settings',
-              },
+              android: androidTabIcon('admin'),
             }) as any,
           }}
         />

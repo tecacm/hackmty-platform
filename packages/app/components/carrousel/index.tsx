@@ -2,7 +2,7 @@
 
 import { View, Dimensions, Animated, Platform } from 'react-native';
 import { SolitoImage } from 'solito/image';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 
 type CarouselProps = {
   slideImages: any[];
@@ -27,7 +27,14 @@ function preloadSlideImages(images: any[]) {
   });
 }
 
-function CrossfadeCarrousel({ slideImages, secondsPerImage = 6 }: { slideImages: any[]; secondsPerImage?: number }) {
+// Runs before paint on web, falls back to a normal effect during SSR/native so
+// the opacity reset lands in the same commit as the currentIndex change.
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
+// WEB crossfade: two fixed background-image layers. The current sits opaque
+// underneath while the next fades in on top; the incoming opacity is zeroed in the
+// same commit that advances currentIndex (layout effect) so no stale frame paints.
+function WebCrossfade({ slideImages, secondsPerImage = 6 }: { slideImages: any[]; secondsPerImage?: number }) {
   const total = slideImages.length;
   const [currentIndex, setCurrentIndex] = useState(0);
   const incomingOpacity = useRef(new Animated.Value(0)).current;
@@ -36,25 +43,23 @@ function CrossfadeCarrousel({ slideImages, secondsPerImage = 6 }: { slideImages:
     preloadSlideImages(slideImages);
   }, [slideImages]);
 
+  useIsomorphicLayoutEffect(() => {
+    incomingOpacity.setValue(0);
+  }, [currentIndex]);
+
   useEffect(() => {
     if (total < 2) return;
-
     let cancelled = false;
     const totalMs = secondsPerImage * 1000;
     const fadeMs = totalMs * 0.4;
     const holdMs = totalMs - fadeMs;
-
-    incomingOpacity.setValue(0);
     const animation = Animated.sequence([
       Animated.delay(holdMs),
       Animated.timing(incomingOpacity, { toValue: 1, duration: fadeMs, useNativeDriver: true }),
     ]);
     animation.start(({ finished }) => {
-      if (finished && !cancelled) {
-        setCurrentIndex((i) => (i + 1) % total);
-      }
+      if (finished && !cancelled) setCurrentIndex((i) => (i + 1) % total);
     });
-
     return () => {
       cancelled = true;
       animation.stop();
@@ -65,61 +70,154 @@ function CrossfadeCarrousel({ slideImages, secondsPerImage = 6 }: { slideImages:
 
   const resolveSrc = (item: any) => {
     const s = item?.src || item?.default || item;
-    return typeof s === 'string' ? s : s?.src || ''
-  }
-
+    return typeof s === 'string' ? s : s?.src || '';
+  };
   const currentUri = resolveSrc(slideImages[currentIndex]);
-  const nextIndex = (currentIndex + 1) % total;
-  const nextUri = resolveSrc(slideImages[nextIndex]);
+  const nextUri = resolveSrc(slideImages[(currentIndex + 1) % total]);
 
   const layerStyle = {
-    position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+    position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
-    bottom: Platform.OS === 'web' ? -200 : 0,
-    width: Platform.OS === 'web' ? '100vw' : '100%',
-    height: Platform.OS === 'web' ? 'calc(100vh + 200px)' : '100%',
-    minHeight: Platform.OS === 'web' ? 'calc(100vh + 200px)' : '100%',
+    bottom: -200,
+    width: '100vw',
+    height: 'calc(100vh + 200px)',
+    minHeight: 'calc(100vh + 200px)',
     zIndex: -1,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    WebkitTransform: 'translateZ(0)',
   } as any;
 
   return (
     <View style={{ width: '100%', height: '100%', overflow: 'visible', position: 'relative' }}>
-      <View
-        style={[
-          layerStyle,
-          Platform.OS === 'web' && {
-            backgroundImage: `url(${currentUri})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            WebkitTransform: 'translateZ(0)',
-          } as any,
-        ]}
-      />
+      <View style={[layerStyle, { backgroundImage: `url(${currentUri})` } as any]} />
       {total > 1 && (
-        <Animated.View
-          style={[
-            layerStyle,
-            { opacity: incomingOpacity },
-            Platform.OS === 'web' && {
-              backgroundImage: `url(${nextUri})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              WebkitTransform: 'translateZ(0)',
-            } as any,
-          ]}
-        />
+        <Animated.View style={[layerStyle, { opacity: incomingOpacity, backgroundImage: `url(${nextUri})` } as any]} />
       )}
+    </View>
+  );
+}
+
+// NATIVE crossfade — ping-pong two-layer design that keeps the working Animated.View
+// opacity fade but removes the flicker. The key property: a layer NEVER changes its
+// image source while it is visible. The layer that just faded in (already decoded)
+// simply becomes the new base, untouched; the other layer only swaps its source while
+// it is fully transparent, so any re-decode happens invisibly. The fading layer is
+// always kept on top via zIndex (two layers, positive z — safe on Android).
+function NativeCrossfade({ slideImages, secondsPerImage = 6 }: { slideImages: any[]; secondsPerImage?: number }) {
+  const total = slideImages.length;
+  const resolveRaw = (item: any) => item?.src || item?.default || item;
+
+  const [dim, setDim] = useState({ w: 0, h: 0 });
+  // Two persistent layers, each with its own source slot and opacity.
+  const [srcs, setSrcs] = useState<[any, any]>(() => [
+    resolveRaw(slideImages[0]),
+    resolveRaw(slideImages[total > 1 ? 1 : 0]), // layer 1 preloads the next image
+  ]);
+  const [active, setActive] = useState(0); // which layer is the visible base (opacity 1)
+  const opacities = useRef<[Animated.Value, Animated.Value]>([
+    new Animated.Value(1),
+    new Animated.Value(0),
+  ]).current;
+
+  const activeRef = useRef(0);
+  const indexRef = useRef(0);
+  const slidesRef = useRef(slideImages);
+  slidesRef.current = slideImages;
+
+  useEffect(() => {
+    const update = () => {
+      const { width: w, height: h } = Dimensions.get('screen');
+      setDim({ w, h });
+    };
+    update();
+    const sub = Dimensions.addEventListener('change', update);
+    return () => sub?.remove();
+  }, []);
+
+  useEffect(() => {
+    if (total < 2) return;
+    const totalMs = secondsPerImage * 1000;
+    const fadeMs = totalMs * 0.4;
+    const holdMs = totalMs - fadeMs;
+    let cancelled = false;
+    let anim: Animated.CompositeAnimation | undefined;
+
+    const cycle = () => {
+      if (cancelled) return;
+      const activeLayer = activeRef.current;
+      const idleLayer = 1 - activeLayer; // hidden layer already holding the next image
+      anim = Animated.sequence([
+        Animated.delay(holdMs),
+        Animated.timing(opacities[idleLayer]!, { toValue: 1, duration: fadeMs, useNativeDriver: true }),
+      ]);
+      anim.start(({ finished }) => {
+        if (!finished || cancelled) return;
+        // The idle layer is now fully faded in → it becomes the visible base.
+        opacities[activeLayer]!.setValue(0); // hide the old base (invisible beneath the new one)
+        activeRef.current = idleLayer;
+        setActive(idleLayer);
+        indexRef.current = (indexRef.current + 1) % total;
+        // Preload the FOLLOWING image into the now-idle (old base) layer while it is
+        // transparent, so its re-decode is never seen.
+        const followingSrc = resolveRaw(slidesRef.current[(indexRef.current + 1) % total]);
+        setSrcs((prev) => {
+          const next: [any, any] = [prev[0], prev[1]];
+          next[activeLayer] = followingSrc;
+          return next;
+        });
+        cycle();
+      });
+    };
+
+    cycle();
+    return () => {
+      cancelled = true;
+      anim?.stop();
+    };
+  }, [total, secondsPerImage]);
+
+  if (total === 0) return null;
+
+  const layerStyle = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: dim.w || '100%',
+    height: dim.h || '100%',
+  } as any;
+
+  return (
+    <View style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+      {[0, 1].map((i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={[layerStyle, { opacity: opacities[i], zIndex: i === active ? 1 : 2 }]}
+        >
+          <SolitoImage
+            src={srcs[i]}
+            width={dim.w}
+            height={dim.h}
+            contentFit="cover"
+            alt={`Slide layer ${i}`}
+          />
+        </Animated.View>
+      ))}
     </View>
   );
 }
 
 export function Carrousel(props: CarouselProps) {
   if (props.mode === 'crossfade') {
-    return <CrossfadeCarrousel slideImages={props.slideImages} />;
+    return Platform.OS === 'web'
+      ? <WebCrossfade slideImages={props.slideImages} />
+      : <NativeCrossfade slideImages={props.slideImages} />;
   }
 
   // SSR-safe: start with 0, real values set in useEffect
