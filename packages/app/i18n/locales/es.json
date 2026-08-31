@@ -209,6 +209,7 @@
   },
   "applicant": {
     "statusAccepted": "Aceptado",
+    "confirmByShort": "Confirma antes del {date}",
     "statusRejected": "No Admitido",
     "statusDraft": "Borrador",
     "statusUnderReview": "En Revisión",

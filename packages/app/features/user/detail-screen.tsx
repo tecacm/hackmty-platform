@@ -729,7 +729,7 @@ export function UserDetailScreen() {
               <View style={styles.detailPanelRight}>
 
                 {/* Minor Verification Documents Card (If applicant is under 18 or uploaded docs) */}
-                {(parseInt(app.answers?.age || '0', 10) < 18 || permissionSlipUrl || guardianIdUrl || app.answers?.permissionSlip) && (
+                {Boolean(parseInt(app.answers?.age || '0', 10) < 18 || permissionSlipUrl || guardianIdUrl || app.answers?.permissionSlip) && (
                   <View style={styles.minorDocCard}>
                     <Text style={styles.resumeCardTitle}>Minor Verification Documents</Text>
                     <Text style={styles.minorCardSubtitle}>

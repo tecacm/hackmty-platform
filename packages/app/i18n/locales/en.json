@@ -208,7 +208,8 @@
     "photoUpdated": "Profile photo updated successfully!"
   },
   "applicant": {
-    "statusAccepted": "Accepted 🎉",
+    "statusAccepted": "Accepted",
+    "confirmByShort": "Confirm by {date}",
     "statusRejected": "Not Admitted",
     "statusDraft": "Draft",
     "statusUnderReview": "Under Review",
