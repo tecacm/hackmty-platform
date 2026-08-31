@@ -218,6 +218,7 @@
     "attendanceConfirmedNotice": "Your attendance has been confirmed. See you at the hackathon!",
     "acceptedNotice": "Your application has been accepted. Please confirm your attendance below to secure your spot at the event!",
     "confirmClosed": "The window to confirm attendance has closed. Please contact the organizers if you still plan to attend.",
+    "confirmBy": "Confirm your attendance by {date}",
     "congratulations": "Congratulations!",
     "registrationClosed": "Registration for this role has closed. You are viewing your application in read-only mode.",
     "changesRequestedTitle": "Action Required: Changes Requested by Organizer",

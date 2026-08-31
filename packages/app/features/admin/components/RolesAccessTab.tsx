@@ -31,8 +31,15 @@ const formatText = (val: any, fallback = '') => {
 
 const toDatetimeLocal = (iso: string | null): string => {
   if (!iso) return ''
-  try { return new Date(iso).toISOString().slice(0, 16) }
-  catch { return '' }
+  try {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    // datetime-local expects LOCAL time; toISOString() would shift by the tz offset.
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  } catch {
+    return ''
+  }
 }
 
 function DeadlineRow({ label, value, emptyLabel, onSave }: { label: string; value: string | null; emptyLabel: string; onSave: (iso: string | null) => void }) {

@@ -32,6 +32,7 @@ type ApplicantFormProps = {
   textBlocks?: Record<string, string>
   isClosed?: boolean
   confirmClosed?: boolean
+  confirmCloseAt?: string | null
 }
 
 type SectionRow<T> =
@@ -166,7 +167,8 @@ export function ApplicantForm({
   systemLinks = {},
   textBlocks = {},
   isClosed = false,
-  confirmClosed = false
+  confirmClosed = false,
+  confirmCloseAt = null
 }: ApplicantFormProps) {
   const { t, locale } = useTranslation()
   const { hasPermission } = useUserPermissions()
@@ -356,7 +358,20 @@ export function ApplicantForm({
               </Text>
             </View>
           ) : (
-            <View style={{ alignItems: 'center', marginTop: 8 }}>
+            <View style={{ alignItems: 'center', marginTop: 8, gap: 8 }}>
+              {confirmCloseAt ? (
+                <Text style={{ color: '#166534', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>
+                  {t('applicant.confirmBy', {
+                    date: new Date(confirmCloseAt).toLocaleString(locale, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }),
+                  })}
+                </Text>
+              ) : null}
               <PillButton
                 title={t('applicant.confirmAttendance')}
                 variant="secondary"

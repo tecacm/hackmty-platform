@@ -26,6 +26,7 @@ export type UseApplicationFormResult = {
   textBlocks: Record<string, string>
   isClosed: boolean
   confirmClosed: boolean
+  confirmCloseAt: string | null
 }
 
 export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inviteCode?: string | null): UseApplicationFormResult {
@@ -41,6 +42,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
   const [textBlocks, setTextBlocks] = useState<Record<string, string>>({})
   const [isClosed, setIsClosed] = useState(false)
   const [confirmClosed, setConfirmClosed] = useState(false)
+  const [confirmCloseAt, setConfirmCloseAt] = useState<string | null>(null)
 
   const activeRequestIdRef = useRef(0)
 
@@ -67,6 +69,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
         setIsClosed(false)
       }
       setConfirmClosed(false)
+      setConfirmCloseAt(null)
       setIsLoading(false)
       return
     }
@@ -82,6 +85,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       // 2. Fetch role close_at and is_public flag
       let deadlineClosed = false
       let confirmDeadlineClosed = false
+      let confirmCloseAtVal: string | null = null
       let isPublic = true
       const { data: typeData } = await supabase
         .from('application_types')
@@ -98,6 +102,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
           isPublic = typeData.is_public
         }
         if (typeData.confirm_close_at) {
+          confirmCloseAtVal = typeData.confirm_close_at
           confirmDeadlineClosed = new Date(typeData.confirm_close_at).getTime() < Date.now()
         }
       }
@@ -455,6 +460,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       }
       setIsClosed(deadlineClosed)
       setConfirmClosed(confirmDeadlineClosed)
+      setConfirmCloseAt(confirmCloseAtVal)
       setIsLoading(false)
 
     } catch (err: any) {
@@ -731,6 +737,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
     systemLinks,
     textBlocks,
     isClosed,
-    confirmClosed
+    confirmClosed,
+    confirmCloseAt
   }
 }

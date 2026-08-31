@@ -218,6 +218,7 @@
     "attendanceConfirmedNotice": "Tu asistencia ha sido confirmada. ¡Nos vemos en el hackathon!",
     "acceptedNotice": "¡Tu solicitud ha sido aceptada! Por favor confirma tu asistencia abajo para asegurar tu lugar en el evento.",
     "confirmClosed": "El periodo para confirmar asistencia ha cerrado. Contacta a los organizadores si aún planeas asistir.",
+    "confirmBy": "Confirma tu asistencia antes del {date}",
     "congratulations": "¡Felicidades!",
     "registrationClosed": "El registro para este rol ha cerrado. Estás viendo tu solicitud en modo de solo lectura.",
     "changesRequestedTitle": "Acción Requerida: Cambios Solicitados por el Organizador",
