@@ -193,6 +193,8 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
   const [devpost, setDevpost] = useState('')
   const [linkedin, setLinkedin] = useState('')
   const [personalSite, setPersonalSite] = useState('')
+  const [discordUserId, setDiscordUserId] = useState<string | null>(null)
+  const [discordLinking, setDiscordLinking] = useState(false)
   const [resumeUrl, setResumeUrl] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -268,6 +270,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
           setDevpost(profile.devpost || '')
           setLinkedin(profile.linkedin || '')
           setPersonalSite(profile.personal_site || '')
+          setDiscordUserId(profile.discord_user_id || null)
           setResumeUrl(profile.resume_url || null)
 
           if (profile.avatar_url) {
@@ -340,6 +343,45 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
 
     loadProfile()
   }, [])
+
+  // Surface the Discord link result (?discord=linked|error|conflict) after the OAuth redirect.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const result = params.get('discord')
+    if (!result) return
+    if (result === 'linked') {
+      setFeedbackMessage({ text: t('profile.discordLinkedSuccess'), isError: false })
+    } else if (result === 'conflict') {
+      setFeedbackMessage({ text: t('profile.discordLinkConflict'), isError: true })
+    } else {
+      setFeedbackMessage({ text: t('profile.discordLinkError'), isError: true })
+    }
+    params.delete('discord')
+    const qs = params.toString()
+    window.history.replaceState({}, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+  }, [t])
+
+  const handleLinkDiscord = async () => {
+    if (!isSupabaseConfigured) return
+    try {
+      setDiscordLinking(true)
+      setFeedbackMessage(null)
+      const { data, error } = await supabase.functions.invoke('discord-link-start')
+      if (error) throw error
+      const url = (data as any)?.url
+      if (!url) throw new Error('No authorization URL returned')
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined') window.location.href = url
+      } else {
+        Linking.openURL(url)
+        setDiscordLinking(false)
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ text: err?.message || 'Could not start Discord linking.', isError: true })
+      setDiscordLinking(false)
+    }
+  }
 
   // Handle image upload to Supabase storage
   const uploadAvatar = async (payload: any, fileName: string, mimeType: string) => {
@@ -952,6 +994,26 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
                 )}
 
                 <View style={styles.infoSection}>
+                  <Text style={styles.sectionHeading}>{t('profile.community')}</Text>
+                  <View style={styles.discordRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 180 }}>
+                      <View style={[styles.discordDot, { backgroundColor: discordUserId ? '#22c55e' : '#cbd5e1' }]} />
+                      <Text style={styles.discordStatusText}>
+                        {discordUserId ? t('profile.discordLinked') : t('profile.discordNotLinked')}
+                      </Text>
+                    </View>
+                    {!discordUserId && (
+                      <PillButton
+                        title={discordLinking ? t('profile.discordLinking') : t('profile.linkDiscord')}
+                        onPress={discordLinking ? () => {} : handleLinkDiscord}
+                        additionalStyle={{ width: 'auto', paddingHorizontal: 18, opacity: discordLinking ? 0.6 : 1 }}
+                        fontSize={13}
+                      />
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.infoSection}>
                   <Text style={styles.sectionHeading}>{t('profile.personalDetails')}</Text>
                   <View style={styles.infoGrid}>
                     <InfoTile label={t('profile.firstName')} value={firstName} emptyLabel={t('profile.notSpecified')} />
@@ -1361,6 +1423,28 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     gap: 12,
+  },
+  discordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  discordDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  discordStatusText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#212529',
   },
   sectionHeading: {
     fontSize: 12,
