@@ -557,6 +557,7 @@
     "unsavedChanges": "Cambios Sin Guardar",
     "saveAllChanges": "Guardar Todo",
     "addKey": "+ Agregar Clave",
+    "addMapPair": "Agregar par",
     "loadingConfig": "Cargando configuración global de la base de datos...",
     "noConfigKeys": "No Se Encontraron Claves de Configuración",
     "noConfigKeysDesc": "Haz clic en \"+ Agregar Clave\" para insertar tu primera clave de configuración.",
