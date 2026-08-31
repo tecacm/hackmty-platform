@@ -96,21 +96,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
-  confirmPill: {
+  deadlinePill: {
     alignSelf: 'flex-start',
-    marginTop: 8,
-    backgroundColor: '#f0fdf4',
     borderWidth: 1,
-    borderColor: '#86efac',
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
-  confirmPillText: {
-    color: '#15803d',
-    fontSize: 12,
-    fontWeight: '800',
-  },
+  deadlinePillOpen: { backgroundColor: '#f0fdf4', borderColor: '#86efac' },
+  deadlinePillClosed: { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
+  deadlinePillText: { fontSize: 12, fontWeight: '800' },
   roleCardCount: {
     color: formFieldColors.theme,
     fontSize: 13,
@@ -474,7 +469,7 @@ export function RoleApplicationScreen() {
                       {submittedApps.map((app) => {
                         const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id, locale)
                         const closeAt = getRoleCloseAt(app.application_type_id)
-                        const { text: countdownText, isClosed } = getCountdownText(closeAt)
+                        const { isClosed } = getCountdownText(closeAt)
 
                         return (
                           <View key={app.application_type_id} style={styles.roleCard}>
@@ -488,26 +483,33 @@ export function RoleApplicationScreen() {
                                 </View>
                               </View>
                               <Text style={styles.roleCardMeta}>{t('applicant.tailoredForRole', { role: applicantRoleLabel.toLowerCase() })}</Text>
-                              {countdownText !== '' && (
-                                <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
-                                  {countdownText}
-                                </Text>
-                              )}
-                              {app.status === 'accepted' && getRoleConfirmCloseAt(app.application_type_id) ? (
-                                <View style={styles.confirmPill}>
-                                  <Text style={styles.confirmPillText}>
-                                    {t('applicant.confirmByShort', {
-                                      date: new Date(getRoleConfirmCloseAt(app.application_type_id) as string).toLocaleString(locale, {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                      }),
-                                    })}
-                                  </Text>
-                                </View>
-                              ) : null}
                             </View>
+                            {(() => {
+                              const isAccepted = app.status === 'accepted'
+                              const skip = app.status === 'confirmed' || app.status === 'rejected'
+                              const deadline = isAccepted
+                                ? getRoleConfirmCloseAt(app.application_type_id)
+                                : skip
+                                  ? null
+                                  : getRoleCloseAt(app.application_type_id)
+                              if (!deadline) return null
+                              const passed = new Date(deadline).getTime() < Date.now()
+                              const dateStr = new Date(deadline).toLocaleString(locale, {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                              const label = isAccepted
+                                ? t(passed ? 'applicant.attendanceClosedOn' : 'applicant.attendanceClosesOn', { date: dateStr })
+                                : t(passed ? 'applicant.submissionClosedOn' : 'applicant.submissionClosesOn', { date: dateStr })
+                              return (
+                                <View style={[styles.deadlinePill, passed ? styles.deadlinePillClosed : styles.deadlinePillOpen]}>
+                                  <Text style={[styles.deadlinePillText, { color: passed ? '#b91c1c' : '#15803d' }]}>{label}</Text>
+                                </View>
+                              )
+                            })()}
                             <PillButton
                               title={(isClosed || app.status === 'accepted' || app.status === 'confirmed' || app.status === 'rejected') ? t('applicant.viewApplication') : t('applicant.viewApplication')}
                               onPress={() => handleApply(app.application_type_id)}
