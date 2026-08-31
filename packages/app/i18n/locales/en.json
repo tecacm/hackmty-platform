@@ -557,6 +557,7 @@
     "unsavedChanges": "Unsaved Changes",
     "saveAllChanges": "Save All Changes",
     "addKey": "+ Add Key",
+    "addMapPair": "Add pair",
     "loadingConfig": "Loading global database configuration...",
     "noConfigKeys": "No Global Config Keys Found",
     "noConfigKeysDesc": "Click \"+ Add Key\" above to insert your first platform configuration key.",

@@ -49,6 +49,88 @@ function fromDatetimeLocal(localValue: string): string {
   }
 }
 
+function parseConfigMap(raw: string): Record<string, string> {
+  try {
+    const o = JSON.parse(raw || '{}')
+    if (o && typeof o === 'object' && !Array.isArray(o)) {
+      const out: Record<string, string> = {}
+      Object.entries(o).forEach(([k, v]) => {
+        out[k] = typeof v === 'string' ? v : String(v)
+      })
+      return out
+    }
+  } catch {
+    /* not JSON yet */
+  }
+  return {}
+}
+
+/** Key/value ("map") editor for a global_config value stored as a JSON object string. */
+function ConfigMapEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation()
+  const seqRef = React.useRef(0)
+  const toEntries = (obj: Record<string, string>) =>
+    Object.entries(obj).map(([k, v]) => ({ id: `e${seqRef.current++}`, k, v }))
+
+  const [entries, setEntries] = React.useState(() => toEntries(parseConfigMap(value)))
+  const lastRef = React.useRef(value)
+
+  React.useEffect(() => {
+    if (value !== lastRef.current) {
+      setEntries(toEntries(parseConfigMap(value)))
+      lastRef.current = value
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
+  const commit = (next: Array<{ id: string; k: string; v: string }>) => {
+    setEntries(next)
+    const obj: Record<string, string> = {}
+    next.forEach((e) => {
+      const k = e.k.trim()
+      if (k) obj[k] = e.v
+    })
+    const serialized = JSON.stringify(obj)
+    lastRef.current = serialized
+    onChange(serialized)
+  }
+
+  return (
+    <View style={{ gap: 8, width: '100%' }}>
+      {entries.map((e, i) => (
+        <View key={e.id} style={styles.mapRow}>
+          <TextInput
+            value={e.k}
+            onChangeText={(txt) => commit(entries.map((x, j) => (j === i ? { ...x, k: txt } : x)))}
+            placeholder="key"
+            placeholderTextColor="#94a3b8"
+            style={[styles.textInput, styles.mapKeyInput]}
+            autoCapitalize="none"
+          />
+          <TextInput
+            value={e.v}
+            onChangeText={(txt) => commit(entries.map((x, j) => (j === i ? { ...x, v: txt } : x)))}
+            placeholder="value"
+            placeholderTextColor="#94a3b8"
+            style={[styles.textInput, styles.mapValInput]}
+            autoCapitalize="none"
+          />
+          <Pressable onPress={() => commit(entries.filter((_, j) => j !== i))} style={styles.mapDeleteBtn} hitSlop={6}>
+            <AppIcon name="xmark" size={14} color="#ef4444" />
+          </Pressable>
+        </View>
+      ))}
+      <Pressable
+        onPress={() => commit([...entries, { id: `e${seqRef.current++}`, k: '', v: '' }])}
+        style={styles.mapAddBtn}
+      >
+        <AppIcon name="plus.circle.fill" size={15} color="#5a0061" />
+        <Text style={styles.mapAddText}>{t('admin.addMapPair')}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
 export function GlobalConfigTab() {
   const { t } = useTranslation()
   const [configs, setConfigs] = useState<ConfigItem[]>([])
@@ -61,7 +143,7 @@ export function GlobalConfigTab() {
   const [newKey, setNewKey] = useState('')
   const [newTitle, setNewTitle] = useState('')
   const [newDesc, setNewDesc] = useState('')
-  const [newType, setNewType] = useState<'boolean' | 'datetime' | 'number' | 'string'>('string')
+  const [newType, setNewType] = useState<'boolean' | 'datetime' | 'number' | 'string' | 'map'>('string')
   const [newValue, setNewValue] = useState('')
   const [isAdding, setIsAdding] = useState(false)
 
@@ -193,7 +275,7 @@ export function GlobalConfigTab() {
         .upsert(
           {
             key: newKey.trim().toLowerCase().replace(/\s+/g, '_'),
-            value: newValue.trim(),
+            value: newType === 'map' && !newValue.trim() ? '{}' : newValue.trim(),
             title: newTitle.trim() || newKey.trim(),
             description: newDesc.trim() || null,
             value_type: newType,
@@ -221,7 +303,22 @@ export function GlobalConfigTab() {
   // Infer editor input component based on value_type
   const renderControlInput = (item: ConfigItem) => {
     const currentVal = draftValues[item.key] ?? item.value ?? ''
-    const inferredType = item.value_type || (item.key.includes('date') ? 'datetime' : item.key.includes('enabled') || currentVal === 'true' || currentVal === 'false' ? 'boolean' : 'string')
+    let inferredType: string = item.value_type || ''
+    if (!inferredType) {
+      const v = currentVal.trim()
+      if (item.key.includes('date')) inferredType = 'datetime'
+      else if (item.key.includes('enabled') || v === 'true' || v === 'false') inferredType = 'boolean'
+      else if (v.startsWith('{')) inferredType = 'map'
+      else inferredType = 'string'
+    }
+
+    if (inferredType === 'map') {
+      return (
+        <View style={styles.controlGroup}>
+          <ConfigMapEditor value={currentVal} onChange={(v) => handleUpdateDraft(item.key, v)} />
+        </View>
+      )
+    }
 
     if (inferredType === 'boolean') {
       const isTrue = currentVal.toLowerCase() === 'true'
@@ -490,7 +587,7 @@ export function GlobalConfigTab() {
 
               <Text style={styles.fieldLabel}>{t('admin.valueDataType')}</Text>
               <View style={styles.typeSelectorRow}>
-                {(['string', 'boolean', 'datetime', 'number'] as const).map((typeOpt) => (
+                {(['string', 'boolean', 'datetime', 'number', 'map'] as const).map((typeOpt) => (
                   <Pressable
                     key={typeOpt}
                     onPress={() => setNewType(typeOpt)}
@@ -732,6 +829,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
   },
+  mapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mapKeyInput: { flex: 1, minWidth: 90 },
+  mapValInput: { flex: 2, minWidth: 120 },
+  mapDeleteBtn: {
+    padding: 8,
+    backgroundColor: '#fef2f2',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  mapAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  mapAddText: { color: '#5a0061', fontSize: 13, fontWeight: '800' },
   booleanToggleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
