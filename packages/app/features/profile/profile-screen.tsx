@@ -18,6 +18,7 @@ import {
 
 import { StyledInput } from 'app/components/styled-input'
 import { StyledSelect } from 'app/components/styled-select'
+import { StyledSegmented } from 'app/components/styled-segmented'
 import { StyledAutocomplete } from 'app/components/styled-autocomplete'
 import { PillButton } from 'app/components/pill-button'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
@@ -28,6 +29,8 @@ import { pickAvatar } from './pick-avatar'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { checkEventPassUnlocked, selectActiveRoles, isOperatorRole } from 'app/utils/event-config'
 import { PersonSilhouette } from 'app/components/person-silhouette'
+import { UserBadges } from 'app/components/user-badges'
+import { SocialIcon } from 'app/components/social-icon'
 import { AppIcon } from 'app/components/app-icon'
 
 import { sanitizeName, sanitizeString, sanitizeUrl } from 'app/utils/sanitization'
@@ -129,6 +132,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [profileView, setProfileView] = useState<'awards' | 'info'>('awards')
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
   const [isPassAllowed, setIsPassAllowed] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; isError: boolean } | null>(null)
@@ -647,6 +651,16 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
     ? getApplicantRoleLabel(userRole, locale)
     : getApplicantRoleLabel('hacker', locale)
 
+  const gradYearLabel = getOptionLabel(gradYearOptions, gradYear)
+  const socialLinks = (
+    [
+      { name: 'github', url: github },
+      { name: 'linkedin', url: linkedin },
+      { name: 'devpost', url: devpost },
+      { name: 'website', url: personalSite },
+    ] as const
+  ).filter((s) => (s.url || '').trim())
+
   return (
     <View style={styles.container}>
       {isLoading ? (
@@ -702,7 +716,23 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
             {/* Role label directly under the name without a pill box */}
             <Text style={styles.floatingRole}>{formattedRole}</Text>
 
-            {/* Quick Action Slot: My Event Pass (QR Code) */}
+            {socialLinks.length > 0 && (
+              <View style={styles.socialGlass}>
+                {socialLinks.map((s) => (
+                  <Pressable
+                    key={s.name}
+                    onPress={() => handleOpenUrl(s.url)}
+                    accessibilityRole="link"
+                    accessibilityLabel={s.name}
+                    style={({ pressed }) => [styles.socialIconBtn, pressed && { opacity: 0.7 }]}
+                  >
+                    <SocialIcon name={s.name} size={30} color="#ffffff" />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {/* Event Pass (QR) — at the top */}
             {isPassAllowed && (
               <View style={styles.quickActionsContainer}>
                 <GlassButton
@@ -719,45 +749,39 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
                   <Text style={styles.quickActionText}>{t('profile.showQrPass')}</Text>
                 </GlassButton>
               </View>
-            )}
+            )}        
           </View>
 
           {/* Profile Content Card - Material Container */}
           <View style={styles.innerCard}>
             {/* Card Header Row */}
             <View style={styles.cardHeaderRow}>
-              <View>
-                <Text style={styles.cardTitle}>{t('profile.title')}</Text>
-                <Text style={styles.cardSubtitle}>
-                  {isEditing ? t('profile.editingSubtitle') : t('profile.subtitle')}
-                </Text>
+              <View style={{ flex: 1 }}>
+                {isEditing ? (
+                  <>
+                    <Text style={styles.cardTitle}>{t('profile.title')}</Text>
+                    <Text style={styles.cardSubtitle}>{t('profile.editingSubtitle')}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.uniText}>{university || t('profile.notSpecified')}</Text>
+                    {gradYearLabel ? <Text style={styles.gradText}>{gradYearLabel}</Text> : null}
+                  </>
+                )}
               </View>
 
-              {Platform.OS === 'web' && (
-                <GlassButton
-                  glassEffectStyle="clear"
-                  colorScheme="dark"
-                  accessibilityRole="button"
-                  accessibilityLabel={isEditing ? t('common.cancel') : t('profile.editProfile')}
-                  style={[
-                    styles.toggleEditBtn,
-                    isEditing && styles.toggleEditBtnCancel,
-                    isSmallScreen && !isEditing && { paddingHorizontal: 0, width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
-                  ]}
-                  onPress={handleToggleEdit}
-                >
-                  {isEditing ? (
-                    <Text style={[styles.toggleEditBtnText, styles.toggleEditBtnTextCancel]}>
-                      {t('common.cancel')}
-                    </Text>
-                  ) : isSmallScreen ? (
-                    <AppIcon name="pencil" size={16} color="#ffffff" />
-                  ) : (
-                    <Text style={styles.toggleEditBtnText}>
-                      {t('profile.editProfile')}
-                    </Text>
-                  )}
-                </GlassButton>
+              {!isEditing && (
+                <View style={styles.viewSwitcher}>
+                  <StyledSegmented
+                    label=""
+                    options={[
+                      { label: t('profile.tabAwards'), value: 'awards' },
+                      { label: t('profile.tabInfo'), value: 'info' },
+                    ]}
+                    value={profileView}
+                    onValueChange={(v) => setProfileView(v as 'awards' | 'info')}
+                  />
+                </View>
               )}
             </View>
 
@@ -772,49 +796,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
               </View>
             )}
 
-            {!isEditing ? (
-              /* VIEW MODE (Nice minimized style) */
-              <View style={styles.viewModeContainer}>
-                <View style={styles.infoSection}>
-                  <Text style={styles.sectionHeading}>{t('profile.personalDetails')}</Text>
-                  <View style={styles.infoGrid}>
-                    <InfoTile label={t('profile.firstName')} value={firstName} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.lastName')} value={lastName} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('auth.email')} value={email} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.phone')} value={phone} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.gender')} value={getOptionLabel(translatedGenderOptions, gender)} emptyLabel={t('profile.notSpecified')} />
-                  </View>
-                </View>
-
-                <View style={styles.infoSection}>
-                  <Text style={styles.sectionHeading}>{t('profile.academicInfo')}</Text>
-                  <View style={styles.infoGrid}>
-                    <InfoTile label={t('profile.university')} value={university} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.major')} value={major} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.gradYear')} value={getOptionLabel(gradYearOptions, gradYear)} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.levelOfStudy')} value={getOptionLabel(levelOfStudyOpts, levelOfStudy)} emptyLabel={t('profile.notSpecified')} />
-                  </View>
-                </View>
-
-                <View style={styles.infoSection}>
-                  <Text style={styles.sectionHeading}>{t('profile.eventPreferences')}</Text>
-                  <View style={styles.infoGrid}>
-                    <InfoTile label={t('profile.tshirtSize')} value={getOptionLabel(translatedTshirtOptions, tshirtSize)} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.dietaryRestrictions')} value={getOptionLabel(translatedDietOptions, dietary)} emptyLabel={t('profile.notSpecified')} />
-                  </View>
-                </View>
-
-                <View style={styles.infoSection}>
-                  <Text style={styles.sectionHeading}>{t('profile.linksSocials')}</Text>
-                  <View style={styles.infoGrid}>
-                    <InfoTile label={t('profile.githubUrl')} value={github} isLink onPress={() => handleOpenUrl(github)} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.devpostUrl')} value={devpost} isLink onPress={() => handleOpenUrl(devpost)} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.linkedinUrl')} value={linkedin} isLink onPress={() => handleOpenUrl(linkedin)} emptyLabel={t('profile.notSpecified')} />
-                    <InfoTile label={t('profile.personalWebsiteUrl')} value={personalSite} isLink onPress={() => handleOpenUrl(personalSite)} emptyLabel={t('profile.notSpecified')} />
-                  </View>
-                </View>
-              </View>
-            ) : (
+            {isEditing ? (
               /* EDIT MODE (Form input fields) */
               <View style={styles.gridContainer}>
                 <StyledInput
@@ -944,6 +926,68 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
                     onPress={() => setIsEditing(false)}
                     additionalStyle={{ flex: 1 }}
                   />
+                </View>
+              </View>
+            ) : profileView === 'awards' ? (
+              /* AWARDS — badges as the centerpiece */
+              <View style={styles.badgesBig}>
+                <UserBadges userId={userId} size={64} ring gap={20} showLabels align="flex-start" emptyLabel={t('profile.noAwards')} />
+              </View>
+            ) : (
+              /* INFO — account details (edit button lives here) */
+              <View style={styles.viewModeContainer}>
+                {Platform.OS === 'web' && (
+                  <View style={styles.infoEditRow}>
+                    <GlassButton
+                      glassEffectStyle="clear"
+                      colorScheme="dark"
+                      accessibilityRole="button"
+                      accessibilityLabel={t('profile.editProfile')}
+                      style={styles.toggleEditBtn}
+                      onPress={handleToggleEdit}
+                    >
+                      <Text style={styles.toggleEditBtnText}>{t('profile.editProfile')}</Text>
+                    </GlassButton>
+                  </View>
+                )}
+
+                <View style={styles.infoSection}>
+                  <Text style={styles.sectionHeading}>{t('profile.personalDetails')}</Text>
+                  <View style={styles.infoGrid}>
+                    <InfoTile label={t('profile.firstName')} value={firstName} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.lastName')} value={lastName} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('auth.email')} value={email} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.phone')} value={phone} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.gender')} value={getOptionLabel(translatedGenderOptions, gender)} emptyLabel={t('profile.notSpecified')} />
+                  </View>
+                </View>
+
+                <View style={styles.infoSection}>
+                  <Text style={styles.sectionHeading}>{t('profile.academicInfo')}</Text>
+                  <View style={styles.infoGrid}>
+                    <InfoTile label={t('profile.university')} value={university} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.major')} value={major} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.gradYear')} value={getOptionLabel(gradYearOptions, gradYear)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.levelOfStudy')} value={getOptionLabel(levelOfStudyOpts, levelOfStudy)} emptyLabel={t('profile.notSpecified')} />
+                  </View>
+                </View>
+
+                <View style={styles.infoSection}>
+                  <Text style={styles.sectionHeading}>{t('profile.eventPreferences')}</Text>
+                  <View style={styles.infoGrid}>
+                    <InfoTile label={t('profile.tshirtSize')} value={getOptionLabel(translatedTshirtOptions, tshirtSize)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.dietaryRestrictions')} value={getOptionLabel(translatedDietOptions, dietary)} emptyLabel={t('profile.notSpecified')} />
+                  </View>
+                </View>
+
+                <View style={styles.infoSection}>
+                  <Text style={styles.sectionHeading}>{t('profile.linksSocials')}</Text>
+                  <View style={styles.infoGrid}>
+                    <InfoTile label={t('profile.githubUrl')} value={github} isLink onPress={() => handleOpenUrl(github)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.devpostUrl')} value={devpost} isLink onPress={() => handleOpenUrl(devpost)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.linkedinUrl')} value={linkedin} isLink onPress={() => handleOpenUrl(linkedin)} emptyLabel={t('profile.notSpecified')} />
+                    <InfoTile label={t('profile.personalWebsiteUrl')} value={personalSite} isLink onPress={() => handleOpenUrl(personalSite)} emptyLabel={t('profile.notSpecified')} />
+                  </View>
                 </View>
               </View>
             )}
@@ -1094,12 +1138,94 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     letterSpacing: 0.5,
   },
+  badgesHero: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  socialGlass: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 18,
+    marginTop: 14,
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    ...Platform.select({ web: { backdropFilter: 'blur(8px)' } as any }),
+  },
+  socialIconBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({ web: { cursor: 'pointer' } as any }),
+  },
+  badgesBig: {
+    width: '100%',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    paddingVertical: 12,
+  },
+  viewSwitcher: {
+    width: 240,
+  },
+  infoEditRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 4,
+  },
+  uniText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: formFieldColors.theme,
+  },
+  gradText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
+    marginTop: 2,
+  },
+  socialRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 14,
+  },
+  socialBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+    ...Platform.select({ web: { cursor: 'pointer' } as any }),
+  },
+  uniLine: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 12,
+    letterSpacing: 0.3,
+  },
   quickActionsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    marginTop: 4,
+    marginTop: 12,
   },
   quickActionButton: {
     flexDirection: 'row',

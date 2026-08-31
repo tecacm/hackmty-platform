@@ -25,6 +25,7 @@ import { EVENT_YEAR, checkEventPassUnlocked, selectActiveRoles, isOperatorRole }
 import hackmtyLogo from 'app/assets/images/hackmty-logo.webp'
 import { useTranslation } from 'app/i18n'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
+import { UserBadges } from 'app/components/user-badges'
 
 interface CheckpointItem {
   id: string
@@ -40,6 +41,7 @@ interface CheckpointItem {
   unlocks_at?: string
   hide_until_unlocked?: boolean
   location?: string
+  points?: number
   created_at?: string
   is_active: boolean
   checkpoint_types?: {
@@ -86,6 +88,7 @@ export function QRScreen() {
   const [userRolesList, setUserRolesList] = React.useState<string[]>([])
   const [appStatus, setAppStatus] = React.useState<{ status?: string; confirmedAt?: string | null } | null>(null)
   const [isPassUnlocked, setIsPassUnlocked] = React.useState(false)
+  const [totalPoints, setTotalPoints] = React.useState(0)
 
   // Celebratory Check-In Modal State & Animations
   const [celebration, setCelebration] = React.useState<{
@@ -331,6 +334,16 @@ export function QRScreen() {
         setUserCheckIns(checkInMap)
         setHasInitialCheckIn(initialFound)
       }
+
+      // Total points from the leaderboard view (computed live from current checkpoint
+      // values, so rebalancing is reflected without any snapshot).
+      const { data: lb } = await supabase
+        .from('leaderboard')
+        .select('total_points')
+        .eq('user_id', user.id)
+        .eq('event_year', EVENT_YEAR)
+        .maybeSingle()
+      setTotalPoints(lb?.total_points || 0)
     } catch (err) {
       console.error('Error loading QR Screen data:', err)
     } finally {
@@ -359,6 +372,9 @@ export function QRScreen() {
       }
 
       const cp = checkpoints.find((c) => c.id === rec.checkpoint_id)
+      // Add this checkpoint's current point value live (dynamic model — matches what
+      // the leaderboard view computes on the next full load).
+      if (cp?.points) setTotalPoints((p) => p + (cp.points || 0))
       const title = cp ? getLocalizedText(cp.title) : isEntrance ? 'Event Entrance Check-In' : 'Station Check-In'
 
       triggerCelebration(title, isEntrance)
@@ -604,6 +620,18 @@ export function QRScreen() {
                     </View>
                   ))}
                 </View>
+
+                {/* Points earned — tap to open the leaderboard */}
+                <Pressable
+                  onPress={() => navigateTo('/leaderboard')}
+                  style={({ pressed }) => [styles.pointsBadge, pressed && { opacity: 0.85 }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('leaderboard.title')}
+                >
+                  <Text style={styles.pointsBadgeValue}>{totalPoints}</Text>
+                  <Text style={styles.pointsBadgeLabel}>{t('qr.pointsLabel')}</Text>
+                  <AppIcon name="chevron.right" size={14} color="#c2b75f" />
+                </Pressable>
 
                 {/* Details Pills */}
                 <View style={styles.pillsRow}>
@@ -1127,6 +1155,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1,
+  },
+  pointsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#3d0042',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 14,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#c2b75f',
+  },
+  pointsBadgeValue: {
+    color: '#c2b75f',
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  pointsBadgeLabel: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.5,
   },
   pillsRow: {
     flexDirection: 'row',

@@ -29,6 +29,21 @@ export interface DistributionChartProps {
 
 const MUTED = '#cbd5e1'
 
+// Y-axis tick that truncates long category labels (e.g. university names) with an
+// ellipsis so they fit the axis gutter. The full name still shows in the hover tooltip,
+// and the native browser title (on hover over the label itself) shows it too.
+function TruncatedYTick({ x, y, payload }: any) {
+  const full = String(payload?.value ?? '')
+  const MAX = 16
+  const shown = full.length > MAX ? `${full.slice(0, MAX).trimEnd()}…` : full
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fontSize={12} fontWeight={600} fill="#334155">
+      <title>{full}</title>
+      {shown}
+    </text>
+  )
+}
+
 function colorFor(datum: ChartDatum, index: number, colors: string[], muted: string): string {
   if (datum.key === '__unspecified__' || datum.key === '__others__') return muted
   return colors[index % colors.length] ?? muted
@@ -36,9 +51,16 @@ function colorFor(datum: ChartDatum, index: number, colors: string[], muted: str
 
 export function DistributionChart({ title, subtitle, kind, data, total, colors, mutedColor = MUTED }: DistributionChartProps) {
   const pct = (count: number) => (total > 0 ? Math.round((count / total) * 100) : 0)
+  const [hovered, setHovered] = React.useState(false)
 
   return (
-    <View style={styles.card}>
+    <View
+      style={[styles.card, hovered && styles.cardRaised]}
+      {...({
+        onMouseEnter: () => setHovered(true),
+        onMouseLeave: () => setHovered(false),
+      } as any)}
+    >
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
@@ -82,7 +104,7 @@ export function DistributionChart({ title, subtitle, kind, data, total, colors, 
           </View>
         </>
       ) : (
-        <View style={{ marginTop: 8 }}>
+        <View style={{ marginTop: 8, overflow: 'visible' }}>
           <ResponsiveContainer width="100%" height={Math.max(160, data.length * 32)}>
             <BarChart data={data} layout="vertical" margin={{ top: 4, right: 52, bottom: 4, left: 8 }}>
               <XAxis type="number" hide />
@@ -90,11 +112,18 @@ export function DistributionChart({ title, subtitle, kind, data, total, colors, 
                 type="category"
                 dataKey="label"
                 width={120}
-                tick={{ fontSize: 12, fill: '#334155' }}
+                tick={<TruncatedYTick />}
                 axisLine={false}
                 tickLine={false}
               />
-              <Tooltip wrapperStyle={{ zIndex: 50 }} formatter={(value: any) => [`${value} (${pct(Number(value))}%)`, '']} />
+              <Tooltip
+                wrapperStyle={{ zIndex: 50 }}
+                contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 12 }}
+                labelStyle={{ color: '#0f172a', fontWeight: 800, marginBottom: 2 }}
+                itemStyle={{ color: '#5a0061', fontWeight: 700 }}
+                labelFormatter={(label: any) => String(label)}
+                formatter={(value: any) => [`${value} (${pct(Number(value))}%)`, '']}
+              />
               <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={16}>
                 {data.map((d, i) => (
                   <Cell key={d.key} fill={colorFor(d, i, colors, mutedColor)} />
@@ -125,7 +154,11 @@ const styles = StyleSheet.create({
     flexBasis: 320,
     minWidth: 280,
     maxWidth: 520,
+    position: 'relative',
+    zIndex: 1,
+    overflow: 'visible',
   },
+  cardRaised: { zIndex: 40 },
   title: { color: '#0f172a', fontSize: 16, fontWeight: '800' },
   subtitle: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 2, marginBottom: 8 },
   donutWrap: {

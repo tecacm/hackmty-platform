@@ -32,6 +32,12 @@ const UserDirectoryTab = lazy(() =>
 const DemographicsTab = lazy(() =>
   import('./components/DemographicsTab').then((mod) => ({ default: mod.DemographicsTab }))
 )
+const BadgesTab = lazy(() =>
+  import('./components/BadgesTab').then((mod) => ({ default: mod.BadgesTab }))
+)
+const TournamentTab = lazy(() =>
+  import('./components/TournamentTab').then((mod) => ({ default: mod.TournamentTab }))
+)
 const RolesAccessTab = lazy(() =>
   import('./components/RolesAccessTab').then((mod) => ({ default: mod.RolesAccessTab }))
 )
@@ -296,6 +302,21 @@ export function AdminDashboardScreen() {
       fetchRolesList()
     } catch (err: any) {
       alert('Failed to update role visibility: ' + err.message)
+    }
+  }
+
+  const handleUpdateRoleConfirmDeadline = async (roleId: string, confirmCloseAt: string | null) => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { error } = await supabase
+        .from('application_types')
+        .update({ confirm_close_at: confirmCloseAt })
+        .eq('id', roleId)
+
+      if (error) throw error
+      fetchRolesList()
+    } catch (err: any) {
+      alert('Failed to update confirmation deadline: ' + err.message)
     }
   }
 
@@ -1297,6 +1318,7 @@ export function AdminDashboardScreen() {
                 setNewInviteRole={setNewInviteRole}
                 setShowInviteModal={setShowInviteModal}
                 handleUpdateRoleDeadline={handleUpdateRoleDeadline}
+                handleUpdateRoleConfirmDeadline={handleUpdateRoleConfirmDeadline}
                 inviteCodesList={inviteCodesList}
                 copiedCodeId={copiedCodeId}
                 copyInviteLink={copyInviteLink}
@@ -1345,6 +1367,10 @@ export function AdminDashboardScreen() {
               />
             ) : adminTab === 'insights' ? (
               <DemographicsTab />
+            ) : adminTab === 'badges' ? (
+              <BadgesTab />
+            ) : adminTab === 'tournament' ? (
+              <TournamentTab />
             ) : adminTab === 'config' ? (
               <GlobalConfigTab />
             ) : (

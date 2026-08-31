@@ -31,6 +31,8 @@ type ApplicantFormProps = {
   systemLinks?: Record<string, { text: any; href: string }>
   textBlocks?: Record<string, string>
   isClosed?: boolean
+  confirmClosed?: boolean
+  confirmCloseAt?: string | null
 }
 
 type SectionRow<T> =
@@ -164,7 +166,9 @@ export function ApplicantForm({
   onConfirmAttendance,
   systemLinks = {},
   textBlocks = {},
-  isClosed = false
+  isClosed = false,
+  confirmClosed = false,
+  confirmCloseAt = null
 }: ApplicantFormProps) {
   const { t, locale } = useTranslation()
   const { hasPermission } = useUserPermissions()
@@ -340,23 +344,61 @@ export function ApplicantForm({
       )}
 
       {status === 'accepted' && (
-        <View style={{ backgroundColor: '#f0fdf4', borderColor: '#22c55e', borderWidth: 1, borderRadius: 12, padding: 20, width: '100%', marginBottom: 20, gap: 12 }}>
-          <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18, textAlign: 'center' }}>
-            {t('applicant.congratulations')}
-          </Text>
-          <Text style={{ color: '#166534', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-            {t('applicant.acceptedNotice')}
-          </Text>
-          <View style={{ alignItems: 'center', marginTop: 8 }}>
-            <PillButton
-              title={t('applicant.confirmAttendance')}
-              variant="secondary"
-              isLoading={isConfirming}
-              onPress={handleConfirmAttendance}
-              additionalStyle={{ width: 220, height: 48 }}
-            />
+        confirmClosed ? (
+          <View style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, borderRadius: 12, padding: 20, width: '100%', marginBottom: 20, gap: 8 }}>
+            <Text style={{ color: '#b91c1c', fontWeight: '800', fontSize: 16, textAlign: 'center' }}>
+              {t('applicant.confirmClosedTitle')}
+            </Text>
+            <Text style={{ color: '#991b1b', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+              {confirmCloseAt
+                ? t('applicant.confirmClosedWithDate', {
+                    date: new Date(confirmCloseAt).toLocaleString(locale, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }),
+                  })
+                : t('applicant.confirmClosed')}
+            </Text>
           </View>
-        </View>
+        ) : (
+          <>
+            {confirmCloseAt ? (
+              <View style={{ alignSelf: 'center', marginBottom: 12, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: '#f0fdf4', borderColor: '#86efac' }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#15803d' }}>
+                  {t('applicant.attendanceClosesOn', {
+                    date: new Date(confirmCloseAt).toLocaleString(locale, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }),
+                  })}
+                </Text>
+              </View>
+            ) : null}
+            <View style={{ backgroundColor: '#f0fdf4', borderColor: '#22c55e', borderWidth: 1, borderRadius: 12, padding: 20, width: '100%', marginBottom: 20, gap: 12 }}>
+              <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18, textAlign: 'center' }}>
+                {t('applicant.congratulations')}
+              </Text>
+              <Text style={{ color: '#166534', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+                {t('applicant.acceptedNotice')}
+              </Text>
+              <View style={{ alignItems: 'center', marginTop: 8 }}>
+                <PillButton
+                  title={t('applicant.confirmAttendance')}
+                  variant="secondary"
+                  isLoading={isConfirming}
+                  onPress={handleConfirmAttendance}
+                  additionalStyle={{ width: 220, height: 48 }}
+                />
+              </View>
+            </View>
+          </>
+        )
       )}
 
       {status === 'confirmed' && (

@@ -31,7 +31,7 @@ export function WebNavbar() {
     setHasMounted(true)
   }, [])
 
-  const isMobile = hasMounted && width > 0 && width < 900
+  const isMobile = hasMounted && width > 0 && width < 1200
 
   const showApplicationTab = hasPermission('applications', 'view')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => globalProfileCache?.avatarUrl ?? null)
@@ -316,6 +316,28 @@ export function WebNavbar() {
                 </Pressable>
               )}
 
+              {isPassAllowed && (
+                <Pressable
+                  onPress={() => navigateTo('/leaderboard')}
+                  style={({ hovered }) => [
+                    styles.navLink,
+                    pathname === '/leaderboard' && styles.navLinkActive,
+                  ]}
+                >
+                  {({ hovered }) => (
+                    <Text
+                      style={[
+                        styles.navLinkText,
+                        hovered && styles.navLinkTextHover,
+                        pathname === '/leaderboard' && styles.navLinkTextActive,
+                      ]}
+                    >
+                      {t('nav.leaderboard')}
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+
               <Pressable
                 onPress={() => navigateTo('/profile')}
                 style={({ hovered }) => [
@@ -505,6 +527,21 @@ export function WebNavbar() {
             <Pressable
               onPress={() => {
                 setMobileMenuOpen(false)
+                navigateTo('/leaderboard')
+              }}
+              style={[
+                styles.mobileNavLink,
+                pathname === '/leaderboard' && styles.mobileNavLinkActive,
+              ]}
+            >
+              <Text style={styles.mobileNavLinkText}>{t('nav.leaderboard')}</Text>
+            </Pressable>
+          )}
+
+          {isPassAllowed && (
+            <Pressable
+              onPress={() => {
+                setMobileMenuOpen(false)
                 navigateTo('/qr')
               }}
               style={[
@@ -583,7 +620,7 @@ const styles = StyleSheet.create({
   },
   navbarInner: {
     position: 'relative',
-    maxWidth: 1200,
+    maxWidth: 1600,
     width: '100%',
     height: 50,
     marginHorizontal: 'auto',

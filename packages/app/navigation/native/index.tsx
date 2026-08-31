@@ -26,6 +26,7 @@ import { AdminDashboardScreen } from 'app/features/admin/dashboard-screen'
 import { AnnouncementsScreen } from 'app/features/announcements/announcements-screen'
 import { CreateAnnouncementScreen } from 'app/features/announcements/create-announcement-screen'
 import { QRScreen } from 'app/features/qr/qr-screen'
+import { LeaderboardScreen } from 'app/features/leaderboard/leaderboard-screen'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { formFieldColors } from 'app/components/form-field-styles'
 
@@ -47,6 +48,7 @@ type StackParamList = {
   'user-detail': { id: string }
   admin: undefined
   qr: undefined
+  leaderboard: undefined
 }
 
 type TabParamList = {
@@ -120,6 +122,7 @@ const AdminDashboardScreenWithBackground = withNumbersBackground(AdminDashboardS
 const AnnouncementsScreenWithBackground = withNumbersBackground(AnnouncementsScreen)
 const CreateAnnouncementScreenWithBackground = withNumbersBackground(CreateAnnouncementScreen)
 const QRScreenWithBackground = withNumbersBackground(QRScreen)
+const LeaderboardScreenWithBackground = withNumbersBackground(LeaderboardScreen)
 
 const HomeStack = createNativeStackNavigator()
 const ApplicationsStack = createNativeStackNavigator()
@@ -475,6 +478,18 @@ export function NativeNavigation() {
               headerTransparent: Platform.OS === 'ios',
               headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
               headerBackTitle: 'Profile',
+            }}
+          />
+          <Stack.Screen
+            name="leaderboard"
+            component={LeaderboardScreenWithBackground}
+            options={{
+              headerTitleAlign: 'center',
+              headerShown: true,
+              headerTitle: 'Leaderboard',
+              headerTransparent: Platform.OS === 'ios',
+              headerTintColor: Platform.OS === 'ios' ? '#FFFFFF' : '#5a0061',
+              headerBackButtonDisplayMode: 'minimal',
             }}
           />
         </>

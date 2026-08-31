@@ -144,8 +144,8 @@ export function QRCameraScanner({ onScan, isProcessing = false }: QRCameraScanne
                 style={{
                   position: 'relative',
                   width: '100%',
-                  aspectRatio: '16 / 9',
-                  maxHeight: '440px',
+                  maxWidth: '420px',
+                  aspectRatio: '1 / 1',
                   borderRadius: '12px',
                   overflow: 'hidden',
                   backgroundColor: '#000000',
@@ -363,10 +363,8 @@ const styles = StyleSheet.create({
   },
   viewfinderBox: {
     position: 'relative',
-    borderRadius: 12,
-    overflow: 'hidden',
-    height: 320,
-    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   reticleOverlayContainer: {
     position: 'absolute',

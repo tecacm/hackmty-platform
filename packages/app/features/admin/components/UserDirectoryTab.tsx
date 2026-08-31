@@ -5,6 +5,8 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Platfo
 import { PillButton } from '../../../components/pill-button'
 import { AppIcon } from '../../../components/app-icon'
 import { AdminPaginationBar } from './AdminPaginationBar'
+import { AwardModal } from './AwardModal'
+import { UserBadges } from 'app/components/user-badges'
 import { useTranslation } from 'app/i18n'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 
@@ -46,6 +48,8 @@ export function UserDirectoryTab({
   setUserPageSize,
 }: UserDirectoryTabProps) {
   const { t, locale } = useTranslation()
+  const [awardUser, setAwardUser] = React.useState<any | null>(null)
+  const [badgeRefreshKey, setBadgeRefreshKey] = React.useState(0)
 
   return (
     <View style={styles.container}>
@@ -142,6 +146,9 @@ export function UserDirectoryTab({
                       </View>
                       <Text style={styles.userEmailText}>{user.email}</Text>
                       <Text style={styles.userIdText}>ID: {user.id}</Text>
+                      <View style={styles.badgesRow}>
+                        <UserBadges key={`${user.id}-${badgeRefreshKey}`} userId={user.id} size={26} showLabels gap={10} />
+                      </View>
                     </View>
 
                     {/* Quick Actions */}
@@ -150,6 +157,13 @@ export function UserDirectoryTab({
                         title={t('admin.editUser')}
                         onPress={() => handleOpenEditUser(user)}
                         additionalStyle={styles.editBtn}
+                        fontSize={12}
+                      />
+                      <PillButton
+                        title={t('admin.awardAction')}
+                        onPress={() => setAwardUser(user)}
+                        variant="outline-primary"
+                        additionalStyle={styles.actionBtn}
                         fontSize={12}
                       />
                       <PillButton
@@ -227,6 +241,13 @@ export function UserDirectoryTab({
           />
         </>
       )}
+
+      <AwardModal
+        visible={!!awardUser}
+        user={awardUser}
+        onClose={() => setAwardUser(null)}
+        onAwarded={() => setBadgeRefreshKey((k) => k + 1)}
+      />
     </View>
   )
 }
@@ -394,6 +415,10 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     marginTop: 2,
     fontWeight: '600',
+  },
+  badgesRow: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
   },
   userActionsRow: {
     flexDirection: 'row',

@@ -33,6 +33,7 @@ export function NavigationProvider({
               'complete-signup': 'complete-signup',
               admin: 'admin',
               qr: 'qr',
+              leaderboard: 'leaderboard',
             },
           },
         }),

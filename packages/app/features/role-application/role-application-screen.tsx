@@ -96,6 +96,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
+  deadlinePill: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  deadlinePillOpen: { backgroundColor: '#f0fdf4', borderColor: '#86efac' },
+  deadlinePillClosed: { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
+  deadlinePillText: { fontSize: 12, fontWeight: '800' },
   roleCardCount: {
     color: formFieldColors.theme,
     fontSize: 13,
@@ -131,7 +141,7 @@ export function RoleApplicationScreen() {
   const [isWide, setIsWide] = useState(false);
   const { width } = useWindowDimensions();
   
-  const [rolesList, setRolesList] = useState<Array<{ id: string; label: string; fieldCount: number; closeAt: string | null }>>([])
+  const [rolesList, setRolesList] = useState<Array<{ id: string; label: string; fieldCount: number; closeAt: string | null; confirmCloseAt: string | null }>>([])
   const [userApps, setUserApps] = useState<Array<{ application_type_id: string; status: string }>>([])
   const [isRolesLoading, setIsRolesLoading] = useState(true)
 
@@ -171,6 +181,7 @@ export function RoleApplicationScreen() {
             label: type.label,
             fieldCount: getApplicantFieldsForRole(type.id).length,
             closeAt: type.close_at || null,
+            confirmCloseAt: (type as any).confirm_close_at || null,
           }))
         setRolesList(staticTypes)
         setIsRolesLoading(false)
@@ -202,12 +213,9 @@ export function RoleApplicationScreen() {
               label,
               is_public,
               close_at,
+              confirm_close_at,
               application_type_fields (
-                field_id,
-                form_fields (
-                  id,
-                  is_active
-                )
+                field_id
               )
             `)
             .eq('is_public', true),
@@ -228,8 +236,6 @@ export function RoleApplicationScreen() {
         if (typesResult.data) {
           const formatted = typesResult.data.map((type: any) => {
             const activeFields = (type.application_type_fields || [])
-              .map((rel: any) => rel.form_fields)
-              .filter((field: any) => field && field.is_active)
 
             const rawLabel = type.label
             let resolvedLabel = ''
@@ -244,6 +250,7 @@ export function RoleApplicationScreen() {
               label: resolvedLabel,
               fieldCount: activeFields.length,
               closeAt: type.close_at || null,
+              confirmCloseAt: type.confirm_close_at || null,
             }
           })
           setRolesList(formatted)
@@ -255,6 +262,7 @@ export function RoleApplicationScreen() {
               label: getApplicantRoleLabel(type.id, locale),
               fieldCount: getApplicantFieldsForRole(type.id).length,
               closeAt: type.close_at || null,
+              confirmCloseAt: (type as any).confirm_close_at || null,
             }))
           setRolesList(staticTypes)
         }
@@ -267,6 +275,7 @@ export function RoleApplicationScreen() {
             label: getApplicantRoleLabel(type.id, locale),
             fieldCount: getApplicantFieldsForRole(type.id).length,
             closeAt: type.close_at || null,
+            confirmCloseAt: (type as any).confirm_close_at || null,
           }))
         setRolesList(staticTypes)
       } finally {
@@ -275,7 +284,11 @@ export function RoleApplicationScreen() {
     }
 
     loadRoles()
-  }, [replaceTo, locale])
+    // Intentionally depend only on `locale`. `replaceTo` from useSmartNavigate is a new
+    // function every render; including it here re-ran this effect on every render (each
+    // setState re-render), spamming the application_types/applications requests.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale])
 
   useEffect(() => {
     setIsWide(width >= 520)
@@ -298,6 +311,11 @@ export function RoleApplicationScreen() {
     if (found && found.closeAt) return found.closeAt
     const staticConfig = getApplicationTypes().find(t => t.id === roleId)
     return staticConfig?.close_at || null
+  }
+
+  const getRoleConfirmCloseAt = (roleId: string): string | null => {
+    const found = rolesList.find(r => r.id === roleId)
+    return found?.confirmCloseAt || null
   }
 
   const getCountdownText = (closeAt: string | null): { text: string; isClosed: boolean } => {
@@ -451,7 +469,7 @@ export function RoleApplicationScreen() {
                       {submittedApps.map((app) => {
                         const applicantRoleLabel = getApplicantRoleLabel(app.application_type_id, locale)
                         const closeAt = getRoleCloseAt(app.application_type_id)
-                        const { text: countdownText, isClosed } = getCountdownText(closeAt)
+                        const { isClosed } = getCountdownText(closeAt)
 
                         return (
                           <View key={app.application_type_id} style={styles.roleCard}>
@@ -465,12 +483,33 @@ export function RoleApplicationScreen() {
                                 </View>
                               </View>
                               <Text style={styles.roleCardMeta}>{t('applicant.tailoredForRole', { role: applicantRoleLabel.toLowerCase() })}</Text>
-                              {countdownText !== '' && (
-                                <Text style={{ color: isClosed ? '#ef4444' : '#936da8', fontWeight: '600', fontSize: 13, marginTop: 4 }}>
-                                  {countdownText}
-                                </Text>
-                              )}
                             </View>
+                            {(() => {
+                              const isAccepted = app.status === 'accepted'
+                              const skip = app.status === 'confirmed' || app.status === 'rejected'
+                              const deadline = isAccepted
+                                ? getRoleConfirmCloseAt(app.application_type_id)
+                                : skip
+                                  ? null
+                                  : getRoleCloseAt(app.application_type_id)
+                              if (!deadline) return null
+                              const passed = new Date(deadline).getTime() < Date.now()
+                              const dateStr = new Date(deadline).toLocaleString(locale, {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                              const label = isAccepted
+                                ? t(passed ? 'applicant.attendanceClosedOn' : 'applicant.attendanceClosesOn', { date: dateStr })
+                                : t(passed ? 'applicant.submissionClosedOn' : 'applicant.submissionClosesOn', { date: dateStr })
+                              return (
+                                <View style={[styles.deadlinePill, passed ? styles.deadlinePillClosed : styles.deadlinePillOpen]}>
+                                  <Text style={[styles.deadlinePillText, { color: passed ? '#b91c1c' : '#15803d' }]}>{label}</Text>
+                                </View>
+                              )
+                            })()}
                             <PillButton
                               title={(isClosed || app.status === 'accepted' || app.status === 'confirmed' || app.status === 'rejected') ? t('applicant.viewApplication') : t('applicant.viewApplication')}
                               onPress={() => handleApply(app.application_type_id)}
