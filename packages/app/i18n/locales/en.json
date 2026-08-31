@@ -34,7 +34,12 @@
     "you": "(You)",
     "anonymous": "Participant",
     "yourRank": "You're ranked #{rank}",
-    "checkins": "{count} check-ins"
+    "pointsToNext": "{points} pts to reach #{rank}",
+    "tiedNext": "Tied for #{rank} — break it with a check-in!",
+    "inLead": "You're in the lead! 🏆",
+    "checkins": "{count} check-ins",
+    "lockedTitle": "Leaderboard locked",
+    "locked": "Confirm your attendance and check in at the event to see the leaderboard."
   },
   "auth": {
     "login": "Log In",
@@ -212,6 +217,7 @@
     "attendanceConfirmed": "Attendance Confirmed",
     "attendanceConfirmedNotice": "Your attendance has been confirmed. See you at the hackathon!",
     "acceptedNotice": "Your application has been accepted. Please confirm your attendance below to secure your spot at the event!",
+    "confirmClosed": "The window to confirm attendance has closed. Please contact the organizers if you still plan to attend.",
     "congratulations": "Congratulations!",
     "registrationClosed": "Registration for this role has closed. You are viewing your application in read-only mode.",
     "changesRequestedTitle": "Action Required: Changes Requested by Organizer",
@@ -396,6 +402,8 @@
     "noPermissionsAssigned": "No permissions assigned",
     "deadline": "DEADLINE:",
     "noDeadlineSet": "No deadline set",
+    "confirmDeadline": "Confirmation deadline",
+    "noConfirmDeadlineSet": "No confirmation deadline",
     "editDeadline": "Edit Deadline",
     "setDeadline": "+ Set Deadline",
     "clear": "Clear",

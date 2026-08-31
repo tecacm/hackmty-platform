@@ -316,25 +316,27 @@ export function WebNavbar() {
                 </Pressable>
               )}
 
-              <Pressable
-                onPress={() => navigateTo('/leaderboard')}
-                style={({ hovered }) => [
-                  styles.navLink,
-                  pathname === '/leaderboard' && styles.navLinkActive,
-                ]}
-              >
-                {({ hovered }) => (
-                  <Text
-                    style={[
-                      styles.navLinkText,
-                      hovered && styles.navLinkTextHover,
-                      pathname === '/leaderboard' && styles.navLinkTextActive,
-                    ]}
-                  >
-                    {t('nav.leaderboard')}
-                  </Text>
-                )}
-              </Pressable>
+              {isPassAllowed && (
+                <Pressable
+                  onPress={() => navigateTo('/leaderboard')}
+                  style={({ hovered }) => [
+                    styles.navLink,
+                    pathname === '/leaderboard' && styles.navLinkActive,
+                  ]}
+                >
+                  {({ hovered }) => (
+                    <Text
+                      style={[
+                        styles.navLinkText,
+                        hovered && styles.navLinkTextHover,
+                        pathname === '/leaderboard' && styles.navLinkTextActive,
+                      ]}
+                    >
+                      {t('nav.leaderboard')}
+                    </Text>
+                  )}
+                </Pressable>
+              )}
 
               <Pressable
                 onPress={() => navigateTo('/profile')}
@@ -521,18 +523,20 @@ export function WebNavbar() {
             <Text style={styles.mobileNavLinkText}>{t('nav.profile')}</Text>
           </Pressable>
 
-          <Pressable
-            onPress={() => {
-              setMobileMenuOpen(false)
-              navigateTo('/leaderboard')
-            }}
-            style={[
-              styles.mobileNavLink,
-              pathname === '/leaderboard' && styles.mobileNavLinkActive,
-            ]}
-          >
-            <Text style={styles.mobileNavLinkText}>{t('nav.leaderboard')}</Text>
-          </Pressable>
+          {isPassAllowed && (
+            <Pressable
+              onPress={() => {
+                setMobileMenuOpen(false)
+                navigateTo('/leaderboard')
+              }}
+              style={[
+                styles.mobileNavLink,
+                pathname === '/leaderboard' && styles.mobileNavLinkActive,
+              ]}
+            >
+              <Text style={styles.mobileNavLinkText}>{t('nav.leaderboard')}</Text>
+            </Pressable>
+          )}
 
           {isPassAllowed && (
             <Pressable

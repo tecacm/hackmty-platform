@@ -15,6 +15,7 @@ interface RolesAccessTabProps {
   setNewInviteRole: (role: string) => void
   setShowInviteModal: (val: boolean) => void
   handleUpdateRoleDeadline: (roleId: string, closeAt: string | null) => void
+  handleUpdateRoleConfirmDeadline: (roleId: string, closeAt: string | null) => void
   inviteCodesList: any[]
   copiedCodeId: string | null
   copyInviteLink: (code: string, role: string, id: string) => void
@@ -34,33 +35,77 @@ const toDatetimeLocal = (iso: string | null): string => {
   catch { return '' }
 }
 
-function RoleCard({ role, handleToggleRoleVisibility, setNewInviteRole, setShowInviteModal, fetchInviteCodes, handleUpdateRoleDeadline, permissionsList, rolePermissions, handleUpdateRolePermissions }: { role: any; handleToggleRoleVisibility: (id: string, pub: boolean) => void; setNewInviteRole: (r: string) => void; setShowInviteModal: (v: boolean) => void; fetchInviteCodes: () => void; handleUpdateRoleDeadline: (id: string, closeAt: string | null) => void; permissionsList: any[]; rolePermissions: string[]; handleUpdateRolePermissions: (role: string, permissions: string[]) => void }) {
+function DeadlineRow({ label, value, emptyLabel, onSave }: { label: string; value: string | null; emptyLabel: string; onSave: (iso: string | null) => void }) {
+  const { t } = useTranslation()
+  const [editing, setEditing] = React.useState(false)
+  const [dateValue, setDateValue] = React.useState(toDatetimeLocal(value))
+  const [saving, setSaving] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!editing) setDateValue(toDatetimeLocal(value))
+  }, [value, editing])
+
+  const save = () => {
+    setSaving(true)
+    onSave(dateValue ? new Date(dateValue).toISOString() : null)
+    setSaving(false)
+    setEditing(false)
+  }
+  const clear = () => {
+    setDateValue('')
+    onSave(null)
+    setEditing(false)
+  }
+
+  return (
+    <View style={{ gap: 10 }}>
+      {!editing && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#888', letterSpacing: 0.4 }}>{label}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: value ? '#dc2626' : '#16a34a' }}>
+              {value ? new Date(value).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : emptyLabel}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable onPress={() => setEditing(true)} style={({ pressed }) => ({ height: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: pressed ? 'rgba(90,0,97,0.12)' : 'rgba(90,0,97,0.07)', justifyContent: 'center', alignItems: 'center' })}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#5a0061' }}>{value ? t('admin.editDeadline') : t('admin.setDeadline')}</Text>
+            </Pressable>
+            {value && (
+              <Pressable onPress={clear} style={({ pressed }) => ({ height: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: pressed ? 'rgba(220,38,38,0.14)' : 'rgba(220,38,38,0.08)', justifyContent: 'center', alignItems: 'center' })}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#dc2626' }}>{t('admin.clear')}</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      )}
+      {editing && (
+        <View style={{ gap: 10 }}>
+          {Platform.OS === 'web' ? (
+            <input type="datetime-local" value={dateValue} onChange={(e: any) => setDateValue(e.target.value)} style={{ border: '1.5px solid rgba(90,0,97,0.3)', borderRadius: 10, padding: '8px 12px', fontSize: 14, color: '#22002c', backgroundColor: '#fff', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', outline: 'none' } as any} />
+          ) : (
+            <TextInput value={dateValue} onChangeText={setDateValue} placeholder="YYYY-MM-DDTHH:MM" placeholderTextColor="#aaa" style={{ borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', borderRadius: 10, padding: 10, fontSize: 14, color: '#22002c', backgroundColor: '#fff' }} />
+          )}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable onPress={save} disabled={saving} style={({ pressed }) => ({ flex: 1, height: 36, borderRadius: 10, backgroundColor: pressed || saving ? '#3d0042' : '#5a0061', justifyContent: 'center', alignItems: 'center' })}>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{saving ? t('admin.saving') : t('admin.saveDeadline')}</Text>
+            </Pressable>
+            <Pressable onPress={() => { setEditing(false); setDateValue(toDatetimeLocal(value)) }} style={({ pressed }) => ({ height: 36, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.2)', backgroundColor: pressed ? '#f5f5f5' : 'transparent', justifyContent: 'center', alignItems: 'center' })}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#666' }}>{t('admin.cancel')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+    </View>
+  )
+}
+
+function RoleCard({ role, handleToggleRoleVisibility, setNewInviteRole, setShowInviteModal, fetchInviteCodes, handleUpdateRoleDeadline, handleUpdateRoleConfirmDeadline, permissionsList, rolePermissions, handleUpdateRolePermissions }: { role: any; handleToggleRoleVisibility: (id: string, pub: boolean) => void; setNewInviteRole: (r: string) => void; setShowInviteModal: (v: boolean) => void; fetchInviteCodes: () => void; handleUpdateRoleDeadline: (id: string, closeAt: string | null) => void; handleUpdateRoleConfirmDeadline: (id: string, closeAt: string | null) => void; permissionsList: any[]; rolePermissions: string[]; handleUpdateRolePermissions: (role: string, permissions: string[]) => void }) {
   const { t } = useTranslation()
   const isPublic = role.is_public !== false
   const labelStr = formatText(role.label, (role.id || 'ROLE').toUpperCase())
   const descStr  = formatText(role.description, 'No description provided.')
-  const [editing, setEditing] = React.useState(false)
-  const [dateValue, setDateValue] = React.useState(toDatetimeLocal(role.close_at))
-  const [saving, setSaving] = React.useState(false)
   const [editingPermissions, setEditingPermissions] = React.useState(false)
-
-  React.useEffect(() => {
-    if (!editing) setDateValue(toDatetimeLocal(role.close_at))
-  }, [role.close_at, editing])
-
-  const handleSave = () => {
-    setSaving(true)
-    const iso = dateValue ? new Date(dateValue).toISOString() : null
-    handleUpdateRoleDeadline(role.id, iso)
-    setSaving(false)
-    setEditing(false)
-  }
-
-  const handleClear = () => {
-    setDateValue('')
-    handleUpdateRoleDeadline(role.id, null)
-    setEditing(false)
-  }
 
   return (
     <View style={{ backgroundColor: '#ffffff', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', overflow: 'hidden' }}>
@@ -92,49 +137,24 @@ function RoleCard({ role, handleToggleRoleVisibility, setNewInviteRole, setShowI
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={{ fontSize: 11, fontWeight: '800', color: '#64748b', letterSpacing: 0.4 }}>{t('admin.permissions')}</Text><Pressable onPress={() => setEditingPermissions(!editingPermissions)}><Text style={{ fontSize: 12, fontWeight: '800', color: '#5a0061' }}>{editingPermissions ? t('admin.doneEditing') : t('admin.editPermissions')}</Text></Pressable></View>
           {editingPermissions ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>{permissionsList.map((permission) => { const selected = rolePermissions.includes(permission.id); return <Pressable key={permission.id} onPress={() => handleUpdateRolePermissions(role.id, selected ? rolePermissions.filter((id) => id !== permission.id) : [...rolePermissions, permission.id])} style={{ paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7, borderWidth: 1, borderColor: selected ? '#5a0061' : '#cbd5e1', backgroundColor: selected ? 'rgba(90,0,97,0.1)' : '#fff' }}><Text style={{ fontSize: 11, fontWeight: '700', color: selected ? '#5a0061' : '#475569' }}>{selected ? '✓ ' : ''}{permission.id}</Text></Pressable> })}</View> : <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{rolePermissions.length ? rolePermissions.map((permission) => <View key={permission} style={{ backgroundColor: 'rgba(90,0,97,0.08)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 }}><Text style={{ fontSize: 11, fontWeight: '700', color: '#5a0061' }}>{permission}</Text></View>) : <Text style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>{t('admin.noPermissionsAssigned')}</Text>}</View>}
         </View>
-        {!editing && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#888', letterSpacing: 0.4 }}>{t('admin.deadline')}</Text>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: role.close_at ? '#dc2626' : '#16a34a' }}>
-                {role.close_at ? new Date(role.close_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : t('admin.noDeadlineSet')}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Pressable onPress={() => setEditing(true)} style={({ pressed }) => ({ height: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: pressed ? 'rgba(90,0,97,0.12)' : 'rgba(90,0,97,0.07)', justifyContent: 'center', alignItems: 'center' })}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#5a0061' }}>{role.close_at ? t('admin.editDeadline') : t('admin.setDeadline')}</Text>
-              </Pressable>
-              {role.close_at && (
-                <Pressable onPress={handleClear} style={({ pressed }) => ({ height: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: pressed ? 'rgba(220,38,38,0.14)' : 'rgba(220,38,38,0.08)', justifyContent: 'center', alignItems: 'center' })}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#dc2626' }}>{t('admin.clear')}</Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
-        )}
-        {editing && (
-          <View style={{ gap: 10 }}>
-            {Platform.OS === 'web' ? (
-              <input type="datetime-local" value={dateValue} onChange={(e: any) => setDateValue(e.target.value)} style={{ border: '1.5px solid rgba(90,0,97,0.3)', borderRadius: 10, padding: '8px 12px', fontSize: 14, color: '#22002c', backgroundColor: '#fff', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', outline: 'none' } as any} />
-            ) : (
-              <TextInput value={dateValue} onChangeText={setDateValue} placeholder="YYYY-MM-DDTHH:MM" placeholderTextColor="#aaa" style={{ borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', borderRadius: 10, padding: 10, fontSize: 14, color: '#22002c', backgroundColor: '#fff' }} />
-            )}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Pressable onPress={handleSave} disabled={saving} style={({ pressed }) => ({ flex: 1, height: 36, borderRadius: 10, backgroundColor: pressed || saving ? '#3d0042' : '#5a0061', justifyContent: 'center', alignItems: 'center' })}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{saving ? t('admin.saving') : t('admin.saveDeadline')}</Text>
-              </Pressable>
-              <Pressable onPress={() => { setEditing(false); setDateValue(toDatetimeLocal(role.close_at)) }} style={({ pressed }) => ({ height: 36, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.2)', backgroundColor: pressed ? '#f5f5f5' : 'transparent', justifyContent: 'center', alignItems: 'center' })}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#666' }}>{t('admin.cancel')}</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
+        <DeadlineRow
+          label={t('admin.deadline')}
+          value={role.close_at}
+          emptyLabel={t('admin.noDeadlineSet')}
+          onSave={(iso) => handleUpdateRoleDeadline(role.id, iso)}
+        />
+        <DeadlineRow
+          label={t('admin.confirmDeadline')}
+          value={role.confirm_close_at}
+          emptyLabel={t('admin.noConfirmDeadlineSet')}
+          onSave={(iso) => handleUpdateRoleConfirmDeadline(role.id, iso)}
+        />
       </View>
     </View>
   )
 }
 
-export function RolesAccessTab({ rolesLoading, rolesList, permissionsList, rolePermissionsMap, handleUpdateRolePermissions, fetchRolesList, fetchInviteCodes, setShowCreateRoleModal, handleToggleRoleVisibility, setNewInviteRole, setShowInviteModal, handleUpdateRoleDeadline, inviteCodesList, copiedCodeId, copyInviteLink, styles }: RolesAccessTabProps) {
+export function RolesAccessTab({ rolesLoading, rolesList, permissionsList, rolePermissionsMap, handleUpdateRolePermissions, fetchRolesList, fetchInviteCodes, setShowCreateRoleModal, handleToggleRoleVisibility, setNewInviteRole, setShowInviteModal, handleUpdateRoleDeadline, handleUpdateRoleConfirmDeadline, inviteCodesList, copiedCodeId, copyInviteLink, styles }: RolesAccessTabProps) {
   const { t } = useTranslation()
   return (
     <View style={{ width: '100%', gap: 20 }}>
@@ -161,7 +181,7 @@ export function RolesAccessTab({ rolesLoading, rolesList, permissionsList, roleP
       ) : (
         <View style={{ gap: 14 }}>
           {rolesList.map(role => (
-            <RoleCard key={role.id} role={role} handleToggleRoleVisibility={handleToggleRoleVisibility} setNewInviteRole={setNewInviteRole} setShowInviteModal={setShowInviteModal} fetchInviteCodes={fetchInviteCodes} handleUpdateRoleDeadline={handleUpdateRoleDeadline} permissionsList={permissionsList} rolePermissions={rolePermissionsMap[role.id] || []} handleUpdateRolePermissions={handleUpdateRolePermissions} />
+            <RoleCard key={role.id} role={role} handleToggleRoleVisibility={handleToggleRoleVisibility} setNewInviteRole={setNewInviteRole} setShowInviteModal={setShowInviteModal} fetchInviteCodes={fetchInviteCodes} handleUpdateRoleDeadline={handleUpdateRoleDeadline} handleUpdateRoleConfirmDeadline={handleUpdateRoleConfirmDeadline} permissionsList={permissionsList} rolePermissions={rolePermissionsMap[role.id] || []} handleUpdateRolePermissions={handleUpdateRolePermissions} />
           ))}
         </View>
       )}

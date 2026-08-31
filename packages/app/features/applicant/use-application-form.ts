@@ -25,6 +25,7 @@ export type UseApplicationFormResult = {
   systemLinks: Record<string, { text: any; href: string }>
   textBlocks: Record<string, string>
   isClosed: boolean
+  confirmClosed: boolean
 }
 
 export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inviteCode?: string | null): UseApplicationFormResult {
@@ -39,6 +40,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
   const [systemLinks, setSystemLinks] = useState<Record<string, { text: any; href: string }>>({})
   const [textBlocks, setTextBlocks] = useState<Record<string, string>>({})
   const [isClosed, setIsClosed] = useState(false)
+  const [confirmClosed, setConfirmClosed] = useState(false)
 
   const activeRequestIdRef = useRef(0)
 
@@ -64,6 +66,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       } else {
         setIsClosed(false)
       }
+      setConfirmClosed(false)
       setIsLoading(false)
       return
     }
@@ -78,10 +81,11 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
 
       // 2. Fetch role close_at and is_public flag
       let deadlineClosed = false
+      let confirmDeadlineClosed = false
       let isPublic = true
       const { data: typeData } = await supabase
         .from('application_types')
-        .select('close_at, is_public')
+        .select('close_at, is_public, confirm_close_at')
         .eq('id', role)
         .maybeSingle()
 
@@ -92,6 +96,9 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
         }
         if (typeof typeData.is_public === 'boolean') {
           isPublic = typeData.is_public
+        }
+        if (typeData.confirm_close_at) {
+          confirmDeadlineClosed = new Date(typeData.confirm_close_at).getTime() < Date.now()
         }
       }
 
@@ -447,6 +454,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
         setFeedbackHistory([])
       }
       setIsClosed(deadlineClosed)
+      setConfirmClosed(confirmDeadlineClosed)
       setIsLoading(false)
 
     } catch (err: any) {
@@ -656,6 +664,16 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Unauthenticated')
 
+      // Enforce this role's confirmation deadline (defense-in-depth with the UI gate).
+      const { data: typeRow } = await supabase
+        .from('application_types')
+        .select('confirm_close_at')
+        .eq('id', role)
+        .maybeSingle()
+      if (typeRow?.confirm_close_at && new Date(typeRow.confirm_close_at).getTime() < Date.now()) {
+        throw new Error('Attendance confirmation has closed.')
+      }
+
       // Update status to 'confirmed' and confirmed_at to now
       const { error: confirmErr } = await supabase
         .from('applications')
@@ -712,6 +730,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
     onConfirmAttendance,
     systemLinks,
     textBlocks,
-    isClosed
+    isClosed,
+    confirmClosed
   }
 }

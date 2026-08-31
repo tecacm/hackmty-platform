@@ -10,11 +10,12 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  useWindowDimensions,
 } from 'react-native'
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { BadgeChip } from 'app/components/badge-chip'
-import { EVENT_YEAR } from 'app/utils/event-config'
+import { EVENT_YEAR, checkEventPassUnlocked, selectActiveRoles, isOperatorRole } from 'app/utils/event-config'
 import { useTranslation } from 'app/i18n'
 
 type LeaderboardRow = {
@@ -66,12 +67,16 @@ function resolveBadgeIcon(icon: string | null | undefined): string | null {
 
 export function LeaderboardScreen() {
   const { t, locale } = useTranslation()
+  const { height: windowHeight } = useWindowDimensions()
+  // The white panel should run at least a page tall even with few entries.
+  const listMinHeight = Math.max(400, windowHeight - 280)
   const [rows, setRows] = React.useState<LeaderboardRow[]>([])
   const [badgesByUser, setBadgesByUser] = React.useState<Record<string, RowBadge[]>>({})
   const [currentUserId, setCurrentUserId] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [allowed, setAllowed] = React.useState<boolean | null>(null)
 
   const load = React.useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -82,6 +87,30 @@ export function LeaderboardScreen() {
       setError(null)
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id ?? null)
+
+      // Gate: only confirmed attendees (or operators), with the event unlocked, may view.
+      if (!user) {
+        setAllowed(false)
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
+      const [{ data: rolesData }, { data: appsData }] = await Promise.all([
+        supabase.from('user_roles').select('role, event_year').eq('user_id', user.id),
+        supabase.from('applications').select('status, confirmed_at').eq('user_id', user.id),
+      ])
+      const rolesList = selectActiveRoles(rolesData).map((r) => r.toLowerCase())
+      const isOperator = isOperatorRole(rolesList)
+      const isConfirmed =
+        Array.isArray(appsData) && appsData.some((a) => a.status === 'confirmed' || a.confirmed_at !== null)
+      const isUnlocked = await checkEventPassUnlocked(rolesList)
+      const canView = (isOperator || isConfirmed) && isUnlocked
+      setAllowed(canView)
+      if (!canView) {
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
 
       const { data, error: qErr } = await supabase
         .from('leaderboard')
@@ -156,11 +185,31 @@ export function LeaderboardScreen() {
     return idx >= 0 ? idx + 1 : null
   }, [rows, currentUserId])
 
+  // Gap to the person ranked directly above the current user.
+  const pointsToNext = React.useMemo(() => {
+    if (!currentUserId) return null
+    const idx = rows.findIndex((r) => r.user_id === currentUserId)
+    if (idx <= 0) return null // not on the board, or already #1
+    const me = rows[idx]
+    const above = rows[idx - 1]
+    if (!me || !above) return null
+    return { gap: (above.total_points || 0) - (me.total_points || 0), nextRank: idx }
+  }, [rows, currentUserId])
+
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#c2b75f" />
         <Text style={styles.loadingText}>{t('leaderboard.loading')}</Text>
+      </View>
+    )
+  }
+
+  if (allowed === false) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.lockedTitle}>{t('leaderboard.lockedTitle')}</Text>
+        <Text style={styles.lockedText}>{t('leaderboard.locked')}</Text>
       </View>
     )
   }
@@ -180,6 +229,15 @@ export function LeaderboardScreen() {
             <Text style={styles.myRankText}>
               {t('leaderboard.yourRank', { rank: currentUserRank })}
             </Text>
+            {currentUserRank === 1 ? (
+              <Text style={styles.nextText}>{t('leaderboard.inLead')}</Text>
+            ) : pointsToNext ? (
+              <Text style={styles.nextText}>
+                {pointsToNext.gap > 0
+                  ? t('leaderboard.pointsToNext', { points: pointsToNext.gap, rank: pointsToNext.nextRank })
+                  : t('leaderboard.tiedNext', { rank: pointsToNext.nextRank })}
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </View>
@@ -191,7 +249,7 @@ export function LeaderboardScreen() {
           <Text style={styles.emptyText}>{t('leaderboard.empty')}</Text>
         </View>
       ) : (
-        <View style={styles.list}>
+        <View style={[styles.list, { minHeight: listMinHeight }]}>
           {rows.map((row, index) => {
             const rank = index + 1
             const isMe = row.user_id === currentUserId
@@ -201,7 +259,14 @@ export function LeaderboardScreen() {
             const rowBadges = badgesByUser[row.user_id] || []
 
             return (
-              <View key={row.user_id} style={[styles.rowCard, isMe && styles.rowCardMe]}>
+              <View
+                key={row.user_id}
+                style={[
+                  styles.rowCard,
+                  isMe && styles.rowCardMe,
+                  rankColor && { borderColor: rankColor, borderWidth: 3 },
+                ]}
+              >
                 <View style={[styles.rankBadge, rankColor && { backgroundColor: rankColor }]}>
                   <Text style={[styles.rankText, rankColor && { color: '#1d041f' }]}>{rank}</Text>
                 </View>
@@ -261,6 +326,8 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   loadingText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
+  lockedTitle: { color: '#ffffff', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 },
+  lockedText: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600', textAlign: 'center', maxWidth: 340 },
   content: {
     alignItems: 'center',
     paddingVertical: Platform.OS === 'web' ? 32 : 16,
@@ -284,25 +351,50 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 14,
+    alignItems: 'center',
   },
   myRankText: { color: '#c2b75f', fontSize: 13, fontWeight: '800', letterSpacing: 0.3 },
+  nextText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '700', marginTop: 2, textAlign: 'center' },
   errorText: { color: '#ff6b6b', fontSize: 14, fontWeight: '700', textAlign: 'center', marginTop: 20 },
   emptyText: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   list: {
     width: '100%',
     maxWidth: 640,
-    gap: 8,
+    gap: 14,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 16,
+    ...Platform.select({
+      web: { boxShadow: '0px 12px 32px rgba(34, 0, 44, 0.12)' } as any,
+      default: {
+        shadowColor: '#22002c',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 5,
+      },
+    }),
   },
   rowCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     backgroundColor: '#ffffff',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#eef1f5',
+    ...Platform.select({
+      web: { boxShadow: '0 10px 28px rgba(34, 0, 44, 0.14)' } as any,
+      default: {
+        shadowColor: '#22002c',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+        elevation: 4,
+      },
+    }),
   },
   rowCardMe: {
     borderColor: '#c2b75f',

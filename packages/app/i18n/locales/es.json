@@ -34,7 +34,12 @@
     "you": "(Tú)",
     "anonymous": "Participante",
     "yourRank": "Estás en el puesto #{rank}",
-    "checkins": "{count} registros"
+    "checkins": "{count} registros",
+    "pointsToNext": "{points} pts para alcanzar el #{rank}",
+    "tiedNext": "Empatado en el #{rank} — ¡desempata con un registro!",
+    "inLead": "¡Vas en primer lugar! 🏆",
+    "lockedTitle": "Tabla de posiciones bloqueada",
+    "locked": "Confirma tu asistencia y regístrate en el evento para ver la tabla de posiciones."
   },
   "auth": {
     "login": "Iniciar Sesión",
@@ -212,6 +217,7 @@
     "attendanceConfirmed": "Asistencia Confirmada",
     "attendanceConfirmedNotice": "Tu asistencia ha sido confirmada. ¡Nos vemos en el hackathon!",
     "acceptedNotice": "¡Tu solicitud ha sido aceptada! Por favor confirma tu asistencia abajo para asegurar tu lugar en el evento.",
+    "confirmClosed": "El periodo para confirmar asistencia ha cerrado. Contacta a los organizadores si aún planeas asistir.",
     "congratulations": "¡Felicidades!",
     "registrationClosed": "El registro para este rol ha cerrado. Estás viendo tu solicitud en modo de solo lectura.",
     "changesRequestedTitle": "Acción Requerida: Cambios Solicitados por el Organizador",
@@ -396,6 +402,8 @@
     "noPermissionsAssigned": "Sin permisos asignados",
     "deadline": "FECHA LÍMITE:",
     "noDeadlineSet": "Sin fecha límite",
+    "confirmDeadline": "Fecha límite de confirmación",
+    "noConfirmDeadlineSet": "Sin fecha límite de confirmación",
     "editDeadline": "Editar Fecha Límite",
     "setDeadline": "+ Establecer Fecha",
     "clear": "Limpiar",

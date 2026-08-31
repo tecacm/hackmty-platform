@@ -31,6 +31,7 @@ type ApplicantFormProps = {
   systemLinks?: Record<string, { text: any; href: string }>
   textBlocks?: Record<string, string>
   isClosed?: boolean
+  confirmClosed?: boolean
 }
 
 type SectionRow<T> =
@@ -164,7 +165,8 @@ export function ApplicantForm({
   onConfirmAttendance,
   systemLinks = {},
   textBlocks = {},
-  isClosed = false
+  isClosed = false,
+  confirmClosed = false
 }: ApplicantFormProps) {
   const { t, locale } = useTranslation()
   const { hasPermission } = useUserPermissions()
@@ -347,15 +349,23 @@ export function ApplicantForm({
           <Text style={{ color: '#166534', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
             {t('applicant.acceptedNotice')}
           </Text>
-          <View style={{ alignItems: 'center', marginTop: 8 }}>
-            <PillButton
-              title={t('applicant.confirmAttendance')}
-              variant="secondary"
-              isLoading={isConfirming}
-              onPress={handleConfirmAttendance}
-              additionalStyle={{ width: 220, height: 48 }}
-            />
-          </View>
+          {confirmClosed ? (
+            <View style={{ backgroundColor: '#fff7ed', borderColor: '#fdba74', borderWidth: 1, borderRadius: 10, padding: 12, marginTop: 4 }}>
+              <Text style={{ color: '#9a3412', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>
+                {t('applicant.confirmClosed')}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ alignItems: 'center', marginTop: 8 }}>
+              <PillButton
+                title={t('applicant.confirmAttendance')}
+                variant="secondary"
+                isLoading={isConfirming}
+                onPress={handleConfirmAttendance}
+                additionalStyle={{ width: 220, height: 48 }}
+              />
+            </View>
+          )}
         </View>
       )}
 

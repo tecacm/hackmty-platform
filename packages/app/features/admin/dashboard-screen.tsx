@@ -305,6 +305,21 @@ export function AdminDashboardScreen() {
     }
   }
 
+  const handleUpdateRoleConfirmDeadline = async (roleId: string, confirmCloseAt: string | null) => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { error } = await supabase
+        .from('application_types')
+        .update({ confirm_close_at: confirmCloseAt })
+        .eq('id', roleId)
+
+      if (error) throw error
+      fetchRolesList()
+    } catch (err: any) {
+      alert('Failed to update confirmation deadline: ' + err.message)
+    }
+  }
+
   const handleUpdateRoleDeadline = async (roleId: string, closeAt: string | null) => {
     if (!isSupabaseConfigured) return
     try {
@@ -1303,6 +1318,7 @@ export function AdminDashboardScreen() {
                 setNewInviteRole={setNewInviteRole}
                 setShowInviteModal={setShowInviteModal}
                 handleUpdateRoleDeadline={handleUpdateRoleDeadline}
+                handleUpdateRoleConfirmDeadline={handleUpdateRoleConfirmDeadline}
                 inviteCodesList={inviteCodesList}
                 copiedCodeId={copiedCodeId}
                 copyInviteLink={copyInviteLink}
