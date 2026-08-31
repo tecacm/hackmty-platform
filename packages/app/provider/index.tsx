@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import { SafeArea } from 'app/provider/safe-area'
 import { NavigationProvider } from './navigation'
+import { AlertHost } from 'app/components/cross-alert'
 import { usePushNotifications } from 'app/hooks/use-push-notifications'
 
 import { I18nProvider } from 'app/i18n'
@@ -22,7 +23,10 @@ export function Provider({ children }: { children: React.ReactNode }) {
   return (
     <I18nProvider>
       <SafeArea>
-        <NavigationProvider>{children as any}</NavigationProvider>
+        <>
+          <NavigationProvider>{children as any}</NavigationProvider>
+          <AlertHost />
+        </>
       </SafeArea>
     </I18nProvider>
   )

@@ -17,6 +17,8 @@ import {
 } from 'react-native'
 import { supabase, isSupabaseConfigured, fetchAllRows } from 'app/lib/supabase'
 import { AppIcon } from 'app/components/app-icon'
+import { BadgeIcon } from 'app/components/badge-icon'
+import { iconPublicUrl, localizeText, type Badge } from 'app/utils/badge-helpers'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { QRCameraScanner } from 'app/components/qr-camera-scanner'
 import { LinearGradient } from 'app/components/linear-gradient'
@@ -100,6 +102,8 @@ interface Checkpoint {
   not_checked_in_message_override?: any
   requires_initial_checkin_override?: boolean
   location?: string
+  points?: number
+  badge_id?: string | null
   start_time?: string
   end_time?: string
   unlocks_at?: string
@@ -190,6 +194,9 @@ export function CheckInScannerTab() {
   ])
   const [newTypeId, setNewTypeId] = React.useState('')
   const [newLocation, setNewLocation] = React.useState('')
+  const [newPoints, setNewPoints] = React.useState('0')
+  const [newBadgeId, setNewBadgeId] = React.useState<string | null>(null)
+  const [badges, setBadges] = React.useState<Badge[]>([])
   const [newRequiresCheckin, setNewRequiresCheckin] = React.useState(true)
   const [claimedMsgTranslations, setClaimedMsgTranslations] = React.useState<Translation[]>([
     { key: 'en', value: '' },
@@ -412,6 +419,18 @@ export function CheckInScannerTab() {
     fetchCheckpoints()
     fetchCheckpointTypes()
   }, [fetchCheckpoints, fetchCheckpointTypes])
+
+  React.useEffect(() => {
+    if (!isSupabaseConfigured) return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.from('badges').select('*').order('created_at', { ascending: true })
+      if (!cancelled) setBadges((data as Badge[]) || [])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   React.useEffect(() => {
     if (selectedStationId) {
@@ -743,6 +762,8 @@ export function CheckInScannerTab() {
     setDescTranslations([{ key: 'en', value: '' }])
     setNewTypeId(checkpointTypes[0]?.id || 'station')
     setNewLocation('')
+    setNewPoints('0')
+    setNewBadgeId(null)
     setNewRequiresCheckin(true)
     setNewStartTime('')
     setNewEndTime('')
@@ -760,6 +781,8 @@ export function CheckInScannerTab() {
     setDescTranslations(jsonbToTranslations(station.description))
     setNewTypeId(station.type_id)
     setNewLocation(station.location || '')
+    setNewPoints(String(station.points ?? 0))
+    setNewBadgeId(station.badge_id ?? null)
     setNewRequiresCheckin(station.requires_initial_checkin_override ?? station.checkpoint_types?.requires_initial_checkin ?? true)
     setNewStartTime(toDatetimeLocal(station.start_time))
     setNewEndTime(toDatetimeLocal(station.end_time))
@@ -795,6 +818,8 @@ export function CheckInScannerTab() {
         title: titleObj,
         description: Object.values(descObj).some(Boolean) ? descObj : null,
         location: newLocation.trim() || 'Venue',
+        points: Math.max(0, parseInt(newPoints, 10) || 0),
+        badge_id: newBadgeId,
         requires_initial_checkin_override: newRequiresCheckin,
         already_claimed_message_override: hasClaimed ? claimedObj : null,
         success_message_override: hasSuccess ? successObj : null,
@@ -1730,6 +1755,45 @@ export function CheckInScannerTab() {
                   placeholderTextColor="#94a3b8"
                   style={styles.modalInput}
                 />
+
+                <Text style={styles.fieldLabel}>{t('admin.checkinPointsLabel')}</Text>
+                <TextInput
+                  value={newPoints}
+                  onChangeText={(v) => setNewPoints(v.replace(/[^0-9]/g, ''))}
+                  placeholder="0"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="number-pad"
+                  style={styles.modalInput}
+                />
+
+                <Text style={styles.fieldLabel}>{t('admin.checkinBadgeLabel')}</Text>
+                {badges.length === 0 ? (
+                  <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
+                    {t('admin.awardNoBadges')}
+                  </Text>
+                ) : (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+                    <Pressable
+                      onPress={() => setNewBadgeId(null)}
+                      style={[styles.badgePickTile, newBadgeId === null && styles.badgePickTileSelected]}
+                    >
+                      <Text style={styles.badgePickNone}>{t('admin.checkinBadgeNone')}</Text>
+                    </Pressable>
+                    {badges.map((b) => {
+                      const isSel = newBadgeId === b.id
+                      return (
+                        <Pressable
+                          key={b.id}
+                          onPress={() => setNewBadgeId(isSel ? null : b.id)}
+                          style={[styles.badgePickTile, isSel && styles.badgePickTileSelected]}
+                        >
+                          <BadgeIcon svgUrl={iconPublicUrl(b.icon)} color={isSel ? b.color || '#c2b75f' : '#94a3b8'} size={28} />
+                          <Text style={styles.badgePickText} numberOfLines={1}>{localizeText(b.name, locale) || b.id}</Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                )}
 
                 <Text style={styles.fieldLabel}>{t('admin.checkinOpeningUnlockLabel')}</Text>
                 {Platform.OS === 'web' ? (
@@ -3035,6 +3099,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 6,
   },
+  badgePickTile: {
+    minWidth: 84,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  badgePickTileSelected: { borderColor: '#5a0061', backgroundColor: '#faf5fb' },
+  badgePickText: { fontSize: 11, fontWeight: '700', color: '#334155', textAlign: 'center' },
+  badgePickNone: { fontSize: 12, fontWeight: '800', color: '#64748b' },
   typeSelectorRow: {
     flexDirection: 'row',
     gap: 10,

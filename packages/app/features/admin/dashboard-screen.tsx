@@ -32,6 +32,12 @@ const UserDirectoryTab = lazy(() =>
 const DemographicsTab = lazy(() =>
   import('./components/DemographicsTab').then((mod) => ({ default: mod.DemographicsTab }))
 )
+const BadgesTab = lazy(() =>
+  import('./components/BadgesTab').then((mod) => ({ default: mod.BadgesTab }))
+)
+const TournamentTab = lazy(() =>
+  import('./components/TournamentTab').then((mod) => ({ default: mod.TournamentTab }))
+)
 const RolesAccessTab = lazy(() =>
   import('./components/RolesAccessTab').then((mod) => ({ default: mod.RolesAccessTab }))
 )
@@ -1345,6 +1351,10 @@ export function AdminDashboardScreen() {
               />
             ) : adminTab === 'insights' ? (
               <DemographicsTab />
+            ) : adminTab === 'badges' ? (
+              <BadgesTab />
+            ) : adminTab === 'tournament' ? (
+              <TournamentTab />
             ) : adminTab === 'config' ? (
               <GlobalConfigTab />
             ) : (

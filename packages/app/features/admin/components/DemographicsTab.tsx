@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { View, Text, StyleSheet, ActivityIndicator, Pressable, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, ActivityIndicator, Pressable } from 'react-native'
 import { supabase, isSupabaseConfigured, fetchAllRows } from 'app/lib/supabase'
 import { StyledSegmented } from 'app/components/styled-segmented'
 import { DistributionChart } from './charts/DistributionChart'
@@ -282,7 +282,7 @@ export function DemographicsTab() {
   const totalPeople = people.length
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+    <View style={{ paddingBottom: 40 }}>
       {/* Summary stat cards */}
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
@@ -352,7 +352,7 @@ export function DemographicsTab() {
           ))}
         </View>
       )}
-    </ScrollView>
+    </View>
   )
 }
 
