@@ -504,7 +504,85 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: '#f59e0b',
   },
+  statusBadge: {
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  teamStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: -12,
+    marginBottom: 20,
+  },
+  teamStatusLabel: {
+    color: '#666666',
+    fontSize: 13,
+    fontWeight: '700',
+  },
 })
+
+type MemberStatusKey = 'none' | 'rejected' | 'draft' | 'under_review' | 'accepted' | 'confirmed'
+
+// Ordered from least- to most-advanced. The overall team status is the LEAST advanced across
+// members (e.g. 3 accepted + 1 under review => under review; 2 confirmed + 2 accepted => accepted).
+const STATUS_KEY_BY_RANK: MemberStatusKey[] = ['none', 'rejected', 'draft', 'under_review', 'accepted', 'confirmed']
+const STATUS_RANK: Record<MemberStatusKey, number> = {
+  none: 0,
+  rejected: 1,
+  draft: 2,
+  under_review: 3,
+  accepted: 4,
+  confirmed: 5,
+}
+// Colors mirror the admin StatusBadge (features/admin/components/StatusBadge.tsx):
+// confirmed = purple, accepted = green, under review (submitted) = blue, rejected = red, draft = gray.
+const STATUS_META: Record<MemberStatusKey, { labelKey: string; color: string; bg: string }> = {
+  none: { labelKey: 'teams.statusNotApplied', color: '#64748b', bg: 'rgba(203, 213, 225, 0.25)' },
+  rejected: { labelKey: 'teams.statusRejected', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' },
+  draft: { labelKey: 'teams.statusDraft', color: '#9ca3af', bg: 'rgba(156, 163, 175, 0.15)' },
+  under_review: { labelKey: 'teams.statusUnderReview', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)' },
+  accepted: { labelKey: 'teams.statusAccepted', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
+  confirmed: { labelKey: 'teams.statusConfirmed', color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.15)' },
+}
+
+// A member's status = their MOST advanced application (someone confirmed on any app is confirmed).
+function memberStatusKey(apps: any[]): MemberStatusKey {
+  if (!apps || apps.length === 0) return 'none'
+  let best = -1
+  for (const a of apps) {
+    let r: number
+    if (a.status === 'confirmed' || a.confirmed_at) r = 5
+    else if (a.status === 'accepted') r = 4
+    else if (a.status === 'submitted' || a.status === 'changes_requested') r = 3
+    else if (a.status === 'draft') r = 2
+    else if (a.status === 'rejected') r = 1
+    else r = 3 // unknown -> treat as under review
+    if (r > best) best = r
+  }
+  return STATUS_KEY_BY_RANK[best < 0 ? 0 : best] ?? 'none'
+}
+
+// Overall team status = the least-advanced member status.
+function overallStatusKey(members: { id: string }[], apps: any[]): MemberStatusKey | null {
+  if (!members || members.length === 0) return null
+  let min = STATUS_RANK.confirmed
+  for (const m of members) {
+    const k = memberStatusKey(apps.filter((a) => a.user_id === m.id))
+    if (STATUS_RANK[k] < min) min = STATUS_RANK[k]
+  }
+  return STATUS_KEY_BY_RANK[min] ?? null
+}
+
+function StatusBadge({ statusKey }: { statusKey: MemberStatusKey }) {
+  const { t } = useTranslation()
+  const meta = STATUS_META[statusKey]
+  return <Text style={[styles.statusBadge, { color: meta.color, backgroundColor: meta.bg }]}>{t(meta.labelKey)}</Text>
+}
 
 export function TeamsScreen() {
   const { t } = useTranslation()
@@ -653,11 +731,13 @@ export function TeamsScreen() {
         members: resolvedMembers
       })
 
-      // Fetch application status for all team members
+      // Fetch application status for all team members (hacker application type only —
+      // teams are the hacker flow, so the badges reflect their hacker application).
       const memberIds = resolvedMembers.map(m => m.id)
       const { data: appsData } = await supabase
         .from('applications')
         .select('user_id, status, admin_feedback, confirmed_at')
+        .eq('application_type_id', 'hacker')
         .in('user_id', memberIds)
       setMembersApplications(appsData || [])
 
@@ -1081,6 +1161,17 @@ export function TeamsScreen() {
               <Text style={styles.titleText}>{team.name}</Text>
               <Text style={styles.subtitleText}>{t('teams.manageTeamSubtitle')}</Text>
 
+              {(() => {
+                const overall = overallStatusKey(team.members, membersApplications)
+                if (!overall) return null
+                return (
+                  <View style={styles.teamStatusRow}>
+                    <Text style={styles.teamStatusLabel}>{t('teams.statusTeamLabel')}</Text>
+                    <StatusBadge statusKey={overall} />
+                  </View>
+                )
+              })()}
+
               <Text style={styles.label}>{t('teams.teamCode')}</Text>
               <View style={styles.codeRow}>
                 <View style={styles.codeBox}>
@@ -1147,6 +1238,7 @@ export function TeamsScreen() {
                           {isOwner && (
                             <Text style={styles.ownerBadge}>{t('teams.owner')}</Text>
                           )}
+                          <StatusBadge statusKey={memberStatusKey(memberApps)} />
                           {hasChangesRequested && (
                             <Text style={styles.actionRequiredBadge}>{t('teams.actionRequiredBadge')}</Text>
                           )}

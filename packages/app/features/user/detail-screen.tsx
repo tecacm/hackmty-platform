@@ -476,29 +476,33 @@ export function UserDetailScreen() {
   }
 
   const renderStatusBadge = (status: string) => {
-    let bgColor = '#f1f5f9'
-    let textColor = '#475569'
+    let bgColor = 'rgba(203, 213, 225, 0.25)'
+    let textColor = '#64748b'
     let label = status.toUpperCase()
 
-    if (status === 'accepted') {
-      bgColor = '#f0fdf4'
-      textColor = '#15803d'
+    if (status === 'confirmed') {
+      bgColor = 'rgba(124, 58, 237, 0.15)'
+      textColor = '#7c3aed'
+      label = t('admin.confirmed').toUpperCase()
+    } else if (status === 'accepted') {
+      bgColor = 'rgba(16, 185, 129, 0.15)'
+      textColor = '#10b981'
       label = t('admin.accepted').toUpperCase()
     } else if (status === 'rejected') {
-      bgColor = '#fef2f2'
-      textColor = '#b91c1c'
+      bgColor = 'rgba(239, 68, 68, 0.15)'
+      textColor = '#ef4444'
       label = t('admin.rejected').toUpperCase()
     } else if (status === 'changes_requested') {
-      bgColor = '#fffbeb'
-      textColor = '#b45309'
+      bgColor = 'rgba(245, 158, 11, 0.15)'
+      textColor = '#f59e0b'
       label = t('admin.changesRequested').toUpperCase()
     } else if (status === 'submitted') {
-      bgColor = '#ecfeff'
-      textColor = '#0e7490'
+      bgColor = 'rgba(59, 130, 246, 0.15)'
+      textColor = '#3b82f6'
       label = t('admin.submitted').toUpperCase()
     } else if (status === 'draft') {
-      bgColor = '#f3e8ff'
-      textColor = '#7e22ce'
+      bgColor = 'rgba(156, 163, 175, 0.15)'
+      textColor = '#9ca3af'
       label = t('applicant.statusDraft').toUpperCase()
     }
 
