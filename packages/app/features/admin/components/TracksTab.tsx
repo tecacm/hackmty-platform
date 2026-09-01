@@ -8,6 +8,7 @@ import { showAlert } from 'app/components/cross-alert'
 import { jsonbToTranslations, translationsToJsonb, type Translation } from 'app/utils/i18n-helpers'
 import { localizeText } from 'app/utils/badge-helpers'
 import { StyledSelect } from 'app/components/styled-select'
+import { StyledSegmented } from 'app/components/styled-segmented'
 import { AdminPaginationBar } from './AdminPaginationBar'
 import { useTranslation } from 'app/i18n'
 
@@ -88,7 +89,6 @@ function trackLogoUrl(path: string | null): string | null {
 export function TracksTab() {
   const { t, locale } = useTranslation()
   const [tracks, setTracks] = React.useState<Track[]>([])
-  const [counts, setCounts] = React.useState<Record<string, number>>({})
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [finalizing, setFinalizing] = React.useState(false)
@@ -96,6 +96,7 @@ export function TracksTab() {
   const [deadline, setDeadline] = React.useState<string | null>(null)
   const [overview, setOverview] = React.useState<any[]>([])
   const [teamSearch, setTeamSearch] = React.useState('')
+  const [teamFilter, setTeamFilter] = React.useState<'eligible' | 'all'>('eligible')
   const [teamPage, setTeamPage] = React.useState(1)
   const [teamPageSize, setTeamPageSize] = React.useState(20)
   const [expandedTeams, setExpandedTeams] = React.useState<Set<string>>(new Set())
@@ -116,18 +117,12 @@ export function TracksTab() {
       return
     }
     try {
-      const [{ data: trackData }, { data: assignData }, { data: cfg }, overviewRes] = await Promise.all([
+      const [{ data: trackData }, { data: cfg }, overviewRes] = await Promise.all([
         supabase.from('tracks').select('*').order('display_order', { ascending: true }).order('created_at', { ascending: true }),
-        supabase.from('team_tracks').select('assigned_track_id'),
         supabase.from('global_config').select('value').eq('key', 'track_selection_deadline').maybeSingle(),
         supabase.rpc('admin_track_overview'),
       ])
       setTracks((trackData as Track[]) || [])
-      const tally: Record<string, number> = {}
-      ;(assignData || []).forEach((r: any) => {
-        if (r.assigned_track_id) tally[r.assigned_track_id] = (tally[r.assigned_track_id] || 0) + 1
-      })
-      setCounts(tally)
       setDeadline((cfg as any)?.value || null)
       setOverview((overviewRes?.data as any[]) || [])
     } catch (e) {
@@ -147,11 +142,28 @@ export function TracksTab() {
     return m
   }, [tracks])
 
+  // Capacity is measured in PEOPLE: sum each assigned team's member count per track.
+  const peopleCounts = React.useMemo(() => {
+    const tally: Record<string, number> = {}
+    overview.forEach((r) => {
+      if (r.assigned_track_id) tally[r.assigned_track_id] = (tally[r.assigned_track_id] || 0) + (r.member_count || 0)
+    })
+    return tally
+  }, [overview])
+
   const filteredOverview = React.useMemo(() => {
     const q = teamSearch.trim().toLowerCase()
-    if (!q) return overview
-    return overview.filter((r) => (r.team_name || '').toLowerCase().includes(q))
-  }, [overview, teamSearch])
+    return overview.filter((r) => {
+      // Only ever show teams whose members are all past review (accepted or confirmed).
+      const pastReview = r.member_count > 0 && r.accepted_count === r.member_count
+      if (!pastReview) return false
+      // Within those, "eligible" narrows to fully-confirmed (what finalize will assign).
+      const eligible = r.confirmed_count === r.member_count
+      if (teamFilter === 'eligible' && !eligible) return false
+      if (q && !(r.team_name || '').toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [overview, teamSearch, teamFilter])
 
   const teamTotalPages = Math.max(1, Math.ceil(filteredOverview.length / teamPageSize))
   const pageItems = React.useMemo(
@@ -274,7 +286,7 @@ export function TracksTab() {
   }
 
   const handleDelete = (track: Track) => {
-    const assigned = counts[track.id] || 0
+    const assigned = peopleCounts[track.id] || 0
     showAlert(t('admin.trackDeleteConfirmTitle'), t('admin.trackDeleteConfirmBody', { count: assigned }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -442,7 +454,7 @@ export function TracksTab() {
       ) : (
         <View style={{ gap: 10 }}>
           {tracks.map((track) => {
-            const assigned = counts[track.id] || 0
+            const assigned = peopleCounts[track.id] || 0
             const full = assigned >= track.capacity
             return (
               <View key={track.id} style={styles.trackItem}>
@@ -480,6 +492,18 @@ export function TracksTab() {
       {/* Team assignments (preliminary + manual override) */}
       <Text style={[styles.sectionTitle, { color: '#ffffff', marginTop: 6 }]}>{t('admin.trackAdminTeamsTitle')}</Text>
       <View style={styles.card}>
+        <StyledSegmented
+          label=""
+          value={teamFilter}
+          options={[
+            { label: t('admin.trackAdminFilterEligible'), value: 'eligible' },
+            { label: t('admin.trackAdminFilterAll'), value: 'all' },
+          ]}
+          onValueChange={(v) => {
+            setTeamFilter(v as 'eligible' | 'all')
+            setTeamPage(1)
+          }}
+        />
         <TextInput
           value={teamSearch}
           onChangeText={(v) => {
@@ -499,10 +523,16 @@ export function TracksTab() {
                 const prefIds: string[] = row.preferences || []
                 const hasPrefs = !!row.submitted_at && prefIds.length > 0
                 const expanded = expandedTeams.has(row.team_id)
+                const eligible = row.member_count > 0 && row.confirmed_count === row.member_count
                 return (
                   <View key={row.team_id} style={styles.teamRow}>
                     <View style={{ flex: 1, minWidth: 200, gap: 4 }}>
-                      <Text style={styles.teamName} numberOfLines={1}>{row.team_name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <Text style={styles.teamName} numberOfLines={1}>{row.team_name}</Text>
+                        <Text style={[styles.eligPill, eligible ? styles.eligPillOk : styles.eligPillNo]}>
+                          {eligible ? t('admin.trackAdminEligible') : t('admin.trackAdminIneligible')}
+                        </Text>
+                      </View>
                       <Text style={styles.teamMeta}>
                         {t('admin.trackAdminConfirmed', { confirmed: row.confirmed_count, total: row.member_count })}
                         {row.unconfirmed_names?.length ? `  ·  ${t('admin.trackAdminWaiting', { names: row.unconfirmed_names.join(', ') })}` : ''}
@@ -678,6 +708,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   teamName: { color: '#0f172a', fontSize: 14, fontWeight: '800' },
+  eligPill: { fontSize: 10, fontWeight: '900', letterSpacing: 0.3, textTransform: 'uppercase', paddingVertical: 2, paddingHorizontal: 8, borderRadius: 999, overflow: 'hidden' },
+  eligPillOk: { backgroundColor: '#dcfce7', color: '#15803d' },
+  eligPillNo: { backgroundColor: '#f1f5f9', color: '#94a3b8' },
   teamMeta: { color: '#64748b', fontSize: 12, fontWeight: '600' },
   teamPrefs: { color: '#475569', fontSize: 12, fontWeight: '700' },
   prefToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
