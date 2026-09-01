@@ -96,7 +96,7 @@ export function TracksTab() {
   const [deadline, setDeadline] = React.useState<string | null>(null)
   const [overview, setOverview] = React.useState<any[]>([])
   const [teamSearch, setTeamSearch] = React.useState('')
-  const [teamFilter, setTeamFilter] = React.useState<'eligible' | 'all'>('eligible')
+  const [teamFilter, setTeamFilter] = React.useState<'eligible' | 'all'>('all')
   const [teamPage, setTeamPage] = React.useState(1)
   const [teamPageSize, setTeamPageSize] = React.useState(20)
   const [expandedTeams, setExpandedTeams] = React.useState<Set<string>>(new Set())
@@ -154,11 +154,11 @@ export function TracksTab() {
   const filteredOverview = React.useMemo(() => {
     const q = teamSearch.trim().toLowerCase()
     return overview.filter((r) => {
-      // Only ever show teams whose members are all past review (accepted or confirmed).
-      const pastReview = r.member_count > 0 && r.accepted_count === r.member_count
-      if (!pastReview) return false
-      // Within those, "eligible" narrows to fully-confirmed (what finalize will assign).
-      const eligible = r.confirmed_count === r.member_count
+      // Show any team with at least one accepted/confirmed member; hide teams where nobody
+      // is past review (all draft/under-review/rejected).
+      if ((r.accepted_count || 0) < 1) return false
+      // "Eligible" narrows to fully-confirmed teams (what finalize will actually assign).
+      const eligible = r.member_count > 0 && r.confirmed_count === r.member_count
       if (teamFilter === 'eligible' && !eligible) return false
       if (q && !(r.team_name || '').toLowerCase().includes(q)) return false
       return true
@@ -504,6 +504,9 @@ export function TracksTab() {
             setTeamPage(1)
           }}
         />
+        <Text style={styles.filterHint}>
+          {teamFilter === 'eligible' ? t('admin.trackAdminHintEligible') : t('admin.trackAdminHintAll')}
+        </Text>
         <TextInput
           value={teamSearch}
           onChangeText={(v) => {
@@ -709,6 +712,7 @@ const styles = StyleSheet.create({
   },
   teamName: { color: '#0f172a', fontSize: 14, fontWeight: '800' },
   eligPill: { fontSize: 10, fontWeight: '900', letterSpacing: 0.3, textTransform: 'uppercase', paddingVertical: 2, paddingHorizontal: 8, borderRadius: 999, overflow: 'hidden' },
+  filterHint: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: -8, marginBottom: 6 },
   eligPillOk: { backgroundColor: '#dcfce7', color: '#15803d' },
   eligPillNo: { backgroundColor: '#f1f5f9', color: '#94a3b8' },
   teamMeta: { color: '#64748b', fontSize: 12, fontWeight: '600' },
