@@ -176,7 +176,14 @@
     "enterTeamName": "Ingresa el nombre del equipo",
     "actionRequired": "Acción Requerida",
     "actionRequiredSub": "Algunos compañeros tienen cambios solicitados pendientes en su solicitud.",
-    "actionRequiredBadge": "Acción Req"
+    "actionRequiredBadge": "Acción Req",
+    "statusTeamLabel": "Estado del equipo",
+    "statusNotApplied": "Sin aplicar",
+    "statusRejected": "Rechazado",
+    "statusDraft": "Borrador",
+    "statusUnderReview": "En revisión",
+    "statusAccepted": "Aceptado",
+    "statusConfirmed": "Confirmado"
   },
   "profile": {
     "title": "Información del Perfil",

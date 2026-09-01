@@ -176,7 +176,14 @@
     "enterTeamName": "Enter team name",
     "actionRequired": "Action Required",
     "actionRequiredSub": "Some teammates have pending changes requested on their application.",
-    "actionRequiredBadge": "Action Req"
+    "actionRequiredBadge": "Action Req",
+    "statusTeamLabel": "Team status",
+    "statusNotApplied": "Not applied",
+    "statusRejected": "Rejected",
+    "statusDraft": "Draft",
+    "statusUnderReview": "Under review",
+    "statusAccepted": "Accepted",
+    "statusConfirmed": "Confirmed"
   },
   "profile": {
     "title": "Profile Information",
