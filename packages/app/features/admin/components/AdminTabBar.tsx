@@ -2,7 +2,7 @@ import * as React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'app/i18n'
 
-export type AdminTabType = 'applications' | 'users' | 'insights' | 'badges' | 'tournament' | 'roles' | 'forms' | 'checkin' | 'config'
+export type AdminTabType = 'applications' | 'users' | 'insights' | 'badges' | 'tournament' | 'tracks' | 'roles' | 'forms' | 'checkin' | 'config'
 
 interface AdminTabBarProps {
   adminTab: AdminTabType
@@ -33,6 +33,7 @@ export function AdminTabBar({
     { id: 'insights', label: t('admin.insights') },
     { id: 'badges', label: t('admin.badges') },
     { id: 'tournament', label: t('admin.tournament') },
+    { id: 'tracks', label: t('admin.tracks') },
     { id: 'roles', label: t('admin.rolesAccess') },
     { id: 'forms', label: t('admin.formBuilder') },
     { id: 'config', label: t('admin.globalConfig') },

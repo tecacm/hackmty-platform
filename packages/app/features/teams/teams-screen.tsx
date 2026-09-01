@@ -7,6 +7,7 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { StyledInput } from 'app/components/styled-input'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { sanitizeEmail, sanitizeName, sanitizeString } from 'app/utils/sanitization'
+import { TeamTrackSection } from './team-track-section'
 import { useTranslation } from 'app/i18n'
 
 interface Member {
@@ -656,7 +657,7 @@ export function TeamsScreen() {
       const memberIds = resolvedMembers.map(m => m.id)
       const { data: appsData } = await supabase
         .from('applications')
-        .select('user_id, status, admin_feedback')
+        .select('user_id, status, admin_feedback, confirmed_at')
         .in('user_id', memberIds)
       setMembersApplications(appsData || [])
 
@@ -1088,6 +1089,15 @@ export function TeamsScreen() {
                 <Pressable onPress={handleCopyCode} style={styles.copyBtn}>
                   <Text style={styles.copyBtnText}>{copied ? t('teams.copied') : t('teams.copy')}</Text>
                 </Pressable>
+              </View>
+
+              <View style={{ marginTop: 16 }}>
+                <TeamTrackSection
+                  teamId={team.id}
+                  isOwner={team.creator_id === userId}
+                  members={team.members}
+                  membersApplications={membersApplications}
+                />
               </View>
 
               <View style={styles.divider} />

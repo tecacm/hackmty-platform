@@ -693,27 +693,9 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
 
       if (confirmErr) throw confirmErr
 
-      const currentYear = new Date().getFullYear().toString()
-
-      const { error: roleErr } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: user.id,
-          role: role,
-          event_year: currentYear
-        })
-
-      if (roleErr && roleErr.code !== '23505') {
-        console.warn(`Failed to insert user role ${role}:`, roleErr)
-      }
-
-      // Remove the basic 'user' candidate role for this year
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('role', 'user')
-        .eq('event_year', currentYear)
+      // The applicant role grant (and clearing the placeholder 'user' role) happens
+      // server-side via the grant_role_on_confirm trigger — clients can't insert into
+      // user_roles under RLS.
 
       setStatus('confirmed')
     } catch (err: any) {
