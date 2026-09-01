@@ -405,6 +405,8 @@
     "trackAdminNoTeams": "No teams yet.",
     "trackAdminFilterEligible": "Eligible",
     "trackAdminFilterAll": "All teams",
+    "trackAdminHintEligible": "Eligible teams have fully confirmed — these are the ones finalize will assign.",
+    "trackAdminHintAll": "Showing teams past review; some haven't fully confirmed yet.",
     "trackAdminEligible": "Eligible",
     "trackAdminIneligible": "Not eligible",
     "badgesUploadSvg": "Upload SVG",
