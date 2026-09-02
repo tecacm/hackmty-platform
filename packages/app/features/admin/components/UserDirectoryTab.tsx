@@ -8,6 +8,7 @@ import { AdminPaginationBar } from './AdminPaginationBar'
 import { AwardModal } from './AwardModal'
 import { UserBadges } from 'app/components/user-badges'
 import { useTranslation } from 'app/i18n'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 
 interface UserDirectoryTabProps {
@@ -48,6 +49,8 @@ export function UserDirectoryTab({
   setUserPageSize,
 }: UserDirectoryTabProps) {
   const { t, locale } = useTranslation()
+  const { hasPermission } = useUserPermissions()
+  const canManageUsers = hasPermission('users', 'modify')
   const [awardUser, setAwardUser] = React.useState<any | null>(null)
   const [badgeRefreshKey, setBadgeRefreshKey] = React.useState(0)
 
@@ -151,7 +154,8 @@ export function UserDirectoryTab({
                       </View>
                     </View>
 
-                    {/* Quick Actions */}
+                    {/* Quick Actions (requires users:modify) */}
+                    {canManageUsers && (
                     <View style={styles.userActionsRow}>
                       <PillButton
                         title={t('admin.editUser')}
@@ -174,6 +178,7 @@ export function UserDirectoryTab({
                         fontSize={12}
                       />
                     </View>
+                    )}
                   </View>
 
                   {/* Applications Row */}

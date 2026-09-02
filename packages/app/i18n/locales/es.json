@@ -552,6 +552,8 @@
     "checkinTryAdjustingFilters": "Prueba ajustar tu búsqueda o el filtro de categoría.",
     "checkinCreateFirstStationHint": "Crea tu primera estación de checkpoint para comenzar a escanear pases del evento.",
     "checkinCreateStation": "+ Crear Estación",
+    "checkinStationLocked": "Esta estación aún no está abierta. Solo administradores y organizadores pueden registrar antes de que abra.",
+    "checkinCheckedBy": "Registrado por {name}",
     "checkinLocationLabel": "UBICACIÓN:",
     "checkinVenueFallback": "Lugar",
     "checkinPrerequisiteLabel": "REQUISITO:",

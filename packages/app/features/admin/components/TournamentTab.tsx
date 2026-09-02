@@ -7,6 +7,7 @@ import { BadgeIcon } from 'app/components/badge-icon'
 import { AppIcon } from 'app/components/app-icon'
 import { showAlert } from 'app/components/cross-alert'
 import { useTranslation } from 'app/i18n'
+import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { EVENT_YEAR } from 'app/utils/event-config'
 import { iconPublicUrl, localizeText, type Badge } from 'app/utils/badge-helpers'
 
@@ -38,6 +39,8 @@ function uniqueParticipants(placements: PlacementData[] | Placement[]): number {
 
 export function TournamentTab() {
   const { t, locale } = useTranslation()
+  const { hasPermission } = useUserPermissions()
+  const canModify = hasPermission('tournaments', 'modify')
 
   const [loading, setLoading] = React.useState(true)
   const [profiles, setProfiles] = React.useState<Profile[]>([])
@@ -174,6 +177,7 @@ export function TournamentTab() {
   }
 
   const openNew = () => {
+    if (!canModify) return
     setEditingId(null)
     setName('')
     setPlacements([makePlacement(0), makePlacement(1), makePlacement(2)])
@@ -183,6 +187,7 @@ export function TournamentTab() {
   }
 
   const openEdit = (tourn: Tournament) => {
+    if (!canModify) return
     setEditingId(tourn.id)
     setName(tourn.name)
     const rows = Array.isArray(tourn.placements) ? tourn.placements : []
@@ -204,6 +209,7 @@ export function TournamentTab() {
   }
 
   const handleSave = async () => {
+    if (!canModify) return
     setFormError(null)
     const tName = name.trim()
     if (!tName) {
@@ -289,6 +295,7 @@ export function TournamentTab() {
   }
 
   const handleDelete = (tourn: Tournament) => {
+    if (!canModify) return
     const count = uniqueParticipants(tourn.placements || [])
     showAlert(t('admin.tournamentDeleteConfirmTitle'), t('admin.tournamentDeleteConfirmBody', { count, name: tourn.name }), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -322,10 +329,12 @@ export function TournamentTab() {
       <View style={{ width: '100%' }}>
         <View style={styles.listHeader}>
           <Text style={styles.listTitle}>{t('admin.tournamentListTitle')}</Text>
-          <Pressable onPress={openNew} style={styles.createBtn}>
-            <AppIcon name="plus.circle.fill" size={16} color="#ffffff" />
-            <Text style={styles.createBtnText}>{t('admin.tournamentCreate')}</Text>
-          </Pressable>
+          {canModify && (
+            <Pressable onPress={openNew} style={styles.createBtn}>
+              <AppIcon name="plus.circle.fill" size={16} color="#ffffff" />
+              <Text style={styles.createBtnText}>{t('admin.tournamentCreate')}</Text>
+            </Pressable>
+          )}
         </View>
 
         {tournaments.length === 0 ? (
@@ -347,12 +356,16 @@ export function TournamentTab() {
                         {t('admin.tournamentPlacementsCount', { count: pc })} · {t('admin.tournamentParticipants', { count: participants })}
                       </Text>
                     </Pressable>
-                    <Pressable onPress={() => openEdit(tourn)} style={styles.editBtn}>
-                      <Text style={styles.editBtnText}>{t('admin.tournamentEdit')}</Text>
-                    </Pressable>
-                    <Pressable onPress={() => handleDelete(tourn)} style={styles.deleteBtn} hitSlop={6}>
-                      <AppIcon name="xmark" size={14} color="#dc2626" />
-                    </Pressable>
+                    {canModify && (
+                      <Pressable onPress={() => openEdit(tourn)} style={styles.editBtn}>
+                        <Text style={styles.editBtnText}>{t('admin.tournamentEdit')}</Text>
+                      </Pressable>
+                    )}
+                    {canModify && (
+                      <Pressable onPress={() => handleDelete(tourn)} style={styles.deleteBtn} hitSlop={6}>
+                        <AppIcon name="xmark" size={14} color="#dc2626" />
+                      </Pressable>
+                    )}
                     <Pressable
                       onPress={() => setExpandedId(expanded ? null : tourn.id)}
                       style={styles.chevronBtn}

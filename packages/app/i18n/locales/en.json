@@ -552,6 +552,8 @@
     "checkinTryAdjustingFilters": "Try adjusting your search query or category filter.",
     "checkinCreateFirstStationHint": "Create your first checkpoint station to start scanning event passes.",
     "checkinCreateStation": "+ Create Station",
+    "checkinStationLocked": "This station isn't open yet. Only admins and organizers can check people in before it opens.",
+    "checkinCheckedBy": "Checked in by {name}",
     "checkinLocationLabel": "LOCATION:",
     "checkinVenueFallback": "Venue",
     "checkinPrerequisiteLabel": "PREREQUISITE:",
