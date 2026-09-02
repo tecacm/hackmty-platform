@@ -3,6 +3,7 @@ import { Provider } from 'app/provider'
 import { ServiceWorkerRegister } from './service-worker-register'
 import './globals.css'
 import logoImage from 'app/assets/images/hackmty-logo-favicon.webp'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata = {
   title: 'HackMTY',
@@ -37,6 +38,7 @@ export default function RootLayout({
             {children}
           </Provider>
         </StylesProvider>
+        <Analytics/>
       </body>
     </html>
   )
