@@ -265,6 +265,8 @@
     "confirmBy": "Confirma tu asistencia antes del {date}",
     "congratulations": "¡Felicidades!",
     "registrationClosed": "El registro para este rol ha cerrado. Estás viendo tu solicitud en modo de solo lectura.",
+    "inviteCountdown": "⏳ Este enlace de invitación expira en {time} - por favor envía antes de eso.",
+    "inviteExpired": "Este enlace de invitación ha expirado. Contacta a los organizadores para uno nuevo.",
     "changesRequestedTitle": "Acción Requerida: Cambios Solicitados por el Organizador",
     "changesRequestedDesc": "Por favor revisa y actualiza los detalles de tu solicitud.",
     "applicationSubmittedLocked": "Tu solicitud ha sido enviada y está actualmente bloqueada.",

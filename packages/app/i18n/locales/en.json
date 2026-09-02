@@ -265,6 +265,8 @@
     "confirmBy": "Confirm your attendance by {date}",
     "congratulations": "Congratulations!",
     "registrationClosed": "Registration for this role has closed. You are viewing your application in read-only mode.",
+    "inviteCountdown": "⏳ This invite link expires in {time} - please submit before then.",
+    "inviteExpired": "This invite link has expired. Contact the organizers for a new one.",
     "changesRequestedTitle": "Action Required: Changes Requested by Organizer",
     "changesRequestedDesc": "Please review and update your application details.",
     "applicationSubmittedLocked": "Your application has been submitted and is currently locked.",

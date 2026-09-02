@@ -3,6 +3,7 @@ import { Provider } from 'app/provider'
 import { ServiceWorkerRegister } from './service-worker-register'
 import './globals.css'
 import logoImage from 'app/assets/images/hackmty-logo-favicon.webp'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata = {
   title: 'HackMTY',
@@ -11,7 +12,7 @@ export const metadata = {
   icons: {
     icon: [{ url: logoImage.src, type: 'image/webp' }],
     shortcut: [{ url: logoImage.src, type: 'image/webp' }],
-    apple: [{ url: logoImage.src, type: 'image/webp' }],
+    apple: [{ url: '/apple-touch-icon.png', type: 'image/png' }],
   },
 }
 
@@ -37,6 +38,7 @@ export default function RootLayout({
             {children}
           </Provider>
         </StylesProvider>
+        <Analytics/>
       </body>
     </html>
   )
