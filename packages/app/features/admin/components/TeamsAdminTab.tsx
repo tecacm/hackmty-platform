@@ -19,9 +19,10 @@ interface TeamsAdminTabProps {
   onRemoveMember: (teamId: string, userId: string, name: string) => void
   onSubstitute: (teamId: string, outgoingId: string, incomingId: string) => Promise<void> | void
   onRenameTeam: (teamId: string, name: string) => void
+  onTransferOwner: (teamId: string, userId: string, name: string) => void
 }
 
-export function TeamsAdminTab({ apps, users, loading, onRemoveMember, onSubstitute, onRenameTeam }: TeamsAdminTabProps) {
+export function TeamsAdminTab({ apps, users, loading, onRemoveMember, onSubstitute, onRenameTeam, onTransferOwner }: TeamsAdminTabProps) {
   const { t } = useTranslation()
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)
@@ -118,6 +119,13 @@ export function TeamsAdminTab({ apps, users, loading, onRemoveMember, onSubstitu
     ])
   }
 
+  const confirmTransfer = (teamId: string, mem: Member) => {
+    showAlert(t('admin.teamTransferConfirmTitle'), t('admin.teamTransferConfirmBody', { name: mem.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('admin.teamTransferConfirm'), onPress: () => onTransferOwner(teamId, mem.userId, mem.name) },
+    ])
+  }
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -202,6 +210,11 @@ export function TeamsAdminTab({ apps, users, loading, onRemoveMember, onSubstitu
                             {mem.email ? <Text style={styles.memberEmail} numberOfLines={1}>{mem.email}</Text> : null}
                           </View>
                           <StatusBadge status={mem.status} />
+                          {!mem.isOwner ? (
+                            <Pressable onPress={() => confirmTransfer(g.teamId, mem)} style={styles.makeOwnerBtn} hitSlop={6}>
+                              <Text style={styles.makeOwnerBtnText}>{t('admin.teamMakeOwner')}</Text>
+                            </Pressable>
+                          ) : null}
                           <Pressable onPress={() => confirmRemove(g.teamId, mem)} style={styles.removeBtn} hitSlop={6}>
                             <AppIcon name="xmark" size={13} color="#dc2626" />
                             <Text style={styles.removeBtnText}>{t('admin.teamRemove')}</Text>
@@ -317,4 +330,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   removeBtnText: { color: '#dc2626', fontSize: 12, fontWeight: '700' },
+  makeOwnerBtn: {
+    backgroundColor: '#faf5fb',
+    borderColor: '#e9d5ee',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  makeOwnerBtnText: { color: '#5a0061', fontSize: 12, fontWeight: '700' },
 })

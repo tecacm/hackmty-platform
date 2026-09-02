@@ -220,6 +220,7 @@ export function AdminDashboardScreen() {
 
   // Roles & Access Management State
   const [rolesList, setRolesList] = useState<any[]>([])
+  const [systemRoles, setSystemRoles] = useState<string[]>(['user'])
   const [rolesLoading, setRolesLoading] = useState(false)
   const [permissionsList, setPermissionsList] = useState<any[]>([])
   const [rolePermissionsMap, setRolePermissionsMap] = useState<Record<string, string[]>>({})
@@ -270,6 +271,22 @@ export function AdminDashboardScreen() {
       console.warn('Failed to fetch roles list:', err)
     } finally {
       setRolesLoading(false)
+    }
+  }
+
+  // All assignable system roles, sourced from role_permissions (every functional role has grants),
+  // so the user editor's role picker stays in sync with the DB instead of a hardcoded list.
+  const fetchSystemRoles = async () => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { data, error } = await supabase.from('role_permissions').select('role')
+      if (error) throw error
+      const set = new Set<string>(['user'])
+      ;(data || []).forEach((r: any) => { if (r.role) set.add(r.role) })
+      const ordered = Array.from(set).sort((a, b) => (a === 'user' ? -1 : b === 'user' ? 1 : a.localeCompare(b)))
+      setSystemRoles(ordered)
+    } catch (err: any) {
+      console.warn('Failed to fetch system roles:', err)
     }
   }
 
@@ -816,6 +833,17 @@ export function AdminDashboardScreen() {
     }
   }
 
+  const handleTransferOwner = async (teamId: string, userId: string, _name: string) => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { error } = await supabase.rpc('admin_transfer_team_ownership', { p_team_id: teamId, p_new_owner: userId })
+      if (error) throw error
+      fetchApplications()
+    } catch (err: any) {
+      alert(t('admin.teamTransferFailed') + ' ' + (err?.message || ''))
+    }
+  }
+
   const [searchQuery, setSearchQuery] = useState<string>(initialCache.searchQuery || '')
   const [selectedType, setSelectedType] = useState<string>(initialCache.selectedType || 'all')
   const [dbTypes, setDbTypes] = useState<Array<{ id: string; label: string }>>([])
@@ -1120,6 +1148,7 @@ export function AdminDashboardScreen() {
     if (hasViewOthersPermission) {
       fetchApplications()
       fetchUsersDirectory()
+      fetchSystemRoles()
     }
   }, [hasViewOthersPermission])
 
@@ -1481,7 +1510,7 @@ export function AdminDashboardScreen() {
               <TracksTab />
             ) : adminTab === 'teams' ? (
               <Suspense fallback={<ActivityIndicator size="large" color="#c2b75f" style={{ marginVertical: 40 }} />}>
-                <TeamsAdminTab apps={apps} users={usersList} loading={loading} onRemoveMember={handleRemoveTeamMember} onSubstitute={handleSubstitute} onRenameTeam={handleRenameTeam} />
+                <TeamsAdminTab apps={apps} users={usersList} loading={loading} onRemoveMember={handleRemoveTeamMember} onSubstitute={handleSubstitute} onRenameTeam={handleRenameTeam} onTransferOwner={handleTransferOwner} />
               </Suspense>
             ) : adminTab === 'config' ? (
               <GlobalConfigTab />
@@ -1554,7 +1583,7 @@ export function AdminDashboardScreen() {
             toggleEditRole={toggleEditRole}
             handleSaveUserChanges={handleSaveUserChanges}
             isSavingUser={isSavingUser}
-            allAvailableSystemRoles={['user', 'admin', 'organizer', 'volunteer', 'mentor', 'judge', 'sponsor']}
+            allAvailableSystemRoles={systemRoles.length > 0 ? systemRoles : ['user']}
           />
         )}
 
