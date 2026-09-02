@@ -26,6 +26,9 @@ const CheckInScannerTab = lazy(() =>
 const TeamsAdminTab = lazy(() =>
   import('./components/TeamsAdminTab').then((mod) => ({ default: mod.TeamsAdminTab }))
 )
+const BotTab = lazy(() =>
+  import('./components/BotTab').then((mod) => ({ default: mod.BotTab }))
+)
 const SubmissionsTab = lazy(() =>
   import('./components/SubmissionsTab').then((mod) => ({ default: mod.SubmissionsTab }))
 )
@@ -1514,6 +1517,10 @@ export function AdminDashboardScreen() {
               </Suspense>
             ) : adminTab === 'config' ? (
               <GlobalConfigTab />
+            ) : adminTab === 'bot' ? (
+              <Suspense fallback={<ActivityIndicator size="large" color="#c2b75f" style={{ marginVertical: 40 }} />}>
+                <BotTab />
+              </Suspense>
             ) : (
               <SubmissionsTab
                 stats={stats}
