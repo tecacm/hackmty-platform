@@ -260,7 +260,7 @@ export function ApplicantForm({
 
   // Auto-save draft on change when form is dirty
   useEffect(() => {
-    if (!onSaveDraft || !isReady || !isDirty) return
+    if (!onSaveDraft || !isReady || !isDirty || isFormLocked) return
 
     setSaveStatus('saving')
     const handler = setTimeout(async () => {
