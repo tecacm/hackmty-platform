@@ -217,7 +217,7 @@ export function RolesAccessTab({ rolesLoading, rolesList, permissionsList, roleP
                     </View>
                     {invite.label && <Text numberOfLines={1} ellipsizeMode="tail" style={{ fontSize: 12, color: '#666', flexShrink: 1 }}>— {invite.label}</Text>}
                   </View>
-                  <Text style={{ fontSize: 11, color: '#888' }}>{t('admin.uses')}: {invite.use_count}/{invite.max_uses ?? '∞'} · {invite.is_active ? t('admin.active') : t('admin.inactive')}</Text>
+                  <Text style={{ fontSize: 11, color: '#888' }}>{t('admin.uses')}: {invite.use_count}/{invite.max_uses ?? '∞'} · {invite.is_active ? t('admin.active') : t('admin.inactive')}{invite.expires_at ? (new Date(invite.expires_at).getTime() < Date.now() ? ` · ${t('admin.inviteExpired')}` : ` · ${t('admin.inviteExpires')} ${new Date(invite.expires_at).toLocaleString()}`) : ''}</Text>
                 </View>
                 <Pressable onPress={() => copyInviteLink(invite.code, invite.application_type_id, invite.id)} style={({ pressed }) => ({ height: 32, paddingHorizontal: 14, borderRadius: 8, backgroundColor: copiedCodeId === invite.id ? '#16a34a' : pressed ? 'rgba(90,0,97,0.14)' : 'rgba(90,0,97,0.08)', justifyContent: 'center', alignItems: 'center', flexShrink: 0 })}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: copiedCodeId === invite.id ? '#fff' : '#5a0061' }}>{copiedCodeId === invite.id ? t('admin.copied') : t('admin.copyLink')}</Text>

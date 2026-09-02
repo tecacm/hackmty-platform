@@ -23,6 +23,9 @@ import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-co
 const CheckInScannerTab = lazy(() =>
   import('./components/CheckInScannerTab').then((mod) => ({ default: mod.CheckInScannerTab }))
 )
+const TeamsAdminTab = lazy(() =>
+  import('./components/TeamsAdminTab').then((mod) => ({ default: mod.TeamsAdminTab }))
+)
 const SubmissionsTab = lazy(() =>
   import('./components/SubmissionsTab').then((mod) => ({ default: mod.SubmissionsTab }))
 )
@@ -741,6 +744,78 @@ export function AdminDashboardScreen() {
     }
   }
 
+  const handleRemoveTeamMember = async (teamId: string, userId: string, _name: string) => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { error } = await supabase.rpc('remove_team_member', { p_team_id: teamId, p_user_id: userId })
+      if (error) throw error
+      // Notify the removed member (best-effort; Discord role is reconciled by the sync webhook).
+      try {
+        await supabase.functions.invoke('dispatch-notification', {
+          body: {
+            category: 'announcement',
+            title: t('admin.teamRemovedTitle'),
+            message: t('admin.teamRemovedMessage'),
+            targetUserIds: [userId],
+            channel: 'both',
+          },
+        })
+      } catch (notifyErr) {
+        console.warn('Failed to notify removed member:', notifyErr)
+      }
+      fetchApplications()
+    } catch (err: any) {
+      alert(t('admin.teamRemoveFailed') + ' ' + (err?.message || ''))
+    }
+  }
+
+  const handleSubstitute = async (teamId: string, outgoingId: string, incomingId: string) => {
+    if (!isSupabaseConfigured) return
+    const { data, error } = await supabase.rpc('substitute_team_member', {
+      p_team_id: teamId,
+      p_outgoing_user: outgoingId,
+      p_incoming_user: incomingId,
+    })
+    if (error) {
+      alert(t('admin.subFailed') + ' ' + (error.message || ''))
+      throw error
+    }
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data
+    const code = parsed?.code
+    const teamName = parsed?.team_name || 'your team'
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://experience.hackmty.com'
+    const link = `${origin}/application?role=hacker&invite=${code}`
+    // Email the replaced member.
+    try {
+      await supabase.functions.invoke('dispatch-notification', {
+        body: { category: 'announcement', title: t('admin.subOutTitle'), message: t('admin.subOutMessage', { team: teamName }), targetUserIds: [outgoingId], channel: 'email' },
+      })
+    } catch (e) {
+      console.warn('Failed to notify replaced member:', e)
+    }
+    // Email the substitute their single-use, 6h apply link.
+    try {
+      await supabase.functions.invoke('dispatch-notification', {
+        body: { category: 'announcement', title: t('admin.subInTitle', { team: teamName }), message: t('admin.subInMessage', { team: teamName, link }), targetUserIds: [incomingId], channel: 'email' },
+      })
+    } catch (e) {
+      console.warn('Failed to notify substitute:', e)
+    }
+    fetchApplications()
+    alert(t('admin.subDone'))
+  }
+
+  const handleRenameTeam = async (teamId: string, name: string) => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { error } = await supabase.rpc('admin_rename_team', { p_team_id: teamId, p_name: name })
+      if (error) throw error
+      fetchApplications()
+    } catch (err: any) {
+      alert(t('admin.teamRenameFailed') + ' ' + (err?.message || ''))
+    }
+  }
+
   const [searchQuery, setSearchQuery] = useState<string>(initialCache.searchQuery || '')
   const [selectedType, setSelectedType] = useState<string>(initialCache.selectedType || 'all')
   const [dbTypes, setDbTypes] = useState<Array<{ id: string; label: string }>>([])
@@ -781,6 +856,11 @@ export function AdminDashboardScreen() {
     const randomSlug = Math.random().toString(36).substring(2, 8)
     const code = `${prefix}-${randomSlug}`
     const maxUses = newInviteMaxUses.trim() ? parseInt(newInviteMaxUses.trim(), 10) : null
+    const expiryHours = newInviteExpiresAt.trim() ? parseInt(newInviteExpiresAt.trim(), 10) : null
+    const expiresAt =
+      expiryHours && !isNaN(expiryHours) && expiryHours > 0
+        ? new Date(Date.now() + expiryHours * 3600 * 1000).toISOString()
+        : null
 
     try {
       const { error } = await supabase
@@ -790,11 +870,13 @@ export function AdminDashboardScreen() {
           application_type_id: newInviteRole,
           label: newInviteLabel.trim() || `${newInviteRole.toUpperCase()} Secret Link`,
           is_active: true,
-          max_uses: isNaN(maxUses as any) ? null : maxUses
+          max_uses: isNaN(maxUses as any) ? null : maxUses,
+          expires_at: expiresAt,
         })
       if (error) throw error
       setNewInviteLabel('')
       setNewInviteMaxUses('')
+      setNewInviteExpiresAt('')
       fetchInviteCodes()
     } catch (err: any) {
       alert('Failed to generate invite link: ' + err.message)
@@ -955,18 +1037,19 @@ export function AdminDashboardScreen() {
 
       const { data: teamsData, error: teamsErr } = await supabase
         .from('teams')
-        .select('id, name')
+        .select('id, name, creator_id')
 
       if (teamsErr) {
         console.warn('Failed to fetch teams mapping in Admin Portal:', teamsErr)
       }
 
-      const teamsMap = new Map((teamsData || []).map((t: any) => [t.id, t.name]))
+      const teamsMap = new Map((teamsData || []).map((t: any) => [t.id, t]))
       const appUserIds = new Set((appsData || []).map((app: any) => app.user_id))
 
       const formatted = (appsData || []).map((app: any) => {
         const teamId = app.profiles?.team_id
-        const teamName = teamId ? teamsMap.get(teamId) : null
+        const teamObj = teamId ? teamsMap.get(teamId) : null
+        const teamName = teamObj?.name || null
 
         const getActiveFeedback = (feedbackVal: any): string | null => {
           if (!feedbackVal) return null
@@ -984,7 +1067,7 @@ export function AdminDashboardScreen() {
           profiles: app.profiles ? {
             ...app.profiles,
             email: app.answers?.email || 'No email provided',
-            teams: teamId && teamName ? { id: teamId, name: teamName } : null
+            teams: teamId && teamName ? { id: teamId, name: teamName, creator_id: teamObj?.creator_id ?? null } : null
           } : null
         }
       })
@@ -992,7 +1075,8 @@ export function AdminDashboardScreen() {
       if (teamProfilesData) {
         teamProfilesData.forEach((prof: any) => {
           if (prof.id && !appUserIds.has(prof.id)) {
-            const teamName = prof.team_id ? teamsMap.get(prof.team_id) : null
+            const teamObj = prof.team_id ? teamsMap.get(prof.team_id) : null
+            const teamName = teamObj?.name || null
             formatted.push({
               id: `no-app-${prof.id}`,
               status: 'not_started',
@@ -1008,7 +1092,7 @@ export function AdminDashboardScreen() {
                 first_name: prof.first_name,
                 last_name: prof.last_name,
                 team_id: prof.team_id,
-                teams: prof.team_id && teamName ? { id: prof.team_id, name: teamName } : null,
+                teams: prof.team_id && teamName ? { id: prof.team_id, name: teamName, creator_id: teamObj?.creator_id ?? null } : null,
               }
             })
           }
@@ -1395,6 +1479,10 @@ export function AdminDashboardScreen() {
               <TournamentTab />
             ) : adminTab === 'tracks' ? (
               <TracksTab />
+            ) : adminTab === 'teams' ? (
+              <Suspense fallback={<ActivityIndicator size="large" color="#c2b75f" style={{ marginVertical: 40 }} />}>
+                <TeamsAdminTab apps={apps} users={usersList} loading={loading} onRemoveMember={handleRemoveTeamMember} onSubstitute={handleSubstitute} onRenameTeam={handleRenameTeam} />
+              </Suspense>
             ) : adminTab === 'config' ? (
               <GlobalConfigTab />
             ) : (

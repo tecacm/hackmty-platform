@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useState } from 'react'
 import { View, Text, Modal, TextInput, Pressable, ScrollView, ActivityIndicator, Platform } from 'react-native'
 import { PillButton } from '../../../components/pill-button'
 
@@ -43,6 +44,15 @@ export function SecretInviteModal({
   handleToggleInviteActive,
   handleDeleteInvite,
 }: SecretInviteModalProps) {
+  const [customMode, setCustomMode] = useState(false)
+  const [customVal, setCustomVal] = useState('')
+  const [customUnit, setCustomUnit] = useState<'hours' | 'days'>('hours')
+  const applyCustom = (val: string, unit: 'hours' | 'days') => {
+    setCustomVal(val)
+    setCustomUnit(unit)
+    const n = parseInt(val, 10)
+    setNewInviteExpiresAt(n && n > 0 ? String(unit === 'days' ? n * 24 : n) : '')
+  }
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
@@ -82,6 +92,66 @@ export function SecretInviteModal({
                     placeholder="e.g. Gold Sponsor Link"
                   />
                 </View>
+              </View>
+
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>EXPIRES IN</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'No expiry', value: '' },
+                    { label: '3 hours', value: '3' },
+                    { label: '12 hours', value: '12' },
+                    { label: '1 day', value: '24' },
+                    { label: '3 days', value: '72' },
+                    { label: '1 week', value: '168' },
+                  ].map((opt) => {
+                    const sel = !customMode && newInviteExpiresAt === opt.value
+                    return (
+                      <Pressable
+                        key={opt.value || 'none'}
+                        onPress={() => {
+                          setCustomMode(false)
+                          setNewInviteExpiresAt(opt.value)
+                        }}
+                        style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: sel ? '#6d28d9' : '#cbd5e1', backgroundColor: sel ? '#ede9fe' : '#ffffff' }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: sel ? '#6d28d9' : '#475569' }}>{opt.label}</Text>
+                      </Pressable>
+                    )
+                  })}
+                  <Pressable
+                    onPress={() => {
+                      setCustomMode(true)
+                      applyCustom(customVal, customUnit)
+                    }}
+                    style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: customMode ? '#6d28d9' : '#cbd5e1', backgroundColor: customMode ? '#ede9fe' : '#ffffff' }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: customMode ? '#6d28d9' : '#475569' }}>Custom</Text>
+                  </Pressable>
+                </View>
+                {customMode && (
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                    <TextInput
+                      style={{ backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: '#0f172a', width: 90 }}
+                      value={customVal}
+                      onChangeText={(v) => applyCustom(v.replace(/[^0-9]/g, ''), customUnit)}
+                      placeholder="e.g. 6"
+                      keyboardType="number-pad"
+                    />
+                    {(['hours', 'days'] as const).map((u) => {
+                      const usel = customUnit === u
+                      return (
+                        <Pressable
+                          key={u}
+                          onPress={() => applyCustom(customVal, u)}
+                          style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: usel ? '#6d28d9' : '#cbd5e1', backgroundColor: usel ? '#ede9fe' : '#ffffff' }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: usel ? '#6d28d9' : '#475569' }}>{u === 'hours' ? 'Hours' : 'Days'}</Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                )}
               </View>
 
               <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -142,6 +212,11 @@ export function SecretInviteModal({
                       </View>
                       <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
                         Used: {item.use_count} / {item.max_uses ?? '∞'} | {item.is_active ? 'Active' : 'Disabled'}
+                        {item.expires_at
+                          ? new Date(item.expires_at).getTime() < Date.now()
+                            ? ' | Expired'
+                            : ` | Expires ${new Date(item.expires_at).toLocaleString()}`
+                          : ' | No expiry'}
                       </Text>
                     </View>
 
