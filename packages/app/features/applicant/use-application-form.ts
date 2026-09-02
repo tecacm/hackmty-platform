@@ -27,6 +27,7 @@ export type UseApplicationFormResult = {
   isClosed: boolean
   confirmClosed: boolean
   confirmCloseAt: string | null
+  inviteValid: boolean
 }
 
 export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inviteCode?: string | null): UseApplicationFormResult {
@@ -43,6 +44,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
   const [isClosed, setIsClosed] = useState(false)
   const [confirmClosed, setConfirmClosed] = useState(false)
   const [confirmCloseAt, setConfirmCloseAt] = useState<string | null>(null)
+  const [inviteValid, setInviteValid] = useState(false)
 
   const activeRequestIdRef = useRef(0)
 
@@ -87,6 +89,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       let confirmDeadlineClosed = false
       let confirmCloseAtVal: string | null = null
       let isPublic = true
+      let inviteBypass = false
       const { data: typeData } = await supabase
         .from('application_types')
         .select('close_at, is_public, confirm_close_at')
@@ -107,13 +110,12 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
         }
       }
 
-      // 3. Verify invite code for hidden/restricted application types (e.g. sponsor, judge)
-      if (!isPublic) {
-        const cleanInvite = inviteCode?.trim()
-        if (!cleanInvite) {
-          throw new Error(`Restricted Role: A secret invite link or code is required to apply for ${role.toUpperCase()}. Please contact organizers for access.`)
-        }
-
+      // 3. Verify invite code. A code unlocks access to a non-public role AND, when valid,
+      // bypasses the registration deadline for that applicant (e.g. a substitute registering
+      // after close_at via a hidden, max-uses link). A bad code only hard-fails for non-public
+      // roles; for a public role an invalid code is ignored (normal deadline still applies).
+      const cleanInvite = inviteCode?.trim()
+      if (cleanInvite) {
         const { data: inviteData, error: inviteErr } = await supabase
           .from('application_invite_codes')
           .select('*')
@@ -121,17 +123,28 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
           .maybeSingle()
 
         if (!isCurrent()) return
-        if (inviteErr || !inviteData) {
-          throw new Error('Invalid Secret Link: The invite code or link provided is invalid.')
-        } else if (!inviteData.is_active) {
-          throw new Error('Inactive Invite Link: This secret invite link has been deactivated.')
-        } else if (inviteData.application_type_id !== role) {
-          throw new Error(`Role Mismatch: This secret code is for ${inviteData.application_type_id.toUpperCase()} applications, not ${role.toUpperCase()}.`)
-        } else if (inviteData.expires_at && new Date(inviteData.expires_at).getTime() < Date.now()) {
-          throw new Error('Expired Invite Link: This secret invite link has expired.')
-        } else if (inviteData.max_uses !== null && inviteData.use_count >= inviteData.max_uses) {
-          throw new Error('Usage Limit Reached: This secret invite link has reached its maximum uses.')
+        const invalidMessage =
+          inviteErr || !inviteData
+            ? 'Invalid Secret Link: The invite code or link provided is invalid.'
+            : !inviteData.is_active
+            ? 'Inactive Invite Link: This secret invite link has been deactivated.'
+            : inviteData.application_type_id !== role
+            ? `Role Mismatch: This secret code is for ${inviteData.application_type_id.toUpperCase()} applications, not ${role.toUpperCase()}.`
+            : inviteData.expires_at && new Date(inviteData.expires_at).getTime() < Date.now()
+            ? 'Expired Invite Link: This secret invite link has expired.'
+            : inviteData.max_uses !== null && inviteData.use_count >= inviteData.max_uses
+            ? 'Usage Limit Reached: This secret invite link has reached its maximum uses.'
+            : null
+
+        if (invalidMessage) {
+          if (!isPublic) throw new Error(invalidMessage)
+          // public role + bad code: ignore, fall back to the normal deadline
+        } else {
+          // Valid code: grants access and reopens the form for this applicant.
+          inviteBypass = true
         }
+      } else if (!isPublic) {
+        throw new Error(`Restricted Role: A secret invite link or code is required to apply for ${role.toUpperCase()}. Please contact organizers for access.`)
       }
 
       // 2. Fetch application type fields ordered by display_order
@@ -458,7 +471,8 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
         setAdminFeedback(null)
         setFeedbackHistory([])
       }
-      setIsClosed(deadlineClosed)
+      setIsClosed(deadlineClosed && !inviteBypass)
+      setInviteValid(inviteBypass)
       setConfirmClosed(confirmDeadlineClosed)
       setConfirmCloseAt(confirmCloseAtVal)
       setIsLoading(false)
@@ -720,6 +734,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
     textBlocks,
     isClosed,
     confirmClosed,
-    confirmCloseAt
+    confirmCloseAt,
+    inviteValid
   }
 }

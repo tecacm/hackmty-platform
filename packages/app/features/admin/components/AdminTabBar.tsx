@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'app/i18n'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 
-export type AdminTabType = 'applications' | 'users' | 'insights' | 'badges' | 'tournament' | 'tracks' | 'roles' | 'forms' | 'checkin' | 'config'
+export type AdminTabType = 'applications' | 'users' | 'insights' | 'badges' | 'tournament' | 'tracks' | 'teams' | 'roles' | 'forms' | 'checkin' | 'config'
 
 type AdminPermAction = 'view' | 'modify' | 'create' | 'view_others' | 'review'
 // Single source of truth: the permission each admin tab requires. Shared with the dashboard
@@ -16,6 +16,7 @@ export const ADMIN_TAB_PERMISSIONS: Record<AdminTabType, { feature: string; acti
   badges: { feature: 'badges', action: 'modify' },
   tournament: { feature: 'tournaments', action: 'view' },
   tracks: { feature: 'tracks', action: 'modify' },
+  teams: { feature: 'teams', action: 'modify' },
   roles: { feature: 'roles', action: 'modify' },
   forms: { feature: 'forms', action: 'modify' },
   config: { feature: 'config', action: 'modify' },
@@ -52,6 +53,7 @@ export function AdminTabBar({
     { id: 'badges', label: t('admin.badges') },
     { id: 'tournament', label: t('admin.tournament') },
     { id: 'tracks', label: t('admin.tracks') },
+    { id: 'teams', label: t('admin.teamsTab') },
     { id: 'roles', label: t('admin.rolesAccess') },
     { id: 'forms', label: t('admin.formBuilder') },
     { id: 'config', label: t('admin.globalConfig') },

@@ -73,7 +73,8 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
     textBlocks,
     isClosed,
     confirmClosed,
-    confirmCloseAt
+    confirmCloseAt,
+    inviteValid
   } = useApplicationForm(applicantRole, locale, inviteFromParams)
 
   const isLoading = isConfigLoading || permissionsLoading
@@ -145,6 +146,7 @@ export function ApplicationScreen({ navigation, role }: ApplicationScreenProps =
           isClosed={isClosed}
           confirmClosed={confirmClosed}
           confirmCloseAt={confirmCloseAt}
+          inviteOverride={inviteValid}
         />
       )}
     </View>          

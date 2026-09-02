@@ -33,6 +33,7 @@ type ApplicantFormProps = {
   isClosed?: boolean
   confirmClosed?: boolean
   confirmCloseAt?: string | null
+  inviteOverride?: boolean
 }
 
 type SectionRow<T> =
@@ -168,7 +169,8 @@ export function ApplicantForm({
   textBlocks = {},
   isClosed = false,
   confirmClosed = false,
-  confirmCloseAt = null
+  confirmCloseAt = null,
+  inviteOverride = false
 }: ApplicantFormProps) {
   const { t, locale } = useTranslation()
   const { hasPermission } = useUserPermissions()
@@ -176,9 +178,12 @@ export function ApplicantForm({
   const { width } = useWindowDimensions()
   const [isReady, setIsReady] = useState(false)
   const isWide = width >= 520
+  // A valid invite reopens a REJECTED application so the holder can re-apply (e.g. a substitute
+  // who was previously rejected). Accepted/confirmed/submitted stay locked.
+  const inviteReopen = inviteOverride && status === 'rejected'
   const isFormLocked =
     isClosed ||
-    (status !== null && status !== 'draft' && status !== 'changes_requested')
+    (status !== null && status !== 'draft' && status !== 'changes_requested' && !inviteReopen)
 
   const [isConfirming, setIsConfirming] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -438,7 +443,7 @@ export function ApplicantForm({
         </View>
       )}
 
-      {status === 'rejected' && (
+      {status === 'rejected' && !inviteReopen && (
         <View style={{ backgroundColor: '#fef2f2', borderColor: '#ef4444', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
           <Text style={{ color: '#b91c1c', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
             {t('applicant.rejectedNotice')}
