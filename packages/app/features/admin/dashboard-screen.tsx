@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { PillButton } from '../../components/pill-button'
-import { AdminTabBar, AdminTabType } from './components/AdminTabBar'
+import { AdminTabBar, AdminTabType, ADMIN_TAB_PERMISSIONS } from './components/AdminTabBar'
 import { AppIcon } from 'app/components/app-icon'
 import { isSupabaseConfigured, supabase, fetchAllRows } from 'app/lib/supabase'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
@@ -131,8 +131,18 @@ function saveStoredDashboardState(state: Record<string, any>) {
 export function AdminDashboardScreen() {
   const { t, locale } = useTranslation()
   const { navigateTo } = useSmartNavigate()
-  const { hasPermission, loading: permissionsLoading } = useUserPermissions()
+  const { hasPermission, permissions, loading: permissionsLoading } = useUserPermissions()
   const hasViewOthersPermission = !permissionsLoading && hasPermission('applications', 'view_others')
+  // Which admin tabs this user may see, derived purely from permissions (no hardcoded roles).
+  const allowedAdminTabs = useMemo(
+    () =>
+      (Object.keys(ADMIN_TAB_PERMISSIONS) as AdminTabType[]).filter((id) => {
+        const p = ADMIN_TAB_PERMISSIONS[id]
+        return hasPermission(p.feature, p.action)
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [permissions]
+  )
   const [apps, setApps] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1014,6 +1024,15 @@ export function AdminDashboardScreen() {
   }
 
   useEffect(() => {
+    if (permissionsLoading) return
+    // Keep the active tab within what this user is permitted to see.
+    const firstAllowed = allowedAdminTabs[0]
+    if (firstAllowed && !allowedAdminTabs.includes(adminTab)) {
+      setAdminTab(firstAllowed)
+    }
+  }, [permissionsLoading, adminTab, allowedAdminTabs])
+
+  useEffect(() => {
     if (hasViewOthersPermission) {
       fetchApplications()
       fetchUsersDirectory()
@@ -1254,7 +1273,7 @@ export function AdminDashboardScreen() {
     )
   }
 
-  if (!hasPermission('applications', 'view_others')) {
+  if (allowedAdminTabs.length === 0) {
     return (
       <View style={[styles.centerContainer]}>
         <View style={styles.accessDeniedCard}>

@@ -52,6 +52,11 @@ export interface CheckInHistoryItem {
     tshirt_size?: string | null
     dietary_restrictions?: string | null
   } | null
+  operator?: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+  } | null
 }
 
 const defaultDietOptions = [
@@ -130,8 +135,12 @@ interface ScanResult {
 
 export function CheckInScannerTab() {
   const { t, locale } = useTranslation()
-  const { role } = useUserPermissions()
-  const canManageStations = ['admin', 'organizer'].includes((role || '').toLowerCase())
+  const { hasPermission } = useUserPermissions()
+  const canManageStations = hasPermission('checkin', 'modify')
+  const canManageStationsRef = React.useRef(canManageStations)
+  React.useEffect(() => {
+    canManageStationsRef.current = canManageStations
+  }, [canManageStations])
 
   const { width } = useWindowDimensions()
   // Collapse the station-header action buttons to icons and stack the title on its
@@ -351,6 +360,11 @@ export function CheckInScannerTab() {
             avatar_url,
             tshirt_size,
             dietary_restrictions
+          ),
+          operator:created_by (
+            id,
+            first_name,
+            last_name
           )
         `)
           .eq('checkpoint_id', stationId)
@@ -478,6 +492,19 @@ export function CheckInScannerTab() {
   const handleProcessCheckIn = React.useCallback(async (rawUserIdOrPayload: string) => {
     const station = selectedStationRef.current
     if (!rawUserIdOrPayload || !station || isProcessingRef.current) return
+
+    // Date/time lock: only admins/organizers may check people in before a station opens.
+    if (!canManageStationsRef.current) {
+      const openAt = station.unlocks_at || station.start_time
+      if (openAt) {
+        const openD = new Date(openAt)
+        if (!isNaN(openD.getTime()) && new Date() < openD) {
+          setLastResult({ status: 'error', message: t('admin.checkinStationLocked') })
+          return
+        }
+      }
+    }
+
     setIsProcessing(true)
     setLastResult(null)
 
@@ -757,6 +784,7 @@ export function CheckInScannerTab() {
   }
 
   const handleOpenCreateModal = () => {
+    if (!canManageStations) return
     setEditingStation(null)
     setTitleTranslations([{ key: 'en', value: '' }, { key: 'es', value: '' }])
     setDescTranslations([{ key: 'en', value: '' }])
@@ -776,6 +804,7 @@ export function CheckInScannerTab() {
   }
 
   const handleOpenEditModal = (station: Checkpoint) => {
+    if (!canManageStations) return
     setEditingStation(station)
     setTitleTranslations(jsonbToTranslations(station.title))
     setDescTranslations(jsonbToTranslations(station.description))
@@ -1052,9 +1081,11 @@ export function CheckInScannerTab() {
                   ? t('admin.checkinTryAdjustingFilters')
                   : t('admin.checkinCreateFirstStationHint')}
               </Text>
-              <Pressable onPress={handleOpenCreateModal} style={styles.createStationPrimaryBtn}>
-                <Text style={styles.createStationPrimaryBtnText}>{t('admin.checkinCreateStation')}</Text>
-              </Pressable>
+              {canManageStations && (
+                <Pressable onPress={handleOpenCreateModal} style={styles.createStationPrimaryBtn}>
+                  <Text style={styles.createStationPrimaryBtnText}>{t('admin.checkinCreateStation')}</Text>
+                </Pressable>
+              )}
             </View>
           ) : (
             <View style={styles.stationGrid}>
@@ -1415,6 +1446,7 @@ export function CheckInScannerTab() {
                   const lname = item.profiles?.last_name || ''
                   const fullName = `${fname} ${lname}`.trim() || item.profiles?.email?.split('@')[0] || `User #${item.user_id.slice(0, 8)}`
                   const timeFormatted = formatTime(item.created_at)
+                  const opName = `${item.operator?.first_name || ''} ${item.operator?.last_name || ''}`.trim()
 
                   return (
                     <View key={item.id} style={styles.historyRow}>
@@ -1435,6 +1467,9 @@ export function CheckInScannerTab() {
                         <Text style={styles.historyItemEmail}>{item.profiles?.email || item.user_id}</Text>
                         {item.profiles?.university ? (
                           <Text style={styles.historyItemUni}>{item.profiles.university}</Text>
+                        ) : null}
+                        {opName ? (
+                          <Text style={styles.historyCheckedBy}>{t('admin.checkinCheckedBy', { name: opName })}</Text>
                         ) : null}
 
                         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
@@ -2279,6 +2314,12 @@ const styles = StyleSheet.create({
   historyItemUni: {
     fontSize: 11,
     color: '#94a3b8',
+  },
+  historyCheckedBy: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#5a0061',
+    marginTop: 2,
   },
   historyTimeCol: {
     flexDirection: 'row',

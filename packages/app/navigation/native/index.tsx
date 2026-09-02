@@ -210,6 +210,8 @@ function AdminNavigator() {
 
 function TabNavigator() {
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
+  const canAccessDashboard =
+    hasPermission('applications', 'view_others') || hasPermission('checkin', 'view')
   const showApplicationTab = hasPermission('applications', 'view')
 
   // Android has no SF Symbols and the native Material Symbol module isn't in Expo Go,
@@ -356,7 +358,7 @@ function TabNavigator() {
       />
 
       {/* 5th Tab: Admin */}
-      {hasPermission('applications', 'view_others') && (
+      {canAccessDashboard && (
         <Tab.Screen
           name="admin"
           component={AdminDashboardScreenWithBackground}

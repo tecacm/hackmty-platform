@@ -23,6 +23,8 @@ export function WebNavbar() {
   const { t, locale, setLocale } = useTranslation()
   const { navigateTo, replaceTo } = useSmartNavigate()
   const { hasPermission } = useUserPermissions()
+  const canAccessDashboard =
+    hasPermission('applications', 'view_others') || hasPermission('checkin', 'view')
   const pathname = usePathname()
   const { width } = useWindowDimensions()
   const [hasMounted, setHasMounted] = useState(false)
@@ -358,7 +360,7 @@ export function WebNavbar() {
                 )}
               </Pressable>
 
-              {hasPermission('applications', 'view_others') && (
+              {canAccessDashboard && (
                 <Pressable
                   onPress={() => navigateTo('/admin')}
                   style={({ hovered }) => [
@@ -555,7 +557,7 @@ export function WebNavbar() {
             </Pressable>
           )}
 
-          {hasPermission('applications', 'view_others') && (
+          {canAccessDashboard && (
             <Pressable
               onPress={() => {
                 setMobileMenuOpen(false)
