@@ -34,6 +34,7 @@ type ApplicantFormProps = {
   confirmClosed?: boolean
   confirmCloseAt?: string | null
   inviteOverride?: boolean
+  inviteExpiresAt?: string | null
 }
 
 type SectionRow<T> =
@@ -170,7 +171,8 @@ export function ApplicantForm({
   isClosed = false,
   confirmClosed = false,
   confirmCloseAt = null,
-  inviteOverride = false
+  inviteOverride = false,
+  inviteExpiresAt = null
 }: ApplicantFormProps) {
   const { t, locale } = useTranslation()
   const { hasPermission } = useUserPermissions()
@@ -178,6 +180,21 @@ export function ApplicantForm({
   const { width } = useWindowDimensions()
   const [isReady, setIsReady] = useState(false)
   const isWide = width >= 520
+  // Live countdown to the invite code's expiry (special-invite / substitute links).
+  const [nowTs, setNowTs] = useState(Date.now())
+  useEffect(() => {
+    if (!inviteOverride || !inviteExpiresAt) return
+    const id = setInterval(() => setNowTs(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [inviteOverride, inviteExpiresAt])
+  const inviteMsLeft = inviteOverride && inviteExpiresAt ? new Date(inviteExpiresAt).getTime() - nowTs : null
+  const fmtLeft = (ms: number) => {
+    const s = Math.max(0, Math.floor(ms / 1000))
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    const sec = s % 60
+    return h > 0 ? `${h}h ${m}m ${sec}s` : m > 0 ? `${m}m ${sec}s` : `${sec}s`
+  }
   // A valid invite reopens a REJECTED application so the holder can re-apply (e.g. a substitute
   // who was previously rejected). Accepted/confirmed/submitted stay locked.
   const inviteReopen = inviteOverride && status === 'rejected'
@@ -325,6 +342,14 @@ export function ApplicantForm({
         <View style={{ backgroundColor: '#fee2e2', borderColor: '#f87171', borderWidth: 1, borderRadius: 12, padding: 16, width: '100%', marginBottom: 20 }}>
           <Text style={{ color: '#991b1b', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
             {t('applicant.registrationClosed')}
+          </Text>
+        </View>
+      )}
+
+      {inviteMsLeft != null && (
+        <View style={{ backgroundColor: inviteMsLeft > 0 ? '#fffbeb' : '#fef2f2', borderColor: inviteMsLeft > 0 ? '#f59e0b' : '#ef4444', borderWidth: 1, borderRadius: 12, padding: 12, width: '100%', marginBottom: 16 }}>
+          <Text style={{ color: inviteMsLeft > 0 ? '#b45309' : '#b91c1c', fontWeight: '700', fontSize: 14, textAlign: 'center' }}>
+            {inviteMsLeft > 0 ? t('applicant.inviteCountdown', { time: fmtLeft(inviteMsLeft) }) : t('applicant.inviteExpired')}
           </Text>
         </View>
       )}

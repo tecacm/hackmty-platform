@@ -28,6 +28,7 @@ export type UseApplicationFormResult = {
   confirmClosed: boolean
   confirmCloseAt: string | null
   inviteValid: boolean
+  inviteExpiresAt: string | null
 }
 
 export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inviteCode?: string | null): UseApplicationFormResult {
@@ -45,6 +46,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
   const [confirmClosed, setConfirmClosed] = useState(false)
   const [confirmCloseAt, setConfirmCloseAt] = useState<string | null>(null)
   const [inviteValid, setInviteValid] = useState(false)
+  const [inviteExpiresAt, setInviteExpiresAt] = useState<string | null>(null)
 
   const activeRequestIdRef = useRef(0)
 
@@ -90,6 +92,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       let confirmCloseAtVal: string | null = null
       let isPublic = true
       let inviteBypass = false
+      let inviteExpiresVal: string | null = null
       const { data: typeData } = await supabase
         .from('application_types')
         .select('close_at, is_public, confirm_close_at')
@@ -142,6 +145,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
         } else {
           // Valid code: grants access and reopens the form for this applicant.
           inviteBypass = true
+          inviteExpiresVal = inviteData.expires_at || null
         }
       } else if (!isPublic) {
         throw new Error(`Restricted Role: A secret invite link or code is required to apply for ${role.toUpperCase()}. Please contact organizers for access.`)
@@ -473,6 +477,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       }
       setIsClosed(deadlineClosed && !inviteBypass)
       setInviteValid(inviteBypass)
+      setInviteExpiresAt(inviteExpiresVal)
       setConfirmClosed(confirmDeadlineClosed)
       setConfirmCloseAt(confirmCloseAtVal)
       setIsLoading(false)
@@ -735,6 +740,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
     isClosed,
     confirmClosed,
     confirmCloseAt,
-    inviteValid
+    inviteValid,
+    inviteExpiresAt
   }
 }

@@ -12,7 +12,7 @@ export const metadata = {
   icons: {
     icon: [{ url: logoImage.src, type: 'image/webp' }],
     shortcut: [{ url: logoImage.src, type: 'image/webp' }],
-    apple: [{ url: logoImage.src, type: 'image/webp' }],
+    apple: [{ url: '/apple-touch-icon.png', type: 'image/png' }],
   },
 }
 
