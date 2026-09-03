@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native'
+import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Platform, useWindowDimensions } from 'react-native'
 import { AppIcon } from '../../../components/app-icon'
 import { StatusBadge } from './StatusBadge'
 import { SubstituteModal } from './SubstituteModal'
@@ -20,10 +20,13 @@ interface TeamsAdminTabProps {
   onSubstitute: (teamId: string, outgoingId: string, incomingId: string) => Promise<void> | void
   onRenameTeam: (teamId: string, name: string) => void
   onTransferOwner: (teamId: string, userId: string, name: string) => void
+  onRefresh?: () => void
 }
 
-export function TeamsAdminTab({ apps, users, loading, onRemoveMember, onSubstitute, onRenameTeam, onTransferOwner }: TeamsAdminTabProps) {
+export function TeamsAdminTab({ apps, users, loading, onRemoveMember, onSubstitute, onRenameTeam, onTransferOwner, onRefresh }: TeamsAdminTabProps) {
   const { t } = useTranslation()
+  const { width } = useWindowDimensions()
+  const isNarrow = width < 640
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(20)
@@ -136,23 +139,41 @@ export function TeamsAdminTab({ apps, users, loading, onRemoveMember, onSubstitu
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('admin.teamsTab')}</Text>
-      <Text style={styles.hint}>{t('admin.teamsTabHint')}</Text>
+      <View style={[styles.headerBox, isNarrow && styles.headerBoxStacked]}>
+        <View style={{ flex: 1, minWidth: 260 }}>
+          <Text style={styles.headerTitle}>{t('admin.teamsTab')}</Text>
+          <Text style={styles.headerSubtitle}>{t('admin.teamsTabHint')}</Text>
+        </View>
+        {onRefresh && (
+          <Pressable onPress={onRefresh} style={({ pressed }) => [styles.outlineBtn, { backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : 'transparent' }]}>
+            <Text style={styles.outlineBtnText}>{t('admin.refresh')}</Text>
+          </Pressable>
+        )}
+      </View>
 
-      <TextInput
-        value={search}
-        onChangeText={(v) => {
-          setSearch(v)
-          setPage(1)
-        }}
-        placeholder={t('admin.teamsSearch')}
-        placeholderTextColor="#94a3b8"
-        style={styles.input}
-      />
+      <View style={styles.sectionCard}>
+        <View style={styles.searchCol}>
+          <AppIcon name="magnifyingglass" size={16} color="#64748b" />
+          <TextInput
+            value={search}
+            onChangeText={(v) => {
+              setSearch(v)
+              setPage(1)
+            }}
+            placeholder={t('admin.teamsSearch')}
+            placeholderTextColor="#94a3b8"
+            style={styles.searchInput}
+          />
+          {!!search && (
+            <Pressable onPress={() => { setSearch(''); setPage(1) }} style={{ padding: 4 }}>
+              <AppIcon name="xmark" size={14} color="#64748b" />
+            </Pressable>
+          )}
+        </View>
 
-      {filtered.length === 0 ? (
-        <Text style={styles.hint}>{t('admin.teamsNone')}</Text>
-      ) : (
+        {filtered.length === 0 ? (
+          <Text style={styles.emptyText}>{t('admin.teamsNone')}</Text>
+        ) : (
         <>
           <View style={{ gap: 10 }}>
             {pageItems.map((g) => {
@@ -239,7 +260,8 @@ export function TeamsAdminTab({ apps, users, loading, onRemoveMember, onSubstitu
             }}
           />
         </>
-      )}
+        )}
+      </View>
 
       <SubstituteModal
         visible={!!subTeam}
@@ -255,9 +277,54 @@ export function TeamsAdminTab({ apps, users, loading, onRemoveMember, onSubstitu
 }
 
 const styles = StyleSheet.create({
-  container: { width: '100%', gap: 12 },
+  container: { width: '100%', gap: 16 },
   title: { fontSize: 18, fontWeight: '800', color: '#ffffff' },
   hint: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
+  headerBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(90,0,97,0.12)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  headerBoxStacked: { flexDirection: 'column', alignItems: 'stretch' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#22002c', letterSpacing: -0.3 },
+  headerSubtitle: { fontSize: 13, color: '#666', marginTop: 2, lineHeight: 18 },
+  outlineBtn: { height: 40, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.25)', justifyContent: 'center', alignItems: 'center' },
+  outlineBtnText: { fontSize: 13, fontWeight: '700', color: '#5a0061' },
+  sectionCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(90,0,97,0.12)',
+    padding: 16,
+    gap: 14,
+  },
+  searchCol: {
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    color: '#0f172a',
+    fontSize: 14,
+    padding: 0,
+    ...Platform.select({ web: { outlineStyle: 'none' } as any }),
+  },
+  emptyText: { fontSize: 13, color: '#94a3b8', fontWeight: '600', paddingVertical: 8 },
   input: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
@@ -268,7 +335,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0f172a',
   },
-  teamCard: { backgroundColor: '#ffffff', borderRadius: 16, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' },
+  teamCard: { backgroundColor: '#ffffff', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', overflow: 'hidden' },
   teamHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16 },
   iconBtn: { padding: 4 },
   renameInput: {

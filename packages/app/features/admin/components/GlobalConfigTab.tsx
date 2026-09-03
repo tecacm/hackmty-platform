@@ -12,6 +12,7 @@ import {
   Alert,
   Modal,
   Platform,
+  useWindowDimensions,
 } from 'react-native'
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 import { AppIcon } from 'app/components/app-icon'
@@ -124,7 +125,7 @@ function ConfigMapEditor({ value, onChange }: { value: string; onChange: (v: str
         onPress={() => commit([...entries, { id: `e${seqRef.current++}`, k: '', v: '' }])}
         style={styles.mapAddBtn}
       >
-        <AppIcon name="plus.circle.fill" size={15} color="#5a0061" />
+        <AppIcon name="plus" size={14} color="#5a0061" />
         <Text style={styles.mapAddText}>{t('admin.addMapPair')}</Text>
       </Pressable>
     </View>
@@ -133,6 +134,8 @@ function ConfigMapEditor({ value, onChange }: { value: string; onChange: (v: str
 
 export function GlobalConfigTab() {
   const { t } = useTranslation()
+  const { width } = useWindowDimensions()
+  const isNarrow = width < 640
   const [configs, setConfigs] = useState<ConfigItem[]>([])
   const [draftValues, setDraftValues] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
@@ -423,10 +426,8 @@ export function GlobalConfigTab() {
 
   return (
     <View style={styles.container}>
-      {/* Primary White Material Container */}
-      <View style={styles.cardContainer}>
-        {/* Card Header Bar */}
-        <View style={styles.cardHeader}>
+      {/* Header box */}
+      <View style={[styles.headerBox, isNarrow && styles.headerBoxStacked]}>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Text style={styles.cardTitle}>{t('admin.globalConfigTitle')}</Text>
@@ -442,7 +443,7 @@ export function GlobalConfigTab() {
           </View>
 
           {/* Action Buttons */}
-          <View style={styles.headerActions}>
+          <View style={[styles.headerActions, isNarrow && { width: '100%' }]}>
             {isDirty && (
               <Pressable onPress={handleDiscardChanges} style={styles.discardBtn} disabled={saving}>
                 <Text style={styles.discardBtnText}>{t('admin.discard')}</Text>
@@ -463,13 +464,13 @@ export function GlobalConfigTab() {
               )}
             </Pressable>
             <Pressable onPress={() => setIsModalOpen(true)} style={styles.addKeyBtn}>
-              <AppIcon name="plus.circle.fill" size={16} color="#5a0061" />
+              <AppIcon name="plus" size={15} color="#5a0061" />
               <Text style={styles.addKeyBtnText}>{t('admin.addKey')}</Text>
             </Pressable>
           </View>
-        </View>
+      </View>
 
-        {/* Dynamic Config Key List */}
+      <View style={styles.listBox}>
         {loading ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color="#7c3aed" />
@@ -634,6 +635,30 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     paddingVertical: 10,
+    gap: 20,
+  },
+  headerBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(90,0,97,0.12)',
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  headerBoxStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  listBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(90,0,97,0.12)',
+    padding: 20,
   },
   cardContainer: {
     backgroundColor: '#ffffff',
@@ -687,11 +712,12 @@ const styles = StyleSheet.create({
   },
   saveAllBtn: {
     backgroundColor: '#5a0061',
+    height: 40,
     paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
   },
   saveAllBtnDisabled: {
@@ -703,10 +729,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   discardBtn: {
-    backgroundColor: '#f1f5f9',
+    height: 40,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   discardBtnText: {
     color: '#475569',
@@ -714,15 +744,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   addKeyBtn: {
-    backgroundColor: '#f3e8ff',
-    borderColor: '#c084fc',
-    borderWidth: 1,
+    height: 40,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(90,0,97,0.25)',
+    backgroundColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 6,
   },
   addKeyBtnText: {
     color: '#5a0061',

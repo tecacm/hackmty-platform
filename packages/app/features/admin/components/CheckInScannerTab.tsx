@@ -1029,15 +1029,15 @@ export function CheckInScannerTab() {
       {!selectedStation ? (
         /* STEP 1: STATION MENU HUB VIEW */
         <View style={styles.hubContainer}>
-          <View style={styles.hubHeaderRow}>
-            <View style={{ flex: 1 }}>
+          <View style={[styles.hubHeaderRow, isNarrowHeader && { flexDirection: 'column', alignItems: 'stretch' }]}>
+            <View style={{ flex: 1, minWidth: 260 }}>
               <Text style={styles.hubTitle}>{t('admin.checkinStationHubTitle')}</Text>
               <Text style={styles.hubSubtitle}>{t('admin.checkinStationHubSubtitle')}</Text>
             </View>
 
             {canManageStations && (
               <Pressable onPress={() => setIsManagerOpen(true)} style={styles.createStationPrimaryBtn}>
-                <AppIcon name="plus.circle.fill" size={18} color="#ffffff" />
+                <AppIcon name="plus" size={16} color="#ffffff" />
                 <Text style={styles.createStationPrimaryBtnText}>{t('admin.checkinCreateNewStation')}</Text>
               </Pressable>
             )}
@@ -2508,32 +2508,38 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   hubHeaderRow: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(90,0,97,0.12)',
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 14,
     flexWrap: 'wrap',
   },
   hubTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#eaeaea',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#22002c',
+    letterSpacing: -0.3,
   },
   hubSubtitle: {
     fontSize: 13,
-    color: '#d2d3d5',
+    color: '#666',
     marginTop: 2,
+    lineHeight: 18,
   },
   createStationPrimaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: '#5a0061',
-    borderColor: '#5a0061',
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 14,
+    height: 40,
+    paddingHorizontal: 18,
+    borderRadius: 10,
   },
   createStationPrimaryBtnText: {
     color: '#ffffff',
@@ -3407,8 +3413,9 @@ function TranslationsEditor({
           )}
         </View>
       ))}
-      <Pressable onPress={() => setTranslations([...translations, { key: 'es', value: '' }])}>
-        <Text style={{ fontSize: 12, color: '#5a0061', fontWeight: '800' }}>+ Add translation key</Text>
+      <Pressable onPress={() => setTranslations([...translations, { key: 'es', value: '' }])} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+        <AppIcon name="plus" size={12} color="#5a0061" />
+        <Text style={{ fontSize: 12, color: '#5a0061', fontWeight: '800' }}>Add translation key</Text>
       </Pressable>
     </View>
   )

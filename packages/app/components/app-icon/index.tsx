@@ -21,6 +21,7 @@ import {
   Slash,
   Menu,
   PlusCircle,
+  Plus,
   Search,
   CheckCircle,
   AlertTriangle,
@@ -64,6 +65,7 @@ export type IconName =
   | 'slash'
   | 'menu'
   | 'plus.circle.fill'
+  | 'plus'
   | 'magnifyingglass'
   | 'checkmark.circle.fill'
   | 'exclamationmark.triangle.fill'
@@ -166,6 +168,10 @@ export function AppIcon({ name, color = '#ffffff', size = 18 }: AppIconProps) {
 
   if (name === 'plus.circle.fill') {
     return <PlusCircle size={size} color={color} fill={color} strokeWidth={2} />
+  }
+
+  if (name === 'plus') {
+    return <Plus size={size} color={color} strokeWidth={2.5} />
   }
 
   if (name === 'magnifyingglass') {

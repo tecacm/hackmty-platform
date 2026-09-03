@@ -1513,7 +1513,7 @@ export function AdminDashboardScreen() {
               <TracksTab />
             ) : adminTab === 'teams' ? (
               <Suspense fallback={<ActivityIndicator size="large" color="#c2b75f" style={{ marginVertical: 40 }} />}>
-                <TeamsAdminTab apps={apps} users={usersList} loading={loading} onRemoveMember={handleRemoveTeamMember} onSubstitute={handleSubstitute} onRenameTeam={handleRenameTeam} onTransferOwner={handleTransferOwner} />
+                <TeamsAdminTab apps={apps} users={usersList} loading={loading} onRemoveMember={handleRemoveTeamMember} onSubstitute={handleSubstitute} onRenameTeam={handleRenameTeam} onTransferOwner={handleTransferOwner} onRefresh={fetchApplications} />
               </Suspense>
             ) : adminTab === 'config' ? (
               <GlobalConfigTab />

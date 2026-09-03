@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { View, Text, Pressable, ActivityIndicator, ScrollView, TextInput, Modal, Platform, useWindowDimensions, Animated, Easing } from 'react-native'
+import { AppIcon } from 'app/components/app-icon'
 import { useTranslation } from 'app/i18n'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 
@@ -388,13 +389,13 @@ export function FormBuilderTab({
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center', width: isSmallScreen ? '100%' : 'auto' }}>
-          <View style={{ position: 'relative', zIndex: 100, elevation: 100 }}>
+          <View style={[{ position: 'relative', zIndex: 100, elevation: 100 }, isSmallScreen && { width: '100%' }]}>
             <Pressable onPress={() => setShowRoleDropdown(!showRoleDropdown)}
-              style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : '#fff' })}>
+              style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : '#fff', width: isSmallScreen ? '100%' : undefined })}>
               <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>{currentRoleLabel} ▾</Text>
             </Pressable>
             {showRoleDropdown && (
-              <View style={{ position: 'absolute', top: 42, right: 0, zIndex: 9999, elevation: 9999, minWidth: 200, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', ...Platform.select({ web: { boxShadow: '0 12px 30px rgba(15,23,42,0.18)' } as any }) }}>
+              <View style={{ position: 'absolute', top: 42, right: 0, left: isSmallScreen ? 0 : undefined, zIndex: 9999, elevation: 9999, minWidth: isSmallScreen ? undefined : 200, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', ...Platform.select({ web: { boxShadow: '0 12px 30px rgba(15,23,42,0.18)' } as any }) }}>
                 {availableRoles.map((role) => {
                   const isSelected = role.id.toLowerCase() === safeRole.toLowerCase()
                   return <Pressable key={role.id} onPress={() => { setSelectedFormRole(role.id); fetchFormSchema(role.id); setShowRoleDropdown(false) }} style={({ pressed }) => ({ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: isSelected ? 'rgba(90,0,97,0.07)' : pressed ? '#f8fafc' : '#fff', borderBottomWidth: 1, borderColor: '#f1f5f9' })}><Text style={{ fontSize: 13, fontWeight: isSelected ? '800' : '600', color: isSelected ? '#5a0061' : '#334155' }}>{isSelected ? '✓ ' : ''}{role.label}</Text></Pressable>
@@ -407,11 +408,13 @@ export function FormBuilderTab({
             <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>{t('admin.addExisting')}</Text>
           </Pressable>
           <Pressable onPress={() => setShowAddSectionModal(true)}
-            style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : '#fff', justifyContent: 'center' })}>
+            style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : '#fff', flexDirection: 'row', alignItems: 'center', gap: 6 })}>
+            <AppIcon name="plus" size={13} color="#5a0061" />
             <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>{t('admin.addSection')}</Text>
           </Pressable>
           <Pressable onPress={() => setShowAddFieldModal(true)}
-            style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', flexDirection: 'row', alignItems: 'center' })}>
+            style={({ pressed }) => ({ height: 38, paddingHorizontal: 14, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', flexDirection: 'row', alignItems: 'center', gap: 6 })}>
+            <AppIcon name="plus" size={14} color="#fff" />
             <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{t('admin.newField')}</Text>
           </Pressable>
           {formDraftCount > 0 && <>
@@ -434,7 +437,8 @@ export function FormBuilderTab({
             <Pressable onPress={() => setShowRegistryModal(true)} style={({ pressed }) => ({ height: 38, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.3)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : '#fff', justifyContent: 'center' })}>
               <Text style={{ fontSize: 13, fontWeight: '700', color: '#5a0061' }}>{t('admin.addFromRegistry')}</Text>
             </Pressable>
-            <Pressable onPress={() => setShowAddFieldModal(true)} style={({ pressed }) => ({ height: 38, paddingHorizontal: 16, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', justifyContent: 'center' })}>
+            <Pressable onPress={() => setShowAddFieldModal(true)} style={({ pressed }) => ({ height: 38, paddingHorizontal: 16, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' })}>
+              <AppIcon name="plus" size={14} color="#fff" />
               <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{t('admin.createNew')}</Text>
             </Pressable>
           </View>

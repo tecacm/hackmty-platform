@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform } from 'react-native'
+import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, useWindowDimensions } from 'react-native'
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 import { BadgeIcon } from 'app/components/badge-icon'
 import { AppIcon } from 'app/components/app-icon'
@@ -41,6 +41,8 @@ export function TournamentTab() {
   const { t, locale } = useTranslation()
   const { hasPermission } = useUserPermissions()
   const canModify = hasPermission('tournaments', 'modify')
+  const { width } = useWindowDimensions()
+  const isNarrow = width < 640
 
   const [loading, setLoading] = React.useState(true)
   const [profiles, setProfiles] = React.useState<Profile[]>([])
@@ -326,15 +328,23 @@ export function TournamentTab() {
   // ---- LIST VIEW ----
   if (mode === 'list') {
     return (
-      <View style={{ width: '100%' }}>
-        <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>{t('admin.tournamentListTitle')}</Text>
-          {canModify && (
-            <Pressable onPress={openNew} style={styles.createBtn}>
-              <AppIcon name="plus.circle.fill" size={16} color="#ffffff" />
-              <Text style={styles.createBtnText}>{t('admin.tournamentCreate')}</Text>
+      <View style={{ width: '100%', gap: 20 }}>
+        <View style={[styles.headerBox, isNarrow && styles.headerBoxStacked]}>
+          <View style={{ flex: 1, minWidth: 260 }}>
+            <Text style={styles.headerTitle}>{t('admin.tournamentListTitle')}</Text>
+            <Text style={styles.headerSubtitle}>{t('admin.tournamentListSubtitle')}</Text>
+          </View>
+          <View style={[{ flexDirection: 'row', gap: 8 }, isNarrow && { width: '100%' }]}>
+            {canModify && (
+              <Pressable onPress={openNew} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed ? '#3d0042' : '#5a0061' }]}>
+                <AppIcon name="plus" size={16} color="#ffffff" />
+                <Text style={styles.primaryBtnText}>{t('admin.tournamentCreate')}</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={fetchTournaments} style={({ pressed }) => [styles.outlineBtn, { backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : 'transparent' }]}>
+              <Text style={styles.outlineBtnText}>{t('admin.refresh')}</Text>
             </Pressable>
-          )}
+          </View>
         </View>
 
         {tournaments.length === 0 ? (
@@ -575,9 +585,9 @@ const styles = StyleSheet.create({
   createBtnText: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
   tournCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(90,0,97,0.12)',
     overflow: 'hidden',
   },
   tournItemRow: {
@@ -596,8 +606,8 @@ const styles = StyleSheet.create({
   },
   expandBox: {
     borderTopWidth: 1,
-    borderTopColor: '#eef2f7',
-    backgroundColor: '#fcfdff',
+    borderTopColor: 'rgba(90,0,97,0.08)',
+    backgroundColor: '#fafafa',
     paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 10,
@@ -613,14 +623,16 @@ const styles = StyleSheet.create({
   tournName: { color: '#0f172a', fontSize: 15, fontWeight: '800' },
   tournMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 2 },
   editBtn: {
-    backgroundColor: '#faf5fb',
-    borderWidth: 1,
-    borderColor: '#e9d5ee',
-    borderRadius: 10,
-    paddingVertical: 8,
+    height: 36,
     paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(90,0,97,0.25)',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  editBtnText: { color: '#5a0061', fontSize: 13, fontWeight: '800' },
+  editBtnText: { color: '#5a0061', fontSize: 13, fontWeight: '700' },
   deleteBtn: {
     width: 34,
     height: 34,
@@ -635,10 +647,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(90,0,97,0.12)',
     padding: 20,
     gap: 8,
   },
+  headerBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(90,0,97,0.12)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  headerBoxStacked: { flexDirection: 'column', alignItems: 'stretch' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#22002c', letterSpacing: -0.3 },
+  headerSubtitle: { fontSize: 13, color: '#666', marginTop: 2, lineHeight: 18 },
+  primaryBtn: { height: 40, paddingHorizontal: 18, borderRadius: 10, flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' },
+  primaryBtnText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  outlineBtn: { height: 40, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.25)', justifyContent: 'center', alignItems: 'center' },
+  outlineBtnText: { fontSize: 13, fontWeight: '700', color: '#5a0061' },
   editorHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   backBtnText: { color: '#5a0061', fontSize: 13, fontWeight: '800' },

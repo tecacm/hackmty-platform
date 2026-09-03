@@ -95,8 +95,12 @@ export function BotTab() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('admin.botTab')}</Text>
-      <Text style={styles.hint}>{t('admin.botHint')}</Text>
+      <View style={styles.headerBox}>
+        <View style={{ flex: 1, minWidth: 260 }}>
+          <Text style={styles.headerTitle}>{t('admin.botTab')}</Text>
+          <Text style={styles.headerSubtitle}>{t('admin.botHint')}</Text>
+        </View>
+      </View>
 
       <View style={styles.card}>
         <StyledSelect label={t('admin.botStatus')} value={status} options={STATUS_OPTIONS} onValueChange={setStatus} />
@@ -149,10 +153,24 @@ export function BotTab() {
 }
 
 const styles = StyleSheet.create({
-  container: { width: '100%', gap: 12 },
+  container: { width: '100%', gap: 16 },
   title: { fontSize: 18, fontWeight: '800', color: '#ffffff' },
   hint: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
-  card: { backgroundColor: '#ffffff', borderRadius: 18, borderWidth: 1, borderColor: '#e2e8f0', padding: 20, gap: 14 },
+  headerBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(90,0,97,0.12)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#22002c', letterSpacing: -0.3 },
+  headerSubtitle: { fontSize: 13, color: '#666', marginTop: 2, lineHeight: 18 },
+  card: { backgroundColor: '#ffffff', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', padding: 20, gap: 14 },
   fieldLabel: { fontSize: 12, fontWeight: '700', color: '#334155' },
   input: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0f172a' },
   subHint: { fontSize: 11, color: '#94a3b8', fontWeight: '500' },
