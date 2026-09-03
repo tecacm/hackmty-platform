@@ -742,7 +742,7 @@
   "announcements": {
     "title": "Announcements",
     "subheading": "Live timeline & official updates from HackMTY staff",
-    "post": "+ Post",
+    "post": "Post",
     "createAnnouncement": "Create Announcement",
     "createAnnouncementSubtitle": "Broadcast live updates, announcements, or alerts to attendees.",
     "loadingFeed": "Loading Announcements Feed...",
@@ -783,6 +783,6 @@
     "audienceJudges": "Judges (@JUDGE)",
     "audienceSponsors": "Sponsors (@SPONSOR)",
     "audienceOrganizers": "Organizers (@ORGANIZER)",
-    "backToAnnouncements": "← Back to Announcements"
+    "backToAnnouncements": "Back to Announcements"
   }
 }
