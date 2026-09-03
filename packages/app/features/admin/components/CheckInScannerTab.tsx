@@ -113,6 +113,9 @@ interface Checkpoint {
   end_time?: string
   unlocks_at?: string
   hide_until_unlocked?: boolean
+  notify_roles?: string[] | null
+  notify_lead_minutes?: number | null
+  notified_at?: string | null
   created_at?: string
   is_active: boolean
   checkpoint_types?: {
@@ -220,8 +223,25 @@ export function CheckInScannerTab() {
   const [newEndTime, setNewEndTime] = React.useState('')
   const [newUnlocksAt, setNewUnlocksAt] = React.useState('')
   const [newHideUntilUnlocked, setNewHideUntilUnlocked] = React.useState(false)
+  const [newNotifyRoles, setNewNotifyRoles] = React.useState<string[]>([])
+  const [newNotifyLead, setNewNotifyLead] = React.useState('0')
+  const [notifyRoleOptions, setNotifyRoleOptions] = React.useState<string[]>([])
   const [editingStation, setEditingStation] = React.useState<Checkpoint | null>(null)
   const [isCreatingStation, setIsCreatingStation] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!isSupabaseConfigured) return
+    ;(async () => {
+      try {
+        const { data } = await supabase.from('role_permissions').select('role')
+        const set = new Set<string>()
+        ;(data || []).forEach((r: any) => { if (r.role) set.add(r.role) })
+        setNotifyRoleOptions(Array.from(set).sort())
+      } catch (e) {
+        /* ignore */
+      }
+    })()
+  }, [])
 
   // Fetch Checkpoint Types from Database
   const fetchCheckpointTypes = React.useCallback(async () => {
@@ -797,6 +817,8 @@ export function CheckInScannerTab() {
     setNewEndTime('')
     setNewUnlocksAt('')
     setNewHideUntilUnlocked(false)
+    setNewNotifyRoles([])
+    setNewNotifyLead('0')
     setClaimedMsgTranslations([{ key: 'en', value: '' }])
     setSuccessMsgTranslations([{ key: 'en', value: '' }])
     setNotCheckedInMsgTranslations([{ key: 'en', value: '' }])
@@ -817,6 +839,8 @@ export function CheckInScannerTab() {
     setNewEndTime(toDatetimeLocal(station.end_time))
     setNewUnlocksAt(toDatetimeLocal(station.unlocks_at))
     setNewHideUntilUnlocked(station.hide_until_unlocked ?? false)
+    setNewNotifyRoles(station.notify_roles || [])
+    setNewNotifyLead(String(station.notify_lead_minutes ?? 0))
     setClaimedMsgTranslations(jsonbToTranslations(station.already_claimed_message_override))
     setSuccessMsgTranslations(jsonbToTranslations(station.success_message_override))
     setNotCheckedInMsgTranslations(jsonbToTranslations(station.not_checked_in_message_override))
@@ -857,6 +881,9 @@ export function CheckInScannerTab() {
         end_time: newEndTime ? new Date(newEndTime).toISOString() : null,
         unlocks_at: newUnlocksAt ? new Date(newUnlocksAt).toISOString() : (newStartTime ? new Date(newStartTime).toISOString() : null),
         hide_until_unlocked: newHideUntilUnlocked,
+        notify_roles: newNotifyRoles.length > 0 ? newNotifyRoles : null,
+        notify_lead_minutes: Math.max(0, parseInt(newNotifyLead, 10) || 0),
+        notified_at: null,
         is_active: true,
         event_year: '2026',
       }
@@ -1913,6 +1940,61 @@ export function CheckInScannerTab() {
                   />
                   <Text style={styles.checkinToggleText}>{t('admin.checkinHideUntilOpen')}</Text>
                 </Pressable>
+
+                {/* Scheduled "starting" push to specific roles */}
+                <View style={{ gap: 6, marginTop: 8 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>{t('admin.checkinNotifyRoles')}</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {notifyRoleOptions.map((r) => {
+                      const sel = newNotifyRoles.includes(r)
+                      return (
+                        <Pressable
+                          key={r}
+                          onPress={() =>
+                            setNewNotifyRoles((prev) =>
+                              prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+                            )
+                          }
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 7,
+                            borderRadius: 999,
+                            borderWidth: 1,
+                            borderColor: sel ? '#5a0061' : '#cbd5e1',
+                            backgroundColor: sel ? '#ede9fe' : '#ffffff',
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: sel ? '#5a0061' : '#475569' }}>
+                            {r.toUpperCase()}
+                          </Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                  {newNotifyRoles.length > 0 ? (
+                    <View style={{ gap: 4, marginTop: 4 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>{t('admin.checkinNotifyLead')}</Text>
+                      <TextInput
+                        value={newNotifyLead}
+                        onChangeText={(v) => setNewNotifyLead(v.replace(/[^0-9]/g, ''))}
+                        placeholder="0"
+                        placeholderTextColor="#94a3b8"
+                        keyboardType="number-pad"
+                        style={{
+                          backgroundColor: '#ffffff',
+                          borderWidth: 1,
+                          borderColor: '#cbd5e1',
+                          borderRadius: 10,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          fontSize: 13,
+                          color: '#0f172a',
+                        }}
+                      />
+                    </View>
+                  ) : null}
+                  <Text style={{ fontSize: 11, color: '#64748b' }}>{t('admin.checkinNotifyHint')}</Text>
+                </View>
 
                 <TranslationsEditor
                   title={t('admin.checkinClaimedOverrideTitle')}

@@ -38,6 +38,11 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
   const [initialValues, setInitialValues] = useState<Partial<ApplicantFormData>>({})
   const [disabledFields, setDisabledFields] = useState<string[]>([])
   const [status, setStatus] = useState<string | null>(null)
+  // Guards against the autosave-draft race: once a submit begins (or the app is past draft),
+  // any pending/in-flight draft save must NOT downgrade the row back to 'draft'. Refs are used
+  // (not state) so that an already-scheduled autosave closure reads the LATEST value.
+  const submittingRef = useRef(false)
+  const statusRef = useRef<string | null>(null)
   const [adminFeedback, setAdminFeedback] = useState<string | null>(null)
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([])
   const [systemLinks, setSystemLinks] = useState<Record<string, { text: any; href: string }>>({})
@@ -494,9 +499,18 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
     loadData()
   }, [loadData])
 
+  // Keep statusRef in sync so draft-save guards always see the current status.
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
+
   // Save full answers as draft
   const onSaveDraft = async (rawAnswers: ApplicantFormData) => {
     const answers = sanitizeFormData(rawAnswers)
+    // Race guard: never let a debounced/in-flight autosave downgrade a row that is being
+    // submitted or is already past draft. Refs are always current, even for a stale timer closure.
+    if (submittingRef.current) return
+    if (statusRef.current && statusRef.current !== 'draft' && statusRef.current !== 'changes_requested') return
     if (isClosed) {
       throw new Error('Registration has closed. You cannot save drafts.')
     }
@@ -571,6 +585,8 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
     if (isClosed) {
       throw new Error('Registration has closed. You cannot submit applications.')
     }
+    // Block any autosave draft from clobbering this submit (including one already in flight).
+    submittingRef.current = true
 
     if (!isSupabaseConfigured) {
       console.log('Offline: Mock submitting application:', answers)
@@ -674,6 +690,7 @@ export function useApplicationForm(role: ApplicantRole, lang: string = 'en', inv
       console.log('Application submitted successfully!')
     } catch (err) {
       console.error('Failed to submit application:', err)
+      submittingRef.current = false
       throw err
     }
   }
