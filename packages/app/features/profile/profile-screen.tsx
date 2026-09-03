@@ -26,6 +26,7 @@ import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { formFieldColors } from 'app/components/form-field-styles'
 import { dataReferences, getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { pickAvatar } from './pick-avatar'
+import { ProfileSkeleton } from './profile-skeleton'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { checkEventPassUnlocked, selectActiveRoles, isOperatorRole } from 'app/utils/event-config'
 import { PersonSilhouette } from 'app/components/person-silhouette'
@@ -706,10 +707,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
   return (
     <View style={styles.container}>
       {isLoading ? (
-        <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
-          <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={{ color: '#ffffff', fontSize: 16 }}>{t('profile.loadingProfile')}</Text>
-        </View>
+        <ProfileSkeleton />
       ) : (
         <>
           {/* Floating Header (Outside the white card) */}

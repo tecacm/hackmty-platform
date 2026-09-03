@@ -75,8 +75,10 @@ export function WebNavbar() {
           .eq('id', user.id)
           .maybeSingle()
 
-        const first = (profile?.first_name || user.user_metadata?.first_name || user.user_metadata?.name || '').charAt(0).toUpperCase()
-        const last = (profile?.last_name || user.user_metadata?.last_name || '').charAt(0).toUpperCase()
+        const firstNameRaw = (profile?.first_name || user.user_metadata?.first_name || user.user_metadata?.name || '').trim()
+        const lastNameRaw = (profile?.last_name || user.user_metadata?.last_name || '').trim()
+        const first = firstNameRaw.charAt(0).toUpperCase()
+        const last = lastNameRaw.charAt(0).toUpperCase()
         const resolvedInitials = `${first}${last}`.trim() || '👤'
         
         const rawAvatar = profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || null
@@ -97,7 +99,7 @@ export function WebNavbar() {
         if (typeof window !== 'undefined') {
           localStorage.setItem(
             cacheKey,
-            JSON.stringify({ avatarUrl: resolvedAvatar, initials: resolvedInitials })
+            JSON.stringify({ avatarUrl: resolvedAvatar, initials: resolvedInitials, firstName: firstNameRaw, lastName: lastNameRaw })
           )
         }
       } catch (err) {

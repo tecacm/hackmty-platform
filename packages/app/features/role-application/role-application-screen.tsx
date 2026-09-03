@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { StyleSheet, Platform } from 'react-native'
 
 import { PillButton } from 'app/components/pill-button'
+import { Skeleton } from 'moti/skeleton'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 
@@ -405,9 +406,24 @@ export function RoleApplicationScreen() {
           <View style={styles.contentContainer}>
             
             {isLoading ? (
-              <View style={{ marginVertical: 60, alignItems: 'center', gap: 12 }}>
-                <ActivityIndicator size="large" color="#a069ab" style={{ marginVertical: 30 }} />
-                <Text style={{ color: '#a069ab', fontSize: 16 }}>{t('applicant.loadingDashboard')}</Text>
+              <View style={{ width: '100%' }}>
+                <View style={{ marginBottom: 10 }}>
+                  <Skeleton colorMode="light" width={220} height={30} radius={6} />
+                </View>
+                <View style={styles.roleList}>
+                  {[0, 1].map((i) => (
+                    <View key={i} style={styles.roleCard}>
+                      <View style={styles.roleCardHeader}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', width: '100%', marginBottom: 4, gap: 8 }}>
+                          <Skeleton colorMode="light" width={200} height={24} radius={6} />
+                          <Skeleton colorMode="light" width={90} height={26} radius={8} />
+                        </View>
+                        <Skeleton colorMode="light" width={'70%'} height={13} radius={4} />
+                      </View>
+                      <Skeleton colorMode="light" width={'100%'} height={48} radius={14} />
+                    </View>
+                  ))}
+                </View>
               </View>
             ) : (
               <>

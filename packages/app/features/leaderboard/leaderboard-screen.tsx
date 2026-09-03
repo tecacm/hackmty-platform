@@ -15,6 +15,8 @@ import {
 import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { BadgeChip } from 'app/components/badge-chip'
+import { LeaderboardSkeleton } from './leaderboard-skeleton'
+import { RankBar } from './rank-bar'
 import { EVENT_YEAR, checkEventPassUnlocked, selectActiveRoles, isOperatorRole } from 'app/utils/event-config'
 import { useTranslation } from 'app/i18n'
 
@@ -197,12 +199,7 @@ export function LeaderboardScreen() {
   }, [rows, currentUserId])
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#c2b75f" />
-        <Text style={styles.loadingText}>{t('leaderboard.loading')}</Text>
-      </View>
-    )
+    return <LeaderboardSkeleton count={8} />
   }
 
   if (allowed === false) {
@@ -215,6 +212,7 @@ export function LeaderboardScreen() {
   }
 
   return (
+    <>
     <ScrollView
       style={{ width: '100%' }}
       contentContainerStyle={styles.content}
@@ -224,22 +222,6 @@ export function LeaderboardScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>{t('leaderboard.title')}</Text>
         <Text style={styles.subtitle}>{t('leaderboard.subtitle')}</Text>
-        {currentUserRank ? (
-          <View style={styles.myRankPill}>
-            <Text style={styles.myRankText}>
-              {t('leaderboard.yourRank', { rank: currentUserRank })}
-            </Text>
-            {currentUserRank === 1 ? (
-              <Text style={styles.nextText}>{t('leaderboard.inLead')}</Text>
-            ) : pointsToNext ? (
-              <Text style={styles.nextText}>
-                {pointsToNext.gap > 0
-                  ? t('leaderboard.pointsToNext', { points: pointsToNext.gap, rank: pointsToNext.nextRank })
-                  : t('leaderboard.tiedNext', { rank: pointsToNext.nextRank })}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
       </View>
 
       {error ? (
@@ -312,7 +294,27 @@ export function LeaderboardScreen() {
           })}
         </View>
       )}
+      {/* Spacer so the last row isn't hidden behind the fixed rank bar */}
+      <View style={{ height: currentUserRank ? 96 : 0 }} />
     </ScrollView>
+
+    {currentUserRank ? (
+      <RankBar>
+        <View style={styles.rankBarInner}>
+          <Text style={styles.myRankText}>{t('leaderboard.yourRank', { rank: currentUserRank })}</Text>
+          {currentUserRank === 1 ? (
+            <Text style={styles.nextText}>{t('leaderboard.inLead')}</Text>
+          ) : pointsToNext ? (
+            <Text style={styles.nextText}>
+              {pointsToNext.gap > 0
+                ? t('leaderboard.pointsToNext', { points: pointsToNext.gap, rank: pointsToNext.nextRank })
+                : t('leaderboard.tiedNext', { rank: pointsToNext.nextRank })}
+            </Text>
+          ) : null}
+        </View>
+      </RankBar>
+    ) : null}
+    </>
   )
 }
 
@@ -355,6 +357,20 @@ const styles = StyleSheet.create({
   },
   myRankText: { color: '#c2b75f', fontSize: 13, fontWeight: '800', letterSpacing: 0.3 },
   nextText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '700', marginTop: 2, textAlign: 'center' },
+  rankBarInner: {
+    backgroundColor: '#3d0042',
+    borderWidth: 1.5,
+    borderColor: '#c2b75f',
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 18,
+    alignItems: 'center',
+    maxWidth: 640,
+    ...Platform.select({
+      web: { boxShadow: '0 12px 30px rgba(0,0,0,0.35)' } as any,
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 12 },
+    }),
+  },
   errorText: { color: '#ff6b6b', fontSize: 14, fontWeight: '700', textAlign: 'center', marginTop: 20 },
   emptyText: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   list: {
