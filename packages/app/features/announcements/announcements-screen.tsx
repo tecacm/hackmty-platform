@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Platform,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native'
 import { useAnnouncements } from 'app/hooks/use-announcements'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
@@ -37,6 +38,8 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
   const { hasPermission, loading: permissionsLoading } = useUserPermissions()
   const { navigateTo } = useSmartNavigate()
   const isFocused = useIsFocused()
+  const { width } = useWindowDimensions()
+  const isNarrow = width > 0 && width < 640
 
   const canCreate = !permissionsLoading && hasPermission('announcements', 'create')
   const canView = !permissionsLoading && hasPermission('announcements', 'view')
@@ -89,13 +92,27 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
             </View>
 
             {canCreate && (
-              <View style={styles.createButtonContainer}>
-                <PillButton
-                  title={t('announcements.post')}
-                  onPress={handleCreatePress}
-                  variant="primary"
-                  additionalStyle={styles.createPillButton}
-                />
+              <View style={[styles.createButtonContainer, isNarrow && { minWidth: 0 }]}>
+                {isNarrow ? (
+                  <PillButton
+                    onPress={handleCreatePress}
+                    variant="primary"
+                    additionalStyle={styles.createPencilPill}
+                  >
+                    <AppIcon name="pencil" size={16} color="#ffffff" />
+                  </PillButton>
+                ) : (
+                  <PillButton
+                    onPress={handleCreatePress}
+                    variant="primary"
+                    additionalStyle={styles.createPillButton}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <AppIcon name="pencil" size={18} color="#ffffff" />
+                      <Text style={{ fontSize: 16, fontWeight: '700', letterSpacing: 0.5, color: '#ffffff' }}>{t('announcements.post')}</Text>
+                    </View>
+                  </PillButton>
+                )}
               </View>
             )}
           </View>
@@ -252,6 +269,12 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     paddingRight: 10,
     width: 'auto',
+  },
+  createPencilPill: {
+    width: 46,
+    height: 46,
+    borderRadius: 20,
+    paddingHorizontal: 0,
   },
   feedList: {
     width: '100%',
