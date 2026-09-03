@@ -12,12 +12,13 @@ import skyview from 'app/assets/images/login-screen/skyview.webp'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { Carrousel } from 'app/components/carrousel'
 import { ParallaxScrollView } from 'app/components/parallax-scroll-view'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { StyleSheet, Platform, ActivityIndicator } from 'react-native'
 import { useHeaderHeightSafe } from 'app/navigation/use-header-height'
 import { StyledInput } from 'app/components/styled-input'
 import { PillButton } from 'app/components/pill-button'
 import { SimpleTextLink } from 'app/components/simple-text-link'
+import { SplashScreen } from 'app/components/splash-screen'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { Controller, useForm } from 'react-hook-form'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
@@ -161,10 +162,29 @@ export function LoginScreen() {
   }, [headerHeight, stableHeaderHeight])
 
   // If a session already exists (e.g. reopening the PWA), skip the login screen and go home.
-  // Invite/recovery deep-links are handled by the effect below, so don't intercept those.
+  // The redirect waits for the splash video to finish (handleSplashDone), so the full intro
+  // plays. Invite/recovery deep-links are handled by the effect below, so don't intercept those.
+  const sessionTargetRef = useRef<'home' | 'login' | null>(null)
+  const splashDoneRef = useRef(false)
+
+  const finishSplash = useCallback(() => {
+    if (!splashDoneRef.current || sessionTargetRef.current === null) return
+    if (sessionTargetRef.current === 'home') {
+      navigateTo('/home')
+    } else {
+      setCheckingSession(false)
+    }
+  }, [navigateTo])
+
+  const handleSplashDone = useCallback(() => {
+    splashDoneRef.current = true
+    finishSplash()
+  }, [finishSplash])
+
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setCheckingSession(false)
+      sessionTargetRef.current = 'login'
+      finishSplash()
       return
     }
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -178,19 +198,18 @@ export function LoginScreen() {
       .getSession()
       .then(({ data }) => {
         if (!mounted) return
-        if (data.session) {
-          navigateTo('/home')
-        } else {
-          setCheckingSession(false)
-        }
+        sessionTargetRef.current = data.session ? 'home' : 'login'
+        finishSplash()
       })
       .catch(() => {
-        if (mounted) setCheckingSession(false)
+        if (!mounted) return
+        sessionTargetRef.current = 'login'
+        finishSplash()
       })
     return () => {
       mounted = false
     }
-  }, [])
+  }, [finishSplash])
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -265,11 +284,7 @@ export function LoginScreen() {
   )
 
   if (checkingSession) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Platform.select({ web: 'oklch(0.16 0.01 280)', default: '#211f26' }) }}>
-        <ActivityIndicator size="large" color="#c9a668" />
-      </View>
-    )
+    return <SplashScreen onDone={handleSplashDone} />
   }
 
   return (
