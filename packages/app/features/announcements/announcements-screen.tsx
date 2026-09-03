@@ -12,6 +12,7 @@ import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { formFieldColors } from 'app/components/form-field-styles'
 import { AnnouncementCard } from './announcement-card'
+import { AnnouncementSkeleton } from './announcement-skeleton'
 import { PillButton } from 'app/components/pill-button'
 import { Pressable } from 'react-native'
 import { useAnnouncementsNavHeader } from './use-announcements-nav-header'
@@ -56,9 +57,20 @@ export function AnnouncementsScreen({ navigation }: { navigation?: any }) {
 
   if (permissionsLoading || (loading && announcements.length === 0)) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#c2b75f" />
-        <Text style={styles.loadingText}>{t('announcements.loadingFeed')}</Text>
+      <View style={[styles.container, { width: '100%', maxWidth: 1000, paddingHorizontal: Platform.OS === 'web' ? 16 : 8 }]}>
+        {Platform.OS === 'web' && (
+          <View style={styles.stickyHeaderContainer}>
+            <View style={styles.headerRow}>
+              <View style={styles.headerTitleCol}>
+                <Text style={styles.heading}>{t('announcements.title')}</Text>
+                <Text style={styles.subheading}>{t('announcements.subheading')}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+        <View style={styles.contentContainer}>
+          <AnnouncementSkeleton count={2} />
+        </View>
       </View>
     )
   }

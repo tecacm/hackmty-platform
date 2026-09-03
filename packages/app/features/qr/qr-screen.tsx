@@ -24,6 +24,7 @@ import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { EVENT_YEAR, checkEventPassUnlocked, selectActiveRoles, isOperatorRole } from 'app/utils/event-config'
 import { useTranslation } from 'app/i18n'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
+import { QRSkeleton } from './qr-skeleton'
 
 interface CheckpointItem {
   id: string
@@ -475,12 +476,7 @@ export function QRScreen() {
   }, [hasMounted, loading, currentUserId, profile, replaceTo])
 
   if (!hasMounted || loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#c2b75f" />
-        <Text style={styles.loadingText}>{t('qr.loadingPass')}</Text>
-      </View>
-    )
+    return <QRSkeleton />
   }
 
   const isOperator = isOperatorRole(userRolesList)

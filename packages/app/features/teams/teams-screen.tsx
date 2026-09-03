@@ -8,6 +8,7 @@ import { StyledInput } from 'app/components/styled-input'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { sanitizeEmail, sanitizeName, sanitizeString } from 'app/utils/sanitization'
 import { TeamTrackSection } from './team-track-section'
+import { TeamSkeleton } from './team-skeleton'
 import { useTranslation } from 'app/i18n'
 
 interface Member {
@@ -1105,10 +1106,7 @@ export function TeamsScreen() {
     <>
       <View style={styles.formContainer}>
           {loading ? (
-            <View style={styles.innerCard}>
-              <ActivityIndicator size="large" color="#c2b75f" style={{ marginVertical: 32 }} />
-              <Text style={{ color: '#666666' }}>{t('teams.retrievingTeam')}</Text>
-            </View>
+            <TeamSkeleton />
           ) : team ? (
             <View style={styles.innerCard}>
               {/* Accountability Warning Banner */}

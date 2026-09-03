@@ -1,17 +1,13 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { View, ActivityIndicator } from 'react-native'
+import { LeaderboardSkeleton } from 'app/features/leaderboard/leaderboard-skeleton'
 
 const LeaderboardScreen = dynamic(
   () => import('app/features/leaderboard/leaderboard-screen').then((mod) => mod.LeaderboardScreen),
   {
     ssr: false,
-    loading: () => (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 350, backgroundColor: 'transparent' }}>
-        <ActivityIndicator size="large" color="#c2b75f" />
-      </View>
-    ),
+    loading: () => <LeaderboardSkeleton count={8} />,
   }
 )
 

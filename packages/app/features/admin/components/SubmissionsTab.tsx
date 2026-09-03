@@ -15,6 +15,7 @@ import { PillButton } from '../../../components/pill-button'
 import { AppIcon } from '../../../components/app-icon'
 import { AdminPaginationBar } from './AdminPaginationBar'
 import { ApplicationRow } from './ApplicationRow'
+import { SubmissionsSkeleton } from './submissions-skeleton'
 import { useTranslation } from 'app/i18n'
 
 interface SubmissionsTabProps {
@@ -292,10 +293,7 @@ export function SubmissionsTab({
       {/* Content List & Groupings */}
       <View style={styles.listContainer}>
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#5a0061" />
-            <Text style={styles.loadingText}>{t('admin.fetchingCandidates')}</Text>
-          </View>
+          <SubmissionsSkeleton count={6} />
         ) : error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>

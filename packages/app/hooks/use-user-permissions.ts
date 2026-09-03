@@ -75,6 +75,10 @@ async function loadPermissions() {
       cachedPermissions = Array.from(new Set((mapping || []).map(m => m.permission_id)))
       cachedRole = activeRoles.join(', ')
       currentUserId = user.id
+      // Persist role for display-only instant paint on next load (e.g. profile skeleton).
+      if (typeof window !== 'undefined' && cachedRole) {
+        try { localStorage.setItem(`user_role_${user.id}`, cachedRole) } catch {}
+      }
     } catch (err) {
       if (generation !== cacheGeneration) return
       console.error('Failed to load user permissions:', err)
