@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { View, Text, Modal, TextInput, Pressable, Platform, ScrollView } from 'react-native'
+import { AppIcon } from 'app/components/app-icon'
 import { PillButton } from '../../../components/pill-button'
 
 type Translation = { key: string; value: string }
@@ -98,7 +99,7 @@ export function AddFieldModal(props: AddFieldModalProps) {
                 <TranslationsEditor title="OPTION LABEL" translations={option.translations} setTranslations={(translations) => props.setNewFieldOptions(props.newFieldOptions.map((item, i) => i === index ? { ...item, translations } : item))} placeholder="Option label" compact />
                 <Pressable onPress={() => props.setNewFieldOptions(props.newFieldOptions.filter((_, i) => i !== index))}><Text style={{ fontSize: 11, color: '#dc2626', fontWeight: '800' }}>Remove option</Text></Pressable>
               </View>)}
-              <Pressable onPress={() => props.setNewFieldOptions([...props.newFieldOptions, { value: '', translations: [{ key: 'en', value: '' }] }])}><Text style={{ color: '#5a0061', fontSize: 12, fontWeight: '800' }}>+ Add option</Text></Pressable>
+              <Pressable onPress={() => props.setNewFieldOptions([...props.newFieldOptions, { value: '', translations: [{ key: 'en', value: '' }] }])} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><AppIcon name="plus" size={12} color="#5a0061" /><Text style={{ color: '#5a0061', fontSize: 12, fontWeight: '800' }}>Add option</Text></Pressable>
             </View>}
 
             <View style={{ gap: 9, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 14, padding: 14 }}>

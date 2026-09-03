@@ -587,6 +587,7 @@ function StatusBadge({ statusKey }: { statusKey: MemberStatusKey }) {
 export function TeamsScreen() {
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
+  const isSmallScreen = width < 640
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -1232,7 +1233,7 @@ export function TeamsScreen() {
                       </View>
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <Text style={styles.memberName}>
+                          <Text style={[styles.memberName, isSmallScreen && { flexBasis: '100%' as const }]}>
                             {member.first_name || ''} {member.last_name || ''}
                           </Text>
                           {isOwner && (

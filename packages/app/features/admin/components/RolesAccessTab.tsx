@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { View, Text, ActivityIndicator, Platform, Pressable, TextInput } from 'react-native'
+import { View, Text, ActivityIndicator, Platform, Pressable, TextInput, useWindowDimensions } from 'react-native'
+import { AppIcon } from 'app/components/app-icon'
 import { useTranslation } from 'app/i18n'
 
 interface RolesAccessTabProps {
@@ -163,15 +164,18 @@ function RoleCard({ role, handleToggleRoleVisibility, setNewInviteRole, setShowI
 
 export function RolesAccessTab({ rolesLoading, rolesList, permissionsList, rolePermissionsMap, handleUpdateRolePermissions, fetchRolesList, fetchInviteCodes, setShowCreateRoleModal, handleToggleRoleVisibility, setNewInviteRole, setShowInviteModal, handleUpdateRoleDeadline, handleUpdateRoleConfirmDeadline, inviteCodesList, copiedCodeId, copyInviteLink, styles }: RolesAccessTabProps) {
   const { t } = useTranslation()
+  const { width } = useWindowDimensions()
+  const isNarrow = width < 640
   return (
     <View style={{ width: '100%', gap: 20 }}>
-      <View style={{ backgroundColor: '#ffffff', borderRadius: 18, padding: 20, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+      <View style={{ backgroundColor: '#ffffff', borderRadius: 18, padding: 20, borderWidth: 1, borderColor: 'rgba(90,0,97,0.12)', flexDirection: isNarrow ? 'column' : 'row', justifyContent: 'space-between', alignItems: isNarrow ? 'stretch' : 'center', flexWrap: 'wrap', gap: 14 }}>
         <View style={{ flex: 1, minWidth: 260 }}>
           <Text style={{ fontSize: 18, fontWeight: '800', color: '#22002c', letterSpacing: -0.3 }}>{t('admin.rolesAccessTitle')}</Text>
           <Text style={{ fontSize: 13, color: '#666', marginTop: 2, lineHeight: 18 }}>{t('admin.rolesAccessSubtitle')}</Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable onPress={() => setShowCreateRoleModal(true)} style={({ pressed }) => ({ height: 40, paddingHorizontal: 18, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', justifyContent: 'center', alignItems: 'center' })}>
+        <View style={[{ flexDirection: 'row', gap: 8 }, isNarrow && { width: '100%' }]}>
+          <Pressable onPress={() => setShowCreateRoleModal(true)} style={({ pressed }) => ({ height: 40, paddingHorizontal: 18, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' })}>
+            <AppIcon name="plus" size={14} color="#fff" />
             <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{t('admin.newRole')}</Text>
           </Pressable>
           <Pressable onPress={() => { fetchRolesList(); fetchInviteCodes() }} style={({ pressed }) => ({ height: 40, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.25)', backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : 'transparent', justifyContent: 'center', alignItems: 'center' })}>
@@ -199,7 +203,8 @@ export function RolesAccessTab({ rolesLoading, rolesList, permissionsList, roleP
             <Text style={{ fontSize: 16, fontWeight: '800', color: '#22002c', letterSpacing: -0.2 }}>{t('admin.secretInviteLinks')}</Text>
             <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{t('admin.secretInviteLinksSubtitle')}</Text>
           </View>
-          <Pressable onPress={() => { setShowInviteModal(true); fetchInviteCodes() }} style={({ pressed }) => ({ height: 36, paddingHorizontal: 14, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', justifyContent: 'center', alignItems: 'center' })}>
+          <Pressable onPress={() => { setShowInviteModal(true); fetchInviteCodes() }} style={({ pressed }) => ({ height: 36, paddingHorizontal: 14, borderRadius: 10, backgroundColor: pressed ? '#3d0042' : '#5a0061', flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' })}>
+            <AppIcon name="plus" size={13} color="#fff" />
             <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{t('admin.generateLink')}</Text>
           </Pressable>
         </View>
