@@ -5,6 +5,7 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Platfo
 import { PillButton } from '../../../components/pill-button'
 import { AppIcon } from '../../../components/app-icon'
 import { AdminPaginationBar } from './AdminPaginationBar'
+import { UserDirectorySkeleton } from './user-directory-skeleton'
 import { AwardModal } from './AwardModal'
 import { UserBadges } from 'app/components/user-badges'
 import { useTranslation } from 'app/i18n'
@@ -102,10 +103,7 @@ export function UserDirectoryTab({
 
       {/* Users Directory Table / Cards */}
       {usersLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#5a0061" />
-          <Text style={styles.loadingText}>{t('admin.loadingUsers')}</Text>
-        </View>
+        <UserDirectorySkeleton count={6} />
       ) : filteredUsers.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>{t('admin.noUsersFound')}</Text>

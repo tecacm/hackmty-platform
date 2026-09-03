@@ -17,6 +17,7 @@ import {
 } from 'react-native'
 import { supabase, isSupabaseConfigured, fetchAllRows } from 'app/lib/supabase'
 import { AppIcon } from 'app/components/app-icon'
+import { Skeleton } from 'moti/skeleton'
 import { BadgeIcon } from 'app/components/badge-icon'
 import { iconPublicUrl, localizeText, type Badge } from 'app/utils/badge-helpers'
 import { PersonSilhouette } from 'app/components/person-silhouette'
@@ -1096,7 +1097,29 @@ export function CheckInScannerTab() {
 
           {/* Station Cards Grid / List */}
           {loadingStations ? (
-            <ActivityIndicator size="large" color="#5a0061" style={{ marginVertical: 40 }} />
+            <View style={styles.stationGrid}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={styles.stationCard}>
+                  <View style={styles.stationCardTopRow}>
+                    <Skeleton colorMode="light" width={180} height={17} radius={4} />
+                    <Skeleton colorMode="light" width={70} height={18} radius={6} />
+                  </View>
+                  <Skeleton colorMode="light" width={'80%'} height={12} radius={4} />
+                  <View style={styles.stationCardMetaRow}>
+                    {[0, 1, 2].map((j) => (
+                      <View key={j} style={styles.metaItem}>
+                        <Skeleton colorMode="light" width={60} height={9} radius={3} />
+                        <View style={{ height: 4 }} />
+                        <Skeleton colorMode="light" width={82} height={12} radius={4} />
+                      </View>
+                    ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                    <Skeleton colorMode="light" width={'100%'} height={44} radius={12} />
+                  </View>
+                </View>
+              ))}
+            </View>
           ) : filteredCheckpoints.length === 0 ? (
             <View style={styles.emptyStateCard}>
               <AppIcon name="magnifyingglass" size={32} color="rgba(255, 255, 255, 0.3)" />

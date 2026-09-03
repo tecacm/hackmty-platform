@@ -13,6 +13,8 @@ import {
 } from 'react-native'
 import { PillButton } from '../../components/pill-button'
 import { AdminTabBar, AdminTabType, ADMIN_TAB_PERMISSIONS } from './components/AdminTabBar'
+import { SubmissionsSkeleton } from './components/submissions-skeleton'
+import { UserDirectorySkeleton } from './components/user-directory-skeleton'
 import { AppIcon } from 'app/components/app-icon'
 import { isSupabaseConfigured, supabase, fetchAllRows } from 'app/lib/supabase'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
@@ -1432,12 +1434,18 @@ export function AdminDashboardScreen() {
 
           <Suspense
             fallback={
-              <View style={{ paddingVertical: 50, alignItems: 'center', justifyContent: 'center' }}>
-                <ActivityIndicator size="large" color="#c2b75f" />
-                <Text style={{ color: '#ffffff', marginTop: 12, fontSize: 14, fontWeight: '700' }}>
-                  {t('admin.loadingTab')}
-                </Text>
-              </View>
+              adminTab === 'applications' ? (
+                <SubmissionsSkeleton count={6} />
+              ) : adminTab === 'users' ? (
+                <UserDirectorySkeleton count={6} />
+              ) : (
+                <View style={{ paddingVertical: 50, alignItems: 'center', justifyContent: 'center' }}>
+                  <ActivityIndicator size="large" color="#c2b75f" />
+                  <Text style={{ color: '#ffffff', marginTop: 12, fontSize: 14, fontWeight: '700' }}>
+                    {t('admin.loadingTab')}
+                  </Text>
+                </View>
+              )
             }
           >
             {adminTab === 'checkin' ? (
