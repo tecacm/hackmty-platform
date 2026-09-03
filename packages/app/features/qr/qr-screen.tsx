@@ -22,10 +22,8 @@ import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { getLocalizedText, formatString, formatTime } from 'app/utils/i18n-helpers'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { EVENT_YEAR, checkEventPassUnlocked, selectActiveRoles, isOperatorRole } from 'app/utils/event-config'
-import hackmtyLogo from 'app/assets/images/hackmty-logo.webp'
 import { useTranslation } from 'app/i18n'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
-import { UserBadges } from 'app/components/user-badges'
 
 interface CheckpointItem {
   id: string
@@ -500,7 +498,6 @@ export function QRScreen() {
       >
         {/* Event Header with Centered Logo */}
         <View style={styles.headerBadge}>
-          <Image source={hackmtyLogo} style={styles.eventLogo} resizeMode="contain" />
           <Text style={styles.headerSubtitle}>
             {t('qr.officialEventPass', { year: EVENT_YEAR })}
           </Text>
@@ -1005,8 +1002,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   eventLogo: {
-    height: 48,
-    width: 200,
+    height: 200,
+    width: 400,
     marginBottom: 8,
   },
   headerSubtitle: {

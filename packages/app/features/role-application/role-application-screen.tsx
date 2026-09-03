@@ -146,6 +146,7 @@ export function RoleApplicationScreen() {
   const [isRolesLoading, setIsRolesLoading] = useState(true)
 
   const isLoading = isRolesLoading || permissionsLoading
+  const isSmallScreen = width < 640
 
   const handleApply = (role: string) => {
     const isExisting = userApps.some(app => app.application_type_id === role)
@@ -426,7 +427,7 @@ export function RoleApplicationScreen() {
                         return (
                           <View key={app.application_type_id} style={styles.roleCard}>
                             <View style={styles.roleCardHeader}>
-                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+                              <View style={{ flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'flex-start' : 'center', width: '100%', marginBottom: 4, gap: isSmallScreen ? 6 : 0 }}>
                                 <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
                                 <View style={[styles.statusBadge, getStatusBadgeStyle(app.status)]}>
                                   <Text style={[styles.statusBadgeText, getStatusBadgeTextStyle(app.status)]}>
@@ -474,7 +475,7 @@ export function RoleApplicationScreen() {
                         return (
                           <View key={app.application_type_id} style={styles.roleCard}>
                             <View style={styles.roleCardHeader}>
-                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+                              <View style={{ flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'flex-start' : 'center', width: '100%', marginBottom: 4, gap: isSmallScreen ? 6 : 0 }}>
                                 <Text style={styles.roleCardLabel}>{getRoleLabel(app.application_type_id)}</Text>
                                 <View style={[styles.statusBadge, getStatusBadgeStyle(app.status)]}>
                                   <Text style={[styles.statusBadgeText, getStatusBadgeTextStyle(app.status)]}>
@@ -541,7 +542,7 @@ export function RoleApplicationScreen() {
                         return (
                           <View key={applicationType.id} style={styles.roleCard}>
                             <View style={styles.roleCardHeader}>
-                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+                              <View style={{ flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'flex-start' : 'center', width: '100%', marginBottom: 4, gap: isSmallScreen ? 6 : 0 }}>
                                 <Text style={styles.roleCardLabel}>{applicationType.label}</Text>
                                 <View style={[styles.statusBadge, { backgroundColor: '#f1f5f9' }]}>
                                   <Text style={[styles.statusBadgeText, { color: '#475569' }]}>

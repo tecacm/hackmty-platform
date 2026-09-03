@@ -797,8 +797,8 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
           {/* Profile Content Card - Material Container */}
           <View style={styles.innerCard}>
             {/* Card Header Row */}
-            <View style={styles.cardHeaderRow}>
-              <View style={{ flex: 1 }}>
+            <View style={[styles.cardHeaderRow, isSmallScreen && styles.cardHeaderRowStacked]}>
+              <View style={{ flex: 1, minWidth: isSmallScreen ? ('100%' as any) : undefined }}>
                 {isEditing ? (
                   <>
                     <Text style={styles.cardTitle}>{t('profile.title')}</Text>
@@ -813,7 +813,7 @@ export function ProfileScreen({ navigation }: { navigation?: any }) {
               </View>
 
               {!isEditing && (
-                <View style={styles.viewSwitcher}>
+                <View style={[styles.viewSwitcher, isSmallScreen && styles.viewSwitcherStacked]}>
                   <StyledSegmented
                     label=""
                     options={[
@@ -1235,6 +1235,15 @@ const styles = StyleSheet.create({
   },
   viewSwitcher: {
     width: 240,
+  },
+  cardHeaderRowStacked: {
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+  },
+  viewSwitcherStacked: {
+    width: '100%',
+    marginTop: 14,
+    alignItems: 'center',
   },
   infoEditRow: {
     flexDirection: 'row',
