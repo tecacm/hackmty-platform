@@ -96,7 +96,7 @@ export function TracksTab() {
   const [deadline, setDeadline] = React.useState<string | null>(null)
   const [overview, setOverview] = React.useState<any[]>([])
   const [teamSearch, setTeamSearch] = React.useState('')
-  const [teamFilter, setTeamFilter] = React.useState<'eligible' | 'all'>('all')
+  const [teamFilter, setTeamFilter] = React.useState<'eligible' | 'potential' | 'all'>('all')
   const [teamPage, setTeamPage] = React.useState(1)
   const [teamPageSize, setTeamPageSize] = React.useState(20)
   const [expandedTeams, setExpandedTeams] = React.useState<Set<string>>(new Set())
@@ -157,9 +157,12 @@ export function TracksTab() {
       // Show any team with at least one accepted/confirmed member; hide teams where nobody
       // is past review (all draft/under-review/rejected).
       if ((r.accepted_count || 0) < 1) return false
-      // "Eligible" narrows to fully-confirmed teams (what finalize will actually assign).
+      // "Eligible" = every member confirmed (what finalize will actually assign).
       const eligible = r.member_count > 0 && r.confirmed_count === r.member_count
+      // "Potential" = every member accepted OR confirmed (past review; eligible once all confirm).
+      const potential = r.member_count > 0 && r.accepted_count === r.member_count
       if (teamFilter === 'eligible' && !eligible) return false
+      if (teamFilter === 'potential' && !potential) return false
       if (q && !(r.team_name || '').toLowerCase().includes(q)) return false
       return true
     })
@@ -497,15 +500,20 @@ export function TracksTab() {
           value={teamFilter}
           options={[
             { label: t('admin.trackAdminFilterEligible'), value: 'eligible' },
+            { label: t('admin.trackAdminFilterPotential'), value: 'potential' },
             { label: t('admin.trackAdminFilterAll'), value: 'all' },
           ]}
           onValueChange={(v) => {
-            setTeamFilter(v as 'eligible' | 'all')
+            setTeamFilter(v as 'eligible' | 'potential' | 'all')
             setTeamPage(1)
           }}
         />
         <Text style={styles.filterHint}>
-          {teamFilter === 'eligible' ? t('admin.trackAdminHintEligible') : t('admin.trackAdminHintAll')}
+          {teamFilter === 'eligible'
+            ? t('admin.trackAdminHintEligible')
+            : teamFilter === 'potential'
+            ? t('admin.trackAdminHintPotential')
+            : t('admin.trackAdminHintAll')}
         </Text>
         <TextInput
           value={teamSearch}
