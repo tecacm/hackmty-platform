@@ -48,12 +48,18 @@ export function DirectMessageModal({
       setSuccessMsg(null)
 
       if (targetType === 'team') {
+        // targetId is the team NAME here (grouping key), not a uuid — so target the
+        // already-resolved member user IDs directly instead of a team_id lookup.
+        if (memberUserIds.length === 0) {
+          setErrMsg('No team members found to message.')
+          setSending(false)
+          return
+        }
         await sendAnnouncement({
           title: title.trim(),
           message: message.trim(),
           badge: `Team Message: ${targetName}`,
-          targetTeamIds: [targetId],
-          targetUserIds: memberUserIds.length > 0 ? memberUserIds : undefined,
+          targetUserIds: memberUserIds,
           channel,
         })
       } else {
