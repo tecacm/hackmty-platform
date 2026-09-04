@@ -319,7 +319,8 @@ export function TeamTrackSection({ teamId, isOwner, members, membersApplications
     )
   }
 
-  // 4. Not submitted — non-owner sees status (incl. who the team is waiting on to confirm)
+  // 4. Not submitted — non-owner sees status (incl. who the team is waiting on to confirm),
+  // plus a read-only list of all tracks and their descriptions so members can browse.
   if (!isOwner) {
     return (
       <View style={styles.card}>
@@ -335,6 +336,31 @@ export function TeamTrackSection({ teamId, isOwner, members, membersApplications
             {deadlineStr ? t('teams.trackLeaderWillChoose', { date: deadlineStr }) : t('teams.trackLeaderWillChooseNoDate')}
           </Text>
         )}
+
+        {tracks.length > 0 ? (
+          <>
+            <Text style={styles.subLabel}>{t('teams.trackAvailable')}</Text>
+            <View style={styles.browseList}>
+              {tracks.map((tr) => {
+                const logo = trackLogoUrl(tr.sponsor_logo_url)
+                return (
+                  <View key={tr.id} style={styles.browseItem}>
+                    <View style={styles.browseHead}>
+                      {logo ? <Image source={{ uri: logo }} style={styles.browseLogo} resizeMode="contain" /> : null}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.browseTitle} numberOfLines={2}>{localizeText(tr.title, locale)}</Text>
+                        {tr.sponsor_name ? <Text style={styles.browseSponsor}>{tr.sponsor_name}</Text> : null}
+                      </View>
+                    </View>
+                    {tr.description ? (
+                      <Text style={styles.browseDesc}>{localizeText(tr.description, locale)}</Text>
+                    ) : null}
+                  </View>
+                )
+              })}
+            </View>
+          </>
+        ) : null}
       </View>
     )
   }
@@ -487,6 +513,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   availGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  browseList: { gap: 8 },
+  browseItem: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+  },
+  browseHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  browseLogo: { width: 32, height: 32, borderRadius: 6, backgroundColor: '#ffffff' },
+  browseTitle: { color: '#0f172a', fontSize: 14, fontWeight: '800' },
+  browseSponsor: { color: '#5a0061', fontSize: 11, fontWeight: '800', marginTop: 1 },
+  browseDesc: { color: '#475569', fontSize: 12.5, fontWeight: '600', lineHeight: 17 },
   availChip: {
     flexDirection: 'row',
     alignItems: 'center',
