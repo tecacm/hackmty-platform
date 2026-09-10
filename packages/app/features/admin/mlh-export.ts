@@ -31,8 +31,10 @@ const excelText = (v: any): string => {
   return s ? `="${s.replace(/"/g, '""')}"` : ''
 }
 
+export type CsvColumn = { header: string; get: (a: any) => any }
+
 // The exact columns MLH requires, mapped to hacker-form answer keys.
-const MLH_COLUMNS: Array<{ header: string; get: (a: any) => any }> = [
+export const MLH_COLUMNS: CsvColumn[] = [
   { header: 'First Name', get: (a) => a.answers?.firstName ?? a.profiles?.first_name ?? '' },
   { header: 'Last Name', get: (a) => a.answers?.lastName ?? a.profiles?.last_name ?? '' },
   { header: 'Email', get: (a) => a.answers?.email ?? a.profiles?.email ?? '' },
@@ -73,11 +75,16 @@ function csvEscape(val: any): string {
   return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
 }
 
+/** Build a CSV from arbitrary columns (UTF-8 BOM so Excel renders accents correctly). */
+export function buildCsv(apps: any[], columns: CsvColumn[]): string {
+  const header = columns.map((c) => csvEscape(c.header)).join(',')
+  const lines = apps.map((a) => columns.map((c) => csvEscape(c.get(a))).join(','))
+  return '\uFEFF' + [header, ...lines].join('\r\n')
+}
+
 /** Build a CSV string (UTF-8 BOM so Excel renders accents correctly). */
 export function buildMlhCsv(apps: any[]): string {
-  const header = MLH_COLUMNS.map((c) => csvEscape(c.header)).join(',')
-  const lines = apps.map((a) => MLH_COLUMNS.map((c) => csvEscape(c.get(a))).join(','))
-  return '\uFEFF' + [header, ...lines].join('\r\n')
+  return buildCsv(apps, MLH_COLUMNS)
 }
 
 /** Trigger a browser download of the CSV (web only). */
@@ -102,5 +109,79 @@ export async function exportMlhCsv(opts: MlhExportOptions = {}): Promise<number>
   const typeId = opts.applicationTypeId || 'hacker'
   const stamp = new Date().toISOString().slice(0, 10)
   downloadCsv(`mlh-${typeId}-${stamp}.csv`, csv)
+  return apps.length
+}
+
+// ---------------------------------------------------------------------------
+// General "all registrations" export — every application with status + all answer fields.
+// ---------------------------------------------------------------------------
+
+export type RegistrationsExportOptions = {
+  /** Restrict to one application type. Omit for ALL types. */
+  applicationTypeId?: string
+  /** Optional status filter. Omit for all statuses. */
+  statuses?: string[] | null
+}
+
+/** Fetch every matching application (all types unless applicationTypeId is set). */
+export async function fetchRegistrations(opts: RegistrationsExportOptions = {}): Promise<any[]> {
+  return fetchAllRows<any>((from, to) => {
+    let q = supabase
+      .from('applications')
+      .select('user_id, application_type_id, status, answers, created_at, updated_at, confirmed_at')
+      .order('application_type_id', { ascending: true })
+      .order('user_id', { ascending: true })
+      .range(from, to)
+    if (opts.applicationTypeId) q = q.eq('application_type_id', opts.applicationTypeId)
+    if (opts.statuses && opts.statuses.length > 0) q = q.in('status', opts.statuses)
+    return q as any
+  })
+}
+
+function answerCell(key: string, v: any): string {
+  if (v == null) return ''
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No'
+  if (Array.isArray(v)) return v.join('; ')
+  if (typeof v === 'object') return JSON.stringify(v)
+  if (key === 'phone') return excelText(v)
+  return String(v)
+}
+
+/** Meta (non-answer) columns available for a general export. */
+export const META_COLUMNS: CsvColumn[] = [
+  { header: 'Application Type', get: (a) => str(a.application_type_id) },
+  { header: 'Status', get: (a) => str(a.status) },
+  { header: 'Created At', get: (a) => str(a.created_at) },
+  { header: 'Updated At', get: (a) => str(a.updated_at) },
+  { header: 'Confirmed At', get: (a) => str(a.confirmed_at) },
+  { header: 'User ID', get: (a) => str(a.user_id) },
+]
+
+/** A column that reads one answer field (values formatted for CSV). */
+export function answerColumn(key: string, label?: string): CsvColumn {
+  return { header: label || key, get: (a) => answerCell(key, a.answers?.[key]) }
+}
+
+/** Union of all answer keys present across the rows (stable, sorted). */
+export function collectAnswerKeys(apps: any[]): string[] {
+  const keys = new Set<string>()
+  apps.forEach((a) => {
+    if (a.answers && typeof a.answers === 'object') Object.keys(a.answers).forEach((k) => keys.add(k))
+  })
+  return Array.from(keys).sort()
+}
+
+/** Build a wide CSV: meta columns (type/status/timestamps) + every answer key seen. */
+export function buildRegistrationsCsv(apps: any[]): string {
+  return buildCsv(apps, [...META_COLUMNS, ...collectAnswerKeys(apps).map((k) => answerColumn(k))])
+}
+
+/** Fetch → build → download the full registrations CSV. Returns the row count. */
+export async function exportRegistrationsCsv(opts: RegistrationsExportOptions = {}): Promise<number> {
+  const apps = await fetchRegistrations(opts)
+  const csv = buildRegistrationsCsv(apps)
+  const scope = opts.applicationTypeId || 'all'
+  const stamp = new Date().toISOString().slice(0, 10)
+  downloadCsv(`registrations-${scope}-${stamp}.csv`, csv)
   return apps.length
 }

@@ -16,8 +16,6 @@ import { AppIcon } from '../../../components/app-icon'
 import { AdminPaginationBar } from './AdminPaginationBar'
 import { ApplicationRow } from './ApplicationRow'
 import { SubmissionsSkeleton } from './submissions-skeleton'
-import { exportMlhCsv } from '../mlh-export'
-import { showAlert } from 'app/components/cross-alert'
 import { useTranslation } from 'app/i18n'
 
 interface SubmissionsTabProps {
@@ -105,23 +103,6 @@ export function SubmissionsTab({
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
   const isSmallScreen = width > 0 && width < 640
-
-  const [exporting, setExporting] = React.useState(false)
-  const handleExportMlh = React.useCallback(async () => {
-    if (exporting) return
-    setExporting(true)
-    try {
-      // Respect the toolbar filters as the export filter; default to hackers.
-      const typeId = selectedType && selectedType !== 'all' ? selectedType : 'hacker'
-      const statuses = selectedStatus && selectedStatus !== 'all' ? [selectedStatus] : undefined
-      const n = await exportMlhCsv({ applicationTypeId: typeId, statuses })
-      showAlert(t('admin.exportComplete'), t('admin.exportCompleteBody', { count: n, type: typeId }))
-    } catch (e: any) {
-      showAlert(t('admin.exportFailed'), e?.message || 'Could not export participants')
-    } finally {
-      setExporting(false)
-    }
-  }, [exporting, selectedType, selectedStatus, t])
 
   const normalizedGroupedData = React.useMemo(() => {
     if (!groupedData) return []
@@ -227,14 +208,6 @@ export function SubmissionsTab({
             title={groupByTeams ? t('admin.groupedTeams') : t('admin.groupByTeams')}
             onPress={() => setGroupByTeams(!groupByTeams)}
             variant={groupByTeams ? 'primary' : 'outline-primary'}
-            additionalStyle={styles.groupBtn}
-            fontSize={12}
-          />
-
-          <PillButton
-            title={exporting ? t('admin.exporting') : t('admin.exportMlhCsv')}
-            onPress={handleExportMlh}
-            variant="outline-primary"
             additionalStyle={styles.groupBtn}
             fontSize={12}
           />

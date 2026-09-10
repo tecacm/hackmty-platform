@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'app/i18n'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 
-export type AdminTabType = 'applications' | 'users' | 'insights' | 'badges' | 'tournament' | 'tracks' | 'teams' | 'roles' | 'forms' | 'checkin' | 'config' | 'bot'
+export type AdminTabType = 'applications' | 'users' | 'exports' | 'insights' | 'badges' | 'tournament' | 'tracks' | 'teams' | 'roles' | 'forms' | 'checkin' | 'config' | 'bot'
 
 type AdminPermAction = 'view' | 'modify' | 'create' | 'view_others' | 'review'
 // Single source of truth: the permission each admin tab requires. Shared with the dashboard
@@ -12,6 +12,7 @@ export const ADMIN_TAB_PERMISSIONS: Record<AdminTabType, { feature: string; acti
   checkin: { feature: 'checkin', action: 'view' },
   applications: { feature: 'applications', action: 'view_others' },
   users: { feature: 'applications', action: 'view_others' },
+  exports: { feature: 'applications', action: 'view_others' },
   insights: { feature: 'insights', action: 'view' },
   badges: { feature: 'badges', action: 'modify' },
   tournament: { feature: 'tournaments', action: 'view' },
@@ -50,6 +51,7 @@ export function AdminTabBar({
     { id: 'checkin', label: t('admin.checkInScanner') },
     { id: 'applications', label: t('admin.submissions'), badge: appsCount },
     { id: 'users', label: t('admin.userDirectory'), badge: usersCount },
+    { id: 'exports', label: t('admin.exports') },
     { id: 'insights', label: t('admin.insights') },
     { id: 'badges', label: t('admin.badges') },
     { id: 'tournament', label: t('admin.tournament') },

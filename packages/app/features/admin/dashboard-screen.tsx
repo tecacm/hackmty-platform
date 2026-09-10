@@ -40,6 +40,9 @@ const UserDirectoryTab = lazy(() =>
 const DemographicsTab = lazy(() =>
   import('./components/DemographicsTab').then((mod) => ({ default: mod.DemographicsTab }))
 )
+const ExportsTab = lazy(() =>
+  import('./components/ExportsTab').then((mod) => ({ default: mod.ExportsTab }))
+)
 const BadgesTab = lazy(() =>
   import('./components/BadgesTab').then((mod) => ({ default: mod.BadgesTab }))
 )
@@ -1511,6 +1514,8 @@ export function AdminDashboardScreen() {
                 setUserPage={setUserPage}
                 setUserPageSize={setUserPageSize}
               />
+            ) : adminTab === 'exports' ? (
+              <ExportsTab />
             ) : adminTab === 'insights' ? (
               <DemographicsTab />
             ) : adminTab === 'badges' ? (
