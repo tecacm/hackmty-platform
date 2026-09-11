@@ -6,6 +6,7 @@ import { PillButton } from 'app/components/pill-button'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
 import { StyledInput } from 'app/components/styled-input'
 import { PersonSilhouette } from 'app/components/person-silhouette'
+import { AppIcon } from 'app/components/app-icon'
 import { sanitizeEmail, sanitizeName, sanitizeString } from 'app/utils/sanitization'
 import { TeamTrackSection } from './team-track-section'
 import { TeamSkeleton } from './team-skeleton'
@@ -68,6 +69,47 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 20,
   },
+  submitProjectBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#5a0061',
+    borderRadius: 14,
+    paddingVertical: 16,
+    marginBottom: 12,
+    ...Platform.select({ web: { boxShadow: '0 10px 24px rgba(90,0,97,0.28)' } as any }),
+  },
+  submitProjectBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+  projectInfo: {
+    width: '100%',
+    backgroundColor: '#faf5fb',
+    borderWidth: 1,
+    borderColor: '#e9d5ee',
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+    marginBottom: 8,
+  },
+  projectInfoRow: { color: '#5b4d61', fontSize: 13, fontWeight: '600' },
+  projectInfoStrong: { color: '#22002c', fontWeight: '800' },
+  projectDeadlineHint: { color: '#936da8', fontSize: 12, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  projectLockedBox: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fdba74',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  projectLockedText: { color: '#9a3412', fontSize: 13, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -586,7 +628,7 @@ function StatusBadge({ statusKey }: { statusKey: MemberStatusKey }) {
 }
 
 export function TeamsScreen() {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const { width } = useWindowDimensions()
   const isSmallScreen = width < 640
 
@@ -607,6 +649,14 @@ export function TeamsScreen() {
   const [invitations, setInvitations] = useState<any[]>([])
   const [sentInvitations, setSentInvitations] = useState<any[]>([])
   const [membersApplications, setMembersApplications] = useState<any[]>([])
+  const [project, setProject] = useState<{ devpost_url: string | null; desk_number: string | null; submitted_at: string | null } | null>(null)
+  const [projectModalOpen, setProjectModalOpen] = useState(false)
+  const [projectDevpost, setProjectDevpost] = useState('')
+  const [projectDesk, setProjectDesk] = useState('')
+  const [projectSubmitting, setProjectSubmitting] = useState(false)
+  const [projectError, setProjectError] = useState<string | null>(null)
+  const [submissionOpensAt, setSubmissionOpensAt] = useState<string | null>(null)
+  const [submissionDeadline, setSubmissionDeadline] = useState<string | null>(null)
 
   useEffect(() => {
     setIsHydrated(true)
@@ -748,6 +798,24 @@ export function TeamsScreen() {
         .select('id, email')
         .eq('team_id', teamData.id)
       setSentInvitations(sentData || [])
+
+      // Project submission (Devpost + desk), if any.
+      const { data: projData } = await supabase
+        .from('team_projects')
+        .select('devpost_url, desk_number, submitted_at')
+        .eq('team_id', teamData.id)
+        .maybeSingle()
+      setProject((projData as any) || null)
+
+      // Submission open/close window (global config).
+      const { data: cfgRows } = await supabase
+        .from('global_config')
+        .select('key, value')
+        .in('key', ['project_submission_opens_at', 'project_submission_deadline'])
+      const cfg: Record<string, string> = {}
+      ;(cfgRows || []).forEach((r: any) => { cfg[r.key] = r.value })
+      setSubmissionOpensAt(cfg['project_submission_opens_at'] || null)
+      setSubmissionDeadline(cfg['project_submission_deadline'] || null)
     } catch (err: any) {
       console.error('Failed to load team details:', err)
       setError(err.message || 'Unable to retrieve team details.')
@@ -759,6 +827,45 @@ export function TeamsScreen() {
   useEffect(() => {
     fetchTeamData()
   }, [])
+
+  const openProjectModal = () => {
+    setProjectDevpost(project?.devpost_url || '')
+    setProjectDesk(project?.desk_number || '')
+    setProjectError(null)
+    setProjectModalOpen(true)
+  }
+
+  const handleSubmitProject = async () => {
+    const devpost = projectDevpost.trim()
+    const desk = projectDesk.trim()
+    if (!devpost) { setProjectError(t('teams.projectDevpostRequired')); return }
+    if (!/^https?:\/\/\S+\.\S+/.test(devpost)) { setProjectError(t('teams.projectDevpostInvalid')); return }
+    if (!desk) { setProjectError(t('teams.projectDeskRequired')); return }
+    if (!team) return
+    try {
+      setProjectSubmitting(true)
+      setProjectError(null)
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.rpc('submit_team_project', {
+          p_team_id: team.id,
+          p_devpost_url: devpost,
+          p_desk_number: desk,
+        })
+        if (error) throw error
+      }
+      setProject({ devpost_url: devpost, desk_number: desk, submitted_at: new Date().toISOString() })
+      setProjectModalOpen(false)
+    } catch (e: any) {
+      const msg = String(e?.message || '')
+      if (msg.includes('DESK_TAKEN')) {
+        setProjectError(t('teams.projectDeskTaken'))
+      } else {
+        setProjectError(msg || 'Could not submit project')
+      }
+    } finally {
+      setProjectSubmitting(false)
+    }
+  }
 
   const handleAcceptInvitation = async (invitationId: string) => {
     try {
@@ -1171,6 +1278,55 @@ export function TeamsScreen() {
                 )
               })()}
 
+              {/* Project submission — big CTA (locked by the configured time window) */}
+              {(() => {
+                const now = Date.now()
+                const opensMs = submissionOpensAt ? new Date(submissionOpensAt).getTime() : null
+                const deadlineMs = submissionDeadline ? new Date(submissionDeadline).getTime() : null
+                const notOpenYet = opensMs != null && !isNaN(opensMs) && now < opensMs
+                const closed = deadlineMs != null && !isNaN(deadlineMs) && now >= deadlineMs
+                const fmt = (iso: string) =>
+                  new Date(iso).toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                return (
+                  <>
+                    {notOpenYet || closed ? (
+                      <View style={styles.projectLockedBox}>
+                        <AppIcon name="lock.fill" size={15} color="#b45309" />
+                        <Text style={styles.projectLockedText}>
+                          {notOpenYet
+                            ? t('teams.projectOpensAt', { date: fmt(submissionOpensAt as string) })
+                            : t('teams.projectClosedAt', { date: fmt(submissionDeadline as string) })}
+                        </Text>
+                      </View>
+                    ) : (
+                      <>
+                        <Pressable onPress={openProjectModal} style={styles.submitProjectBtn}>
+                          <AppIcon name={project ? 'checkmark.circle.fill' : 'megaphone.fill'} size={20} color="#ffffff" />
+                          <Text style={styles.submitProjectBtnText}>
+                            {project ? t('teams.projectEdit') : t('teams.projectSubmit')}
+                          </Text>
+                        </Pressable>
+                        {deadlineMs != null && !isNaN(deadlineMs) ? (
+                          <Text style={styles.projectDeadlineHint}>{t('teams.projectDeadlineHint', { date: fmt(submissionDeadline as string) })}</Text>
+                        ) : null}
+                      </>
+                    )}
+                    {project ? (
+                      <View style={styles.projectInfo}>
+                        <Text style={styles.projectInfoRow}>
+                          {t('teams.projectDeskLabel')}: <Text style={styles.projectInfoStrong}>{project.desk_number || '—'}</Text>
+                        </Text>
+                        {project.devpost_url ? (
+                          <Text style={styles.projectInfoRow} numberOfLines={1}>
+                            Devpost: <Text style={styles.projectInfoStrong}>{project.devpost_url}</Text>
+                          </Text>
+                        ) : null}
+                      </View>
+                    ) : null}
+                  </>
+                )
+              })()}
+
               <Text style={styles.label}>{t('teams.teamCode')}</Text>
               <View style={styles.codeRow}>
                 <View style={styles.codeBox}>
@@ -1486,6 +1642,56 @@ export function TeamsScreen() {
                 title={t('teams.sendInvite')}
                 isLoading={inviteSubmitting}
                 onPress={handleSendInvite}
+                additionalStyle={{ flex: 1, height: 48 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        transparent={true}
+        visible={projectModalOpen}
+        animationType="fade"
+        onRequestClose={() => setProjectModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('teams.projectSubmit')}</Text>
+            <Text style={styles.modalSubtitle}>{t('teams.projectModalDesc')}</Text>
+
+            <StyledInput
+              label={t('teams.projectDevpostLabel')}
+              placeholder="https://devpost.com/software/your-project"
+              value={projectDevpost}
+              onChangeText={setProjectDevpost}
+              autoCapitalize="none"
+              keyboardType="url"
+            />
+            <StyledInput
+              label={t('teams.projectDeskLabel')}
+              placeholder="e.g. 42 or A12"
+              value={projectDesk}
+              onChangeText={setProjectDesk}
+              autoCapitalize="characters"
+            />
+
+            {projectError ? (
+              <Text style={[styles.modalResultText, { color: '#ef4444' }]}>{projectError}</Text>
+            ) : null}
+
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={() => setProjectModalOpen(false)}
+                style={({ pressed }) => [styles.modalCancelBtn, pressed && { opacity: 0.8 }]}
+              >
+                <Text style={styles.modalCancelBtnText}>{t('common.close')}</Text>
+              </Pressable>
+              <PillButton
+                variant="secondary"
+                title={t('teams.projectSubmitAction')}
+                isLoading={projectSubmitting}
+                onPress={handleSubmitProject}
                 additionalStyle={{ flex: 1, height: 48 }}
               />
             </View>
