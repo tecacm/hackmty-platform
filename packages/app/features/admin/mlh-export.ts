@@ -121,21 +121,41 @@ export type RegistrationsExportOptions = {
   applicationTypeId?: string
   /** Optional status filter. Omit for all statuses. */
   statuses?: string[] | null
+  /** Optional: restrict to these user IDs (e.g. members of a track). Omit for everyone. */
+  userIds?: string[] | null
 }
 
 /** Fetch every matching application (all types unless applicationTypeId is set). */
 export async function fetchRegistrations(opts: RegistrationsExportOptions = {}): Promise<any[]> {
-  return fetchAllRows<any>((from, to) => {
-    let q = supabase
-      .from('applications')
-      .select('user_id, application_type_id, status, answers, created_at, updated_at, confirmed_at')
-      .order('application_type_id', { ascending: true })
-      .order('user_id', { ascending: true })
-      .range(from, to)
+  const cols = 'user_id, application_type_id, status, answers, created_at, updated_at, confirmed_at'
+  const applyFilters = (q: any) => {
     if (opts.applicationTypeId) q = q.eq('application_type_id', opts.applicationTypeId)
     if (opts.statuses && opts.statuses.length > 0) q = q.in('status', opts.statuses)
-    return q as any
-  })
+    return q
+  }
+  // Scoped to specific users (e.g. a track's members): chunk the IN() to keep URLs short.
+  if (opts.userIds) {
+    if (opts.userIds.length === 0) return []
+    const out: any[] = []
+    for (let i = 0; i < opts.userIds.length; i += 100) {
+      const chunk = opts.userIds.slice(i, i + 100)
+      const rows = await fetchAllRows<any>((from, to) =>
+        applyFilters(supabase.from('applications').select(cols).in('user_id', chunk).order('user_id', { ascending: true }).range(from, to)) as any
+      )
+      out.push(...rows)
+    }
+    return out
+  }
+  return fetchAllRows<any>((from, to) =>
+    applyFilters(
+      supabase
+        .from('applications')
+        .select(cols)
+        .order('application_type_id', { ascending: true })
+        .order('user_id', { ascending: true })
+        .range(from, to)
+    ) as any
+  )
 }
 
 function answerCell(key: string, v: any): string {
@@ -184,4 +204,61 @@ export async function exportRegistrationsCsv(opts: RegistrationsExportOptions = 
   const stamp = new Date().toISOString().slice(0, 10)
   downloadCsv(`registrations-${scope}-${stamp}.csv`, csv)
   return apps.length
+}
+
+// ---------------------------------------------------------------------------
+// Per-track participant export (one row per member of each assigned team).
+// ---------------------------------------------------------------------------
+
+const localizeJson = (v: any, locale = 'en'): string => {
+  if (!v) return ''
+  if (typeof v === 'string') return v
+  return v[locale] || v.en || (Object.values(v).find((x: any) => typeof x === 'string') as string) || ''
+}
+
+/** Rows come from the admin_track_participants() RPC (admin/organizer only). */
+export async function fetchTrackParticipants(): Promise<any[]> {
+  const { data, error } = await supabase.rpc('admin_track_participants')
+  if (error) throw error
+  return (data as any[]) || []
+}
+
+export function buildTrackParticipantsCsv(rows: any[], locale = 'en'): string {
+  const columns: CsvColumn[] = [
+    { header: 'Track', get: (r) => localizeJson(r.track_title, locale) },
+    { header: 'Team', get: (r) => str(r.team_name) },
+    { header: 'Desk Number', get: (r) => str(r.desk_number) },
+    { header: 'Devpost', get: (r) => str(r.devpost_url) },
+    { header: 'First Name', get: (r) => str(r.first_name) },
+    { header: 'Last Name', get: (r) => str(r.last_name) },
+    { header: 'Email', get: (r) => str(r.email) },
+    { header: 'Status', get: (r) => str(r.status) },
+    { header: 'Assigned Randomly', get: (r) => (r.assigned_random ? 'Yes' : 'No') },
+  ]
+  return buildCsv(rows, columns)
+}
+
+/** Fetch → build → download participants grouped by assigned track. Returns row count. */
+export async function exportTrackParticipantsCsv(locale = 'en'): Promise<number> {
+  const rows = await fetchTrackParticipants()
+  const csv = buildTrackParticipantsCsv(rows, locale)
+  const stamp = new Date().toISOString().slice(0, 10)
+  downloadCsv(`track-participants-${stamp}.csv`, csv)
+  return rows.length
+}
+
+/** Distinct user IDs assigned to a given track (from admin_track_participants). */
+export async function fetchTrackUserIds(trackId: string): Promise<string[]> {
+  const rows = await fetchTrackParticipants()
+  return Array.from(new Set(rows.filter((r) => r.track_id === trackId).map((r) => r.user_id).filter(Boolean)))
+}
+
+/** Active tracks for a filter dropdown: { id, title }. */
+export async function fetchTrackOptions(): Promise<Array<{ id: string; title: any }>> {
+  const { data } = await supabase.from('tracks').select('id, title').eq('is_active', true).order('display_order', { ascending: true })
+  return (data as any[]) || []
+}
+
+export function localizeTrackTitle(v: any, locale = 'en'): string {
+  return localizeJson(v, locale)
 }

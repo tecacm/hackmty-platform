@@ -14,6 +14,10 @@ import {
   answerColumn,
   META_COLUMNS,
   MLH_COLUMNS,
+  exportTrackParticipantsCsv,
+  fetchTrackUserIds,
+  fetchTrackOptions,
+  localizeTrackTitle,
   type CsvColumn,
 } from '../mlh-export'
 
@@ -38,11 +42,13 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 export function ExportsTab() {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const [typeOptions, setTypeOptions] = React.useState<Array<{ label: string; value: string }>>([{ label: 'All types', value: 'all' }])
   const [appType, setAppType] = React.useState('all')
   const [statuses, setStatuses] = React.useState<Set<string>>(new Set())
   const [preset, setPreset] = React.useState<'custom' | 'mlh'>('custom')
+  const [trackOptions, setTrackOptions] = React.useState<Array<{ label: string; value: string }>>([{ label: 'All tracks', value: 'all' }])
+  const [trackId, setTrackId] = React.useState('all')
 
   const [apps, setApps] = React.useState<any[] | null>(null)
   const [availableFields, setAvailableFields] = React.useState<string[]>([])
@@ -68,6 +74,19 @@ export function ExportsTab() {
       }
     })()
   }, [])
+
+  // Track options for the track filter.
+  React.useEffect(() => {
+    if (!isSupabaseConfigured) return
+    ;(async () => {
+      try {
+        const tracks = await fetchTrackOptions()
+        setTrackOptions([{ label: 'All tracks', value: 'all' }, ...tracks.map((tr) => ({ label: localizeTrackTitle(tr.title, locale), value: tr.id }))])
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [locale])
 
   const toggleStatus = (s: string) =>
     setStatuses((prev) => {
@@ -95,9 +114,14 @@ export function ExportsTab() {
     if (loading) return
     setLoading(true)
     try {
+      let userIds: string[] | null = null
+      if (trackId !== 'all') {
+        userIds = await fetchTrackUserIds(trackId)
+      }
       const rows = await fetchRegistrations({
         applicationTypeId: appType !== 'all' ? appType : undefined,
         statuses: statuses.size > 0 ? Array.from(statuses) : undefined,
+        userIds,
       })
       setApps(rows)
       const fields = collectAnswerKeys(rows)
@@ -143,6 +167,20 @@ export function ExportsTab() {
   const selectAllFields = () => setSelectedFields(new Set(availableFields))
   const clearFields = () => setSelectedFields(new Set())
 
+  const [trackExporting, setTrackExporting] = React.useState(false)
+  const handleExportTracks = async () => {
+    if (trackExporting) return
+    setTrackExporting(true)
+    try {
+      const n = await exportTrackParticipantsCsv(locale)
+      showAlert(t('admin.exportComplete'), t('admin.exportCompleteBody', { count: n, type: 'track' }))
+    } catch (e: any) {
+      showAlert(t('admin.exportFailed'), e?.message || 'Could not export track participants')
+    } finally {
+      setTrackExporting(false)
+    }
+  }
+
   return (
     <View style={{ width: '100%', gap: 20 }}>
       <View style={styles.headerBox}>
@@ -155,6 +193,8 @@ export function ExportsTab() {
       {/* Filters */}
       <View style={styles.card}>
         <StyledSelect label="Application type" value={appType} options={typeOptions} onValueChange={setAppType} />
+
+        <StyledSelect label="Track (assigned)" value={trackId} options={trackOptions} onValueChange={setTrackId} />
 
         <Text style={styles.label}>Status (none = all)</Text>
         <View style={styles.chipRow}>
@@ -175,6 +215,16 @@ export function ExportsTab() {
         <Pressable onPress={handleLoad} disabled={loading} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || loading ? '#3d0042' : '#5a0061' }]}>
           {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Load registrations</Text>}
         </Pressable>
+      </View>
+
+      {/* Per-track participant export (assignment-based, independent of the filters above) */}
+      <View style={styles.card}>
+        <Text style={styles.label}>{t('admin.exportByTrackTitle')}</Text>
+        <Text style={styles.hint}>{t('admin.exportByTrackHint')}</Text>
+        <Pressable onPress={handleExportTracks} disabled={trackExporting} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || trackExporting ? '#3d0042' : '#5a0061' }]}>
+          {trackExporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>{t('admin.exportByTrackAction')}</Text>}
+        </Pressable>
+        {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
       </View>
 
       {/* Columns + download (after load) */}
