@@ -117,6 +117,7 @@ interface Checkpoint {
   notify_roles?: string[] | null
   notify_lead_minutes?: number | null
   notified_at?: string | null
+  allowed_track_ids?: string[] | null
   created_at?: string
   is_active: boolean
   checkpoint_types?: {
@@ -227,6 +228,8 @@ export function CheckInScannerTab() {
   const [newNotifyRoles, setNewNotifyRoles] = React.useState<string[]>([])
   const [newNotifyLead, setNewNotifyLead] = React.useState('0')
   const [notifyRoleOptions, setNotifyRoleOptions] = React.useState<string[]>([])
+  const [newAllowedTrackIds, setNewAllowedTrackIds] = React.useState<string[]>([])
+  const [tracksList, setTracksList] = React.useState<Array<{ id: string; title: any }>>([])
   const [editingStation, setEditingStation] = React.useState<Checkpoint | null>(null)
   const [isCreatingStation, setIsCreatingStation] = React.useState(false)
 
@@ -238,6 +241,8 @@ export function CheckInScannerTab() {
         const set = new Set<string>()
         ;(data || []).forEach((r: any) => { if (r.role) set.add(r.role) })
         setNotifyRoleOptions(Array.from(set).sort())
+        const { data: tr } = await supabase.from('tracks').select('id, title').eq('is_active', true).order('display_order', { ascending: true })
+        setTracksList((tr as any[]) || [])
       } catch (e) {
         /* ignore */
       }
@@ -707,9 +712,10 @@ export function CheckInScannerTab() {
       })
     } catch (e: any) {
       console.error('[CheckInScanner] Check-in processing error:', e)
+      const msg = String(e?.message || '')
       setLastResult({
         status: 'error',
-        message: e?.message || 'Error processing check-in',
+        message: msg.includes('TRACK_EXCLUSIVE') ? t('admin.checkinTrackExclusiveError') : msg || 'Error processing check-in',
       })
     } finally {
       setIsProcessing(false)
@@ -820,6 +826,7 @@ export function CheckInScannerTab() {
     setNewHideUntilUnlocked(false)
     setNewNotifyRoles([])
     setNewNotifyLead('0')
+    setNewAllowedTrackIds([])
     setClaimedMsgTranslations([{ key: 'en', value: '' }])
     setSuccessMsgTranslations([{ key: 'en', value: '' }])
     setNotCheckedInMsgTranslations([{ key: 'en', value: '' }])
@@ -842,6 +849,7 @@ export function CheckInScannerTab() {
     setNewHideUntilUnlocked(station.hide_until_unlocked ?? false)
     setNewNotifyRoles(station.notify_roles || [])
     setNewNotifyLead(String(station.notify_lead_minutes ?? 0))
+    setNewAllowedTrackIds(station.allowed_track_ids || [])
     setClaimedMsgTranslations(jsonbToTranslations(station.already_claimed_message_override))
     setSuccessMsgTranslations(jsonbToTranslations(station.success_message_override))
     setNotCheckedInMsgTranslations(jsonbToTranslations(station.not_checked_in_message_override))
@@ -885,6 +893,7 @@ export function CheckInScannerTab() {
         notify_roles: newNotifyRoles.length > 0 ? newNotifyRoles : null,
         notify_lead_minutes: Math.max(0, parseInt(newNotifyLead, 10) || 0),
         notified_at: null,
+        allowed_track_ids: newAllowedTrackIds.length > 0 ? newAllowedTrackIds : null,
         is_active: true,
         event_year: '2026',
       }
@@ -2017,6 +2026,43 @@ export function CheckInScannerTab() {
                     </View>
                   ) : null}
                   <Text style={{ fontSize: 11, color: '#64748b' }}>{t('admin.checkinNotifyHint')}</Text>
+                </View>
+
+                {/* Track-exclusive: only teams assigned to a selected track can check in */}
+                <View style={{ gap: 6, marginTop: 8 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>{t('admin.checkinTrackExclusive')}</Text>
+                  {tracksList.length === 0 ? (
+                    <Text style={{ fontSize: 11, color: '#94a3b8' }}>{t('admin.checkinTrackExclusiveNone')}</Text>
+                  ) : (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {tracksList.map((tr) => {
+                        const sel = newAllowedTrackIds.includes(tr.id)
+                        return (
+                          <Pressable
+                            key={tr.id}
+                            onPress={() =>
+                              setNewAllowedTrackIds((prev) =>
+                                prev.includes(tr.id) ? prev.filter((x) => x !== tr.id) : [...prev, tr.id]
+                              )
+                            }
+                            style={{
+                              paddingHorizontal: 12,
+                              paddingVertical: 7,
+                              borderRadius: 999,
+                              borderWidth: 1,
+                              borderColor: sel ? '#5a0061' : '#cbd5e1',
+                              backgroundColor: sel ? '#ede9fe' : '#ffffff',
+                            }}
+                          >
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: sel ? '#5a0061' : '#475569' }}>
+                              {getLocalizedText(tr.title, locale) || tr.id}
+                            </Text>
+                          </Pressable>
+                        )
+                      })}
+                    </View>
+                  )}
+                  <Text style={{ fontSize: 11, color: '#64748b' }}>{t('admin.checkinTrackExclusiveHint')}</Text>
                 </View>
 
                 <TranslationsEditor
