@@ -15,6 +15,7 @@ import {
   META_COLUMNS,
   MLH_COLUMNS,
   exportTrackParticipantsCsv,
+  exportResumesZip,
   fetchTrackUserIds,
   fetchTrackOptions,
   localizeTrackTitle,
@@ -181,6 +182,26 @@ export function ExportsTab() {
     }
   }
 
+  const [resumesExporting, setResumesExporting] = React.useState(false)
+  const handleExportResumes = async () => {
+    if (resumesExporting) return
+    setResumesExporting(true)
+    try {
+      let userIds: string[] | null = null
+      if (trackId !== 'all') userIds = await fetchTrackUserIds(trackId)
+      const { count, total } = await exportResumesZip({
+        applicationTypeId: appType !== 'all' ? appType : undefined,
+        statuses: statuses.size > 0 ? Array.from(statuses) : undefined,
+        userIds,
+      })
+      showAlert(t('admin.exportComplete'), t('admin.exportResumesBody', { count, total }))
+    } catch (e: any) {
+      showAlert(t('admin.exportFailed'), e?.message || 'Could not export resumes')
+    } finally {
+      setResumesExporting(false)
+    }
+  }
+
   return (
     <View style={{ width: '100%', gap: 20 }}>
       <View style={styles.headerBox}>
@@ -215,6 +236,11 @@ export function ExportsTab() {
         <Pressable onPress={handleLoad} disabled={loading} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || loading ? '#3d0042' : '#5a0061' }]}>
           {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Load registrations</Text>}
         </Pressable>
+
+        <Pressable onPress={handleExportResumes} disabled={resumesExporting} style={({ pressed }) => [styles.outlineBtn, { backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : 'transparent' }]}>
+          {resumesExporting ? <ActivityIndicator size="small" color="#5a0061" /> : <Text style={styles.outlineBtnText}>{t('admin.exportResumes')}</Text>}
+        </Pressable>
+        <Text style={styles.hint}>{t('admin.exportResumesHint')}</Text>
       </View>
 
       {/* Per-track participant export (assignment-based, independent of the filters above) */}
@@ -295,4 +321,6 @@ const styles = StyleSheet.create({
   linkBtn: { color: '#5a0061', fontSize: 12, fontWeight: '800' },
   primaryBtn: { height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 6 },
   primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  outlineBtn: { height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.25)', justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+  outlineBtnText: { color: '#5a0061', fontSize: 14, fontWeight: '800' },
 })

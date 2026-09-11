@@ -2,6 +2,7 @@
 
 import { Platform } from 'react-native'
 import { supabase, fetchAllRows } from 'app/lib/supabase'
+import { createZip, type ZipEntry } from './zip'
 
 // Human labels for the levelOfStudy select (MLH wants the readable label, not the value).
 // Kept in sync with app/data/application-fields.json (fields.levelOfStudy.options).
@@ -261,4 +262,62 @@ export async function fetchTrackOptions(): Promise<Array<{ id: string; title: an
 
 export function localizeTrackTitle(v: any, locale = 'en'): string {
   return localizeJson(v, locale)
+}
+
+// ---------------------------------------------------------------------------
+// Resume / CV bundle export — download all CVs matching a filter as a single ZIP.
+// ---------------------------------------------------------------------------
+
+const safeName = (s: string): string => (s || '').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 60)
+const extOf = (path: string): string => {
+  const base = path.split('?')[0] || ''
+  const ext = base.split('.').pop() || ''
+  return ext && ext.length <= 5 ? ext.toLowerCase() : 'pdf'
+}
+
+/** Bundle every resume/CV for the filtered applications into one ZIP and download it.
+ *  Returns { count: files zipped, total: applications that had a resume }. */
+export async function exportResumesZip(opts: RegistrationsExportOptions = {}): Promise<{ count: number; total: number }> {
+  const apps = await fetchRegistrations(opts)
+  const withResume = apps.filter((a) => a.answers?.resume)
+  const files: ZipEntry[] = []
+  const seen = new Set<string>()
+
+  for (const a of withResume) {
+    const path = String(a.answers.resume)
+    try {
+      let bytes: Uint8Array | null = null
+      if (/^https?:\/\//i.test(path)) {
+        const res = await fetch(path)
+        if (res.ok) bytes = new Uint8Array(await res.arrayBuffer())
+      } else {
+        const { data } = await supabase.storage.from('resumes').download(path)
+        if (data) bytes = new Uint8Array(await (data as Blob).arrayBuffer())
+      }
+      if (!bytes) continue
+      const first = safeName(a.answers?.firstName || '')
+      const last = safeName(a.answers?.lastName || '')
+      let name = `${last || 'Unknown'}_${first || 'Applicant'}_${(a.user_id || '').slice(0, 8)}.${extOf(path)}`
+      while (seen.has(name)) name = name.replace(/(\.\w+)$/, `_${Math.random().toString(36).slice(2, 6)}$1`)
+      seen.add(name)
+      files.push({ name, data: bytes })
+    } catch {
+      /* skip files that fail to download */
+    }
+  }
+
+  const zip = createZip(files)
+  const scope = opts.applicationTypeId || 'all'
+  const stamp = new Date().toISOString().slice(0, 10)
+  if (Platform.OS === 'web' && typeof document !== 'undefined') {
+    const url = URL.createObjectURL(zip)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `resumes-${scope}-${stamp}.zip`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+  return { count: files.length, total: withResume.length }
 }
