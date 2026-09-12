@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { View, Text, StyleSheet, Platform, Pressable, Modal, Animated, Image, Dimensions, useWindowDimensions } from 'react-native'
+import { View, Text, StyleSheet, Platform, Pressable, Modal, Animated, Image, Dimensions, useWindowDimensions, Linking } from 'react-native'
 import { PersonSilhouette } from 'app/components/person-silhouette'
 import { AnnouncementMedia } from 'app/components/announcement-media'
 import type { AnnouncementItem } from 'app/hooks/use-announcements'
@@ -19,6 +19,38 @@ import { getLocalizedText } from 'app/utils/i18n-helpers'
 import { getApplicantRoleLabel } from 'app/features/applicant/applicant-field-config'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
+
+// Auto-detect URLs: http(s)://…, www.…, or bare domains like foo.com/path.
+const URL_REGEX = /((?:https?:\/\/|www\.)[^\s]+|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s]*)?)/g
+
+function linkifySegments(text: string): Array<{ text: string; url: string | null }> {
+  const out: Array<{ text: string; url: string | null }> = []
+  if (!text) return out
+  const re = new RegExp(URL_REGEX)
+  let last = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    let match = m[0]
+    const start = m.index
+    // Peel trailing punctuation out of the link (e.g. "site.com." or "(site.com)").
+    const trail = match.match(/[.,!?;:)\]]+$/)
+    const trailing = trail ? trail[0] : ''
+    if (trailing) match = match.slice(0, match.length - trailing.length)
+    if (match) {
+      if (start > last) out.push({ text: text.slice(last, start), url: null })
+      const href = /^https?:\/\//i.test(match) ? match : `https://${match}`
+      out.push({ text: match, url: href })
+      if (trailing) out.push({ text: trailing, url: null })
+      last = start + m[0].length
+    }
+  }
+  if (last < text.length) out.push({ text: text.slice(last), url: null })
+  return out
+}
+
+function openExternalUrl(url: string) {
+  Linking.openURL(url).catch(() => {})
+}
 
 function formatRelativeTime(dateString: string, t: (k: string, p?: any) => string): string {
   try {
@@ -257,7 +289,22 @@ export const AnnouncementCard = React.memo(function AnnouncementCard({
           <Text style={styles.announcementTitle}>{getLocalizedText(announcement.title, locale)}</Text>
 
           {/* Message Content */}
-          <Text style={styles.announcementMessage}>{getLocalizedText(announcement.message, locale)}</Text>
+          <Text style={styles.announcementMessage}>
+            {linkifySegments(getLocalizedText(announcement.message, locale)).map((seg, i) =>
+              seg.url ? (
+                <Text
+                  key={i}
+                  style={styles.messageLink}
+                  onPress={() => openExternalUrl(seg.url as string)}
+                  suppressHighlighting
+                >
+                  {seg.text}
+                </Text>
+              ) : (
+                seg.text
+              )
+            )}
+          </Text>
 
           {/* Card Footer: Author signature & action buttons */}
           <View style={styles.cardFooter}>
@@ -574,6 +621,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     lineHeight: 20,
     marginBottom: 12,
+  },
+  messageLink: {
+    color: '#5a0061',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   cardFooter: {
     flexDirection: 'row',

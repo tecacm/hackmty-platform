@@ -1,9 +1,10 @@
 'use client'
 
 import * as React from 'react'
-import { View, Text, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Platform, ActivityIndicator, Linking, TextInput } from 'react-native'
 import { supabase, isSupabaseConfigured, fetchAllRows } from 'app/lib/supabase'
 import { StyledSelect } from 'app/components/styled-select'
+import { AppIcon } from 'app/components/app-icon'
 import { showAlert } from 'app/components/cross-alert'
 import { useTranslation } from 'app/i18n'
 import {
@@ -16,6 +17,8 @@ import {
   MLH_COLUMNS,
   exportTrackParticipantsCsv,
   exportResumesZip,
+  exportTeamProjectsCsv,
+  fetchTeamProjects,
   fetchTrackUserIds,
   fetchTrackOptions,
   localizeTrackTitle,
@@ -202,6 +205,44 @@ export function ExportsTab() {
     }
   }
 
+  const [projectRows, setProjectRows] = React.useState<any[] | null>(null)
+  const [projectsLoading, setProjectsLoading] = React.useState(false)
+  const [projectsExporting, setProjectsExporting] = React.useState(false)
+  const [projectSearch, setProjectSearch] = React.useState('')
+  const [projectTrackId, setProjectTrackId] = React.useState('all')
+  const filteredProjects = React.useMemo(() => {
+    if (!projectRows) return null
+    const q = projectSearch.trim().toLowerCase()
+    return projectRows.filter((r) => {
+      if (projectTrackId !== 'all' && r.track_id !== projectTrackId) return false
+      if (q && !String(r.team_name || '').toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [projectRows, projectSearch, projectTrackId])
+  const handleViewProjects = async () => {
+    if (projectsLoading) return
+    setProjectsLoading(true)
+    try {
+      setProjectRows(await fetchTeamProjects())
+    } catch (e: any) {
+      showAlert(t('admin.exportFailed'), e?.message || 'Could not load submissions')
+    } finally {
+      setProjectsLoading(false)
+    }
+  }
+  const handleExportProjects = async () => {
+    if (projectsExporting) return
+    setProjectsExporting(true)
+    try {
+      const n = await exportTeamProjectsCsv(locale, { trackId: projectTrackId, search: projectSearch })
+      showAlert(t('admin.exportComplete'), t('admin.exportCompleteBody', { count: n, type: 'project' }))
+    } catch (e: any) {
+      showAlert(t('admin.exportFailed'), e?.message || 'Could not export submissions')
+    } finally {
+      setProjectsExporting(false)
+    }
+  }
+
   return (
     <View style={{ width: '100%', gap: 20 }}>
       <View style={styles.headerBox}>
@@ -253,7 +294,61 @@ export function ExportsTab() {
         {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
       </View>
 
-      {/* Columns + download (after load) */}
+      {/* Team project submissions — view + export (team, desk, Devpost link) */}
+      <View style={styles.card}>
+        <Text style={styles.label}>{t('admin.exportProjectsTitle')}</Text>
+        <Text style={styles.hint}>{t('admin.exportProjectsHint')}</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Pressable onPress={handleViewProjects} disabled={projectsLoading} style={({ pressed }) => [styles.outlineBtn, { flex: 1, marginTop: 6, backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : 'transparent' }]}>
+            {projectsLoading ? <ActivityIndicator size="small" color="#5a0061" /> : <Text style={styles.outlineBtnText}>{t('admin.exportProjectsView')}</Text>}
+          </Pressable>
+          <Pressable onPress={handleExportProjects} disabled={projectsExporting} style={({ pressed }) => [styles.primaryBtn, { flex: 1, backgroundColor: pressed || projectsExporting ? '#3d0042' : '#5a0061' }]}>
+            {projectsExporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>{t('admin.exportProjectsExport')}</Text>}
+          </Pressable>
+        </View>
+        {projectRows ? (
+          projectRows.length === 0 ? (
+            <Text style={[styles.hint, { marginTop: 10 }]}>{t('admin.exportProjectsEmpty')}</Text>
+          ) : (
+            <View style={{ marginTop: 12, gap: 8 }}>
+              <View style={styles.searchBox}>
+                <AppIcon name="magnifyingglass" size={16} color="#9b8aa3" />
+                <TextInput
+                  value={projectSearch}
+                  onChangeText={setProjectSearch}
+                  placeholder={t('admin.exportProjectsSearch')}
+                  placeholderTextColor="#9b8aa3"
+                  style={styles.searchInput}
+                />
+              </View>
+              <StyledSelect label={t('admin.exportByTrackTitle')} value={projectTrackId} options={trackOptions} onValueChange={setProjectTrackId} />
+              <Text style={styles.loadedText}>
+                {(filteredProjects || []).length} / {projectRows.length} submission{projectRows.length === 1 ? '' : 's'}
+              </Text>
+              {(filteredProjects || []).length === 0 ? (
+                <Text style={styles.hint}>{t('admin.exportProjectsNoMatch')}</Text>
+              ) : (
+                (filteredProjects || []).map((r) => (
+                  <View key={r.team_id} style={styles.projectRow}>
+                    <Text style={styles.projectTeam}>{r.team_name || r.team_id}</Text>
+                    <Text style={styles.projectMeta}>
+                      {t('admin.exportProjectsDesk')}: {r.desk_number || '—'}
+                      {r.track_title ? `  ·  ${localizeTrackTitle(r.track_title, locale)}` : ''}
+                    </Text>
+                    {r.devpost_url ? (
+                      <Pressable onPress={() => Linking.openURL(r.devpost_url).catch(() => {})}>
+                        <Text style={styles.projectLink} numberOfLines={1}>{r.devpost_url}</Text>
+                      </Pressable>
+                    ) : (
+                      <Text style={styles.projectMeta}>—</Text>
+                    )}
+                  </View>
+                ))
+              )}
+            </View>
+          )
+        ) : null}
+      </View>
       {apps ? (
         <View style={styles.card}>
           <Text style={styles.loadedText}>{apps.length} registration{apps.length === 1 ? '' : 's'} loaded</Text>
@@ -323,4 +418,26 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
   outlineBtn: { height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(90,0,97,0.25)', justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   outlineBtnText: { color: '#5a0061', fontSize: 14, fontWeight: '800' },
+  projectRow: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#faf7fb', borderWidth: 1, borderColor: 'rgba(90,0,97,0.10)', gap: 2 },
+  projectTeam: { fontSize: 14, fontWeight: '800', color: '#2b2130' },
+  projectMeta: { fontSize: 12, color: '#6b5a72', fontWeight: '600' },
+  projectLink: { fontSize: 12, color: '#5a0061', fontWeight: '700', textDecorationLine: 'underline' },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(90,0,97,0.20)',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+    color: '#2b2130',
+    ...Platform.select({ web: { outlineStyle: 'none' } as any }),
+  },
 })

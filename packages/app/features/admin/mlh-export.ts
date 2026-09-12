@@ -254,6 +254,73 @@ export async function fetchTrackUserIds(trackId: string): Promise<string[]> {
   return Array.from(new Set(rows.filter((r) => r.track_id === trackId).map((r) => r.user_id).filter(Boolean)))
 }
 
+// ---------------------------------------------------------------------------
+// Team project submissions export — one row per team: desk + Devpost link.
+// ---------------------------------------------------------------------------
+
+/** All team project submissions (staff-readable via RLS), enriched with team name + assigned track. */
+export async function fetchTeamProjects(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('team_projects')
+    .select('team_id, devpost_url, desk_number, submitted_at, updated_at, teams(name)')
+  if (error) throw error
+  const rows = (data as any[]) || []
+
+  // Best-effort assigned-track per team (may be empty before tracks are finalized).
+  const trackByTeamName: Record<string, { id: string; title: any }> = {}
+  try {
+    const parts = await fetchTrackParticipants()
+    for (const p of parts) {
+      if (p.team_name && p.track_title && !trackByTeamName[p.team_name]) {
+        trackByTeamName[p.team_name] = { id: p.track_id, title: p.track_title }
+      }
+    }
+  } catch {
+    /* tracks not finalized / no access — leave track blank */
+  }
+
+  return rows
+    .map((r) => {
+      const tr = trackByTeamName[(r.teams?.name as string) || '']
+      return {
+        ...r,
+        team_name: (r.teams?.name as string) || '',
+        track_id: tr?.id || null,
+        track_title: tr?.title || null,
+      }
+    })
+    .sort((a, b) => str(a.desk_number).localeCompare(str(b.desk_number), undefined, { numeric: true }))
+}
+
+export function buildTeamProjectsCsv(rows: any[], locale = 'en'): string {
+  const columns: CsvColumn[] = [
+    { header: 'Team', get: (r) => str(r.team_name) },
+    { header: 'Desk Number', get: (r) => str(r.desk_number) },
+    { header: 'Devpost URL', get: (r) => str(r.devpost_url) },
+    { header: 'Track', get: (r) => localizeJson(r.track_title, locale) },
+    { header: 'Submitted At', get: (r) => str(r.submitted_at) },
+    { header: 'Last Updated', get: (r) => str(r.updated_at) },
+  ]
+  return buildCsv(rows, columns)
+}
+
+/** Fetch → build → download team project submissions. Optionally filter by track / team-name search. Returns row count. */
+export async function exportTeamProjectsCsv(
+  locale = 'en',
+  opts: { trackId?: string; search?: string } = {}
+): Promise<number> {
+  let rows = await fetchTeamProjects()
+  const trackId = opts.trackId && opts.trackId !== 'all' ? opts.trackId : null
+  const q = (opts.search || '').trim().toLowerCase()
+  if (trackId) rows = rows.filter((r) => r.track_id === trackId)
+  if (q) rows = rows.filter((r) => String(r.team_name || '').toLowerCase().includes(q))
+  const csv = buildTeamProjectsCsv(rows, locale)
+  const stamp = new Date().toISOString().slice(0, 10)
+  const scope = trackId ? `track-${trackId.slice(0, 8)}` : 'all'
+  downloadCsv(`team-projects-${scope}-${stamp}.csv`, csv)
+  return rows.length
+}
+
 /** Active tracks for a filter dropdown: { id, title }. */
 export async function fetchTrackOptions(): Promise<Array<{ id: string; title: any }>> {
   const { data } = await supabase.from('tracks').select('id, title').eq('is_active', true).order('display_order', { ascending: true })
@@ -283,7 +350,7 @@ export async function exportResumesZip(opts: RegistrationsExportOptions = {}): P
   const files: ZipEntry[] = []
   const seen = new Set<string>()
 
-  for (const a of withResume) {
+  const processOne = async (a: any) => {
     const path = String(a.answers.resume)
     try {
       let bytes: Uint8Array | null = null
@@ -294,7 +361,7 @@ export async function exportResumesZip(opts: RegistrationsExportOptions = {}): P
         const { data } = await supabase.storage.from('resumes').download(path)
         if (data) bytes = new Uint8Array(await (data as Blob).arrayBuffer())
       }
-      if (!bytes) continue
+      if (!bytes) return
       const first = safeName(a.answers?.firstName || '')
       const last = safeName(a.answers?.lastName || '')
       let name = `${last || 'Unknown'}_${first || 'Applicant'}_${(a.user_id || '').slice(0, 8)}.${extOf(path)}`
@@ -305,6 +372,18 @@ export async function exportResumesZip(opts: RegistrationsExportOptions = {}): P
       /* skip files that fail to download */
     }
   }
+
+  // Bounded-concurrency worker pool so hundreds of CVs download quickly (not one-at-a-time).
+  const CONCURRENCY = 8
+  let next = 0
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, withResume.length) }, async () => {
+      while (next < withResume.length) {
+        const i = next++
+        await processOne(withResume[i])
+      }
+    })
+  )
 
   const zip = createZip(files)
   const scope = opts.applicationTypeId || 'all'
