@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useState, useEffect } from 'react'
-import { StyleSheet, View, Text, Platform, ActivityIndicator, Pressable, useWindowDimensions, Image, Clipboard, Modal } from 'react-native'
+import { StyleSheet, View, Text, Platform, ActivityIndicator, Pressable, useWindowDimensions, Image, Clipboard, Modal, Linking } from 'react-native'
 
 import { PillButton } from 'app/components/pill-button'
 import { isSupabaseConfigured, supabase } from 'app/lib/supabase'
@@ -94,7 +94,23 @@ const styles = StyleSheet.create({
   },
   projectInfoRow: { color: '#5b4d61', fontSize: 13, fontWeight: '600' },
   projectInfoStrong: { color: '#22002c', fontWeight: '800' },
-  projectDeadlineHint: { color: '#936da8', fontSize: 12, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  projectDeadlineHint: { color: '#936da8', fontSize: 12, fontWeight: '700', textAlign: 'left', marginBottom: 8 },
+  devpostLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginTop: 4,
+    marginBottom: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#f4ecf6',
+    borderWidth: 1,
+    borderColor: 'rgba(90,0,97,0.15)',
+  },
+  devpostLinkLabel: { color: '#4a3b4c', fontSize: 12, fontWeight: '700' },
+  devpostLinkText: { color: '#5a0061', fontSize: 12, fontWeight: '800', textDecorationLine: 'underline', flexShrink: 1 },
   projectLockedBox: {
     width: '100%',
     flexDirection: 'row',
@@ -657,6 +673,7 @@ export function TeamsScreen() {
   const [projectError, setProjectError] = useState<string | null>(null)
   const [submissionOpensAt, setSubmissionOpensAt] = useState<string | null>(null)
   const [submissionDeadline, setSubmissionDeadline] = useState<string | null>(null)
+  const [devpostUrl, setDevpostUrl] = useState<string | null>(null)
 
   useEffect(() => {
     setIsHydrated(true)
@@ -811,11 +828,12 @@ export function TeamsScreen() {
       const { data: cfgRows } = await supabase
         .from('global_config')
         .select('key, value')
-        .in('key', ['project_submission_opens_at', 'project_submission_deadline'])
+        .in('key', ['project_submission_opens_at', 'project_submission_deadline', 'devpost_submission_url'])
       const cfg: Record<string, string> = {}
       ;(cfgRows || []).forEach((r: any) => { cfg[r.key] = r.value })
       setSubmissionOpensAt(cfg['project_submission_opens_at'] || null)
       setSubmissionDeadline(cfg['project_submission_deadline'] || null)
+      setDevpostUrl((cfg['devpost_submission_url'] || '').trim() || null)
     } catch (err: any) {
       console.error('Failed to load team details:', err)
       setError(err.message || 'Unable to retrieve team details.')
@@ -1278,6 +1296,28 @@ export function TeamsScreen() {
                 )
               })()}
 
+              <Text style={styles.label}>{t('teams.teamCode')}</Text>
+              <View style={styles.codeRow}>
+                <View style={styles.codeBox}>
+                  <Text style={styles.codeText}>{team.code}</Text>
+                </View>
+                <Pressable onPress={handleCopyCode} style={styles.copyBtn}>
+                  <Text style={styles.copyBtnText}>{copied ? t('teams.copied') : t('teams.copy')}</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ marginTop: 16 }}>
+                <TeamTrackSection
+                  teamId={team.id}
+                  isOwner={team.creator_id === userId}
+                  members={team.members}
+                  membersApplications={membersApplications}
+                />
+              </View>
+
+              <View style={styles.divider} />
+
+              <Text style={[styles.sectionTitle, { alignSelf: 'center', textAlign: 'center', marginTop: 10 }]}>{t('teams.projectSectionTitle')}</Text>
               {/* Project submission — big CTA (locked by the configured time window) */}
               {(() => {
                 const now = Date.now()
@@ -1289,6 +1329,18 @@ export function TeamsScreen() {
                   new Date(iso).toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                 return (
                   <>
+                    {project ? (
+                      <View style={styles.projectInfo}>
+                        <Text style={styles.projectInfoRow}>
+                          {t('teams.projectDeskLabel')}: <Text style={styles.projectInfoStrong}>{project.desk_number || '—'}</Text>
+                        </Text>
+                        {project.devpost_url ? (
+                          <Text style={styles.projectInfoRow} numberOfLines={1}>
+                            Devpost: <Text style={styles.projectInfoStrong}>{project.devpost_url}</Text>
+                          </Text>
+                        ) : null}
+                      </View>
+                    ) : null}
                     {notOpenYet || closed ? (
                       <View style={styles.projectLockedBox}>
                         <AppIcon name="lock.fill" size={15} color="#b45309" />
@@ -1311,45 +1363,14 @@ export function TeamsScreen() {
                         ) : null}
                       </>
                     )}
-                    {project ? (
-                      <View style={styles.projectInfo}>
-                        <Text style={styles.projectInfoRow}>
-                          {t('teams.projectDeskLabel')}: <Text style={styles.projectInfoStrong}>{project.desk_number || '—'}</Text>
-                        </Text>
-                        {project.devpost_url ? (
-                          <Text style={styles.projectInfoRow} numberOfLines={1}>
-                            Devpost: <Text style={styles.projectInfoStrong}>{project.devpost_url}</Text>
-                          </Text>
-                        ) : null}
-                      </View>
-                    ) : null}
                   </>
                 )
               })()}
 
-              <Text style={styles.label}>{t('teams.teamCode')}</Text>
-              <View style={styles.codeRow}>
-                <View style={styles.codeBox}>
-                  <Text style={styles.codeText}>{team.code}</Text>
-                </View>
-                <Pressable onPress={handleCopyCode} style={styles.copyBtn}>
-                  <Text style={styles.copyBtnText}>{copied ? t('teams.copied') : t('teams.copy')}</Text>
-                </Pressable>
-              </View>
-
-              <View style={{ marginTop: 16 }}>
-                <TeamTrackSection
-                  teamId={team.id}
-                  isOwner={team.creator_id === userId}
-                  members={team.members}
-                  membersApplications={membersApplications}
-                />
-              </View>
-
               <View style={styles.divider} />
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>{t('teams.members')} ({team.members.length}/{maxTeamSize})</Text>
+              <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 12, marginTop: 10 }}>
+                <Text style={[styles.sectionTitle, { marginBottom: 0, alignSelf: 'center', textAlign: 'center' }]}>{t('teams.members')} ({team.members.length}/{maxTeamSize})</Text>
               </View>
               {(() => {
                 const rows: React.ReactNode[] = []
@@ -1659,6 +1680,14 @@ export function TeamsScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>{t('teams.projectSubmit')}</Text>
             <Text style={styles.modalSubtitle}>{t('teams.projectModalDesc')}</Text>
+
+            {devpostUrl ? (
+              <Pressable onPress={() => Linking.openURL(devpostUrl).catch(() => {})} style={styles.devpostLinkRow}>
+                <AppIcon name="megaphone.fill" size={14} color="#5a0061" />
+                <Text style={styles.devpostLinkLabel}>{t('teams.projectDevpostConfigLabel')}:</Text>
+                <Text style={styles.devpostLinkText} numberOfLines={1}>{devpostUrl}</Text>
+              </Pressable>
+            ) : null}
 
             <StyledInput
               label={t('teams.projectDevpostLabel')}

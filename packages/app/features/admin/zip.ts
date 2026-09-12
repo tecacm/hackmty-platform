@@ -102,3 +102,48 @@ export function createZip(files: ZipEntry[]): Blob {
 
   return new Blob([...parts, ...central, end], { type: 'application/zip' })
 }
+
+/**
+ * Streaming ZIP writer (STORE): writes each entry straight to a sink (e.g. a File System
+ * Access writable stream) so files aren't all held in memory. Call add() per file (serially),
+ * then finish(). Only the central-directory metadata (tiny) is retained.
+ */
+export class ZipStreamer {
+  private enc = new TextEncoder()
+  private central: Uint8Array[] = []
+  private offset = 0
+  count = 0
+
+  constructor(private sink: (chunk: Uint8Array) => Promise<void> | void) {}
+
+  async add(name: string, data: Uint8Array): Promise<void> {
+    const nameBytes = this.enc.encode(name)
+    const crc = crc32(data)
+    const size = data.length
+    const local = concat([
+      u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0),
+      u32(crc), u32(size), u32(size), u16(nameBytes.length), u16(0), nameBytes,
+    ])
+    await this.sink(local)
+    await this.sink(data)
+    this.central.push(
+      concat([
+        u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0),
+        u32(crc), u32(size), u32(size), u16(nameBytes.length), u16(0), u16(0), u16(0), u16(0),
+        u32(0), u32(this.offset), nameBytes,
+      ])
+    )
+    this.offset += local.length + size
+    this.count++
+  }
+
+  async finish(): Promise<void> {
+    const cdStart = this.offset
+    let cdSize = 0
+    for (const c of this.central) cdSize += c.length
+    for (const c of this.central) await this.sink(c)
+    await this.sink(
+      concat([u32(0x06054b50), u16(0), u16(0), u16(this.count), u16(this.count), u32(cdSize), u32(cdStart), u16(0)])
+    )
+  }
+}
