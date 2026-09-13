@@ -217,11 +217,16 @@ const localizeJson = (v: any, locale = 'en'): string => {
   return v[locale] || v.en || (Object.values(v).find((x: any) => typeof x === 'string') as string) || ''
 }
 
-/** Rows come from the admin_track_participants() RPC (admin/organizer only). */
+/** Rows come from the admin_track_participants() RPC (admin/organizer only). Paginated past the 1000-row cap. */
 export async function fetchTrackParticipants(): Promise<any[]> {
-  const { data, error } = await supabase.rpc('admin_track_participants')
-  if (error) throw error
-  return (data as any[]) || []
+  return fetchAllRows<any>((from, to) =>
+    supabase
+      .rpc('admin_track_participants')
+      .select('*')
+      .order('user_id', { ascending: true })
+      .order('track_id', { ascending: true })
+      .range(from, to) as any
+  )
 }
 
 export function buildTrackParticipantsCsv(rows: any[], locale = 'en'): string {

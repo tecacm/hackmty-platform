@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, useWindowDimensions } from 'react-native'
-import { supabase, isSupabaseConfigured } from 'app/lib/supabase'
+import { supabase, isSupabaseConfigured, fetchAllRows, fetchAdminDirectoryEmails } from 'app/lib/supabase'
 import { BadgeIcon } from 'app/components/badge-icon'
 import { AppIcon } from 'app/components/app-icon'
 import { showAlert } from 'app/components/cross-alert'
@@ -105,15 +105,22 @@ export function TournamentTab() {
     ;(async () => {
       try {
         // profiles has no email column — names from profiles, emails from the admin RPC.
-        const [{ data: profs }, { data: cat }, { data: auth }, emailsRes] = await Promise.all([
-          supabase.from('profiles').select('id, first_name, last_name').order('first_name', { ascending: true }),
+        const [profs, { data: cat }, { data: auth }, emailsRes] = await Promise.all([
+          fetchAllRows((from, to) =>
+            supabase
+              .from('profiles')
+              .select('id, first_name, last_name')
+              .order('first_name', { ascending: true })
+              .order('id', { ascending: true })
+              .range(from, to)
+          ),
           supabase.from('badges').select('*').order('created_at', { ascending: true }),
           supabase.auth.getUser(),
-          supabase.rpc('get_admin_directory_emails'),
+          fetchAdminDirectoryEmails(),
         ])
         if (cancelled) return
         const emailMap: Record<string, string> = {}
-        ;(emailsRes?.data as any[] | null)?.forEach((e) => {
+        ;(emailsRes as any[] | null)?.forEach((e) => {
           if (e?.user_id && e?.email) emailMap[e.user_id] = e.email
         })
         setProfiles(

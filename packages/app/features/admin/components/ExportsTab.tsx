@@ -129,9 +129,22 @@ export function ExportsTab() {
       })
       setApps(rows)
       const fields = collectAnswerKeys(rows)
+      const prevAvailable = new Set(availableFields)
       setAvailableFields(fields)
-      setSelectedFields(new Set(fields))
-      setSelectedMeta(new Set(META_COLUMNS.map((m) => m.header)))
+      // Preserve the user's column choices across reloads: keep prior decisions for fields that
+      // already existed, and default-select only genuinely new fields (also covers the first load,
+      // where prevAvailable is empty → everything selected). Meta selections persist untouched.
+      setSelectedFields((prev) => {
+        const next = new Set<string>()
+        for (const f of fields) {
+          if (prevAvailable.has(f)) {
+            if (prev.has(f)) next.add(f)
+          } else {
+            next.add(f)
+          }
+        }
+        return next
+      })
     } catch (e: any) {
       showAlert(t('admin.exportFailed'), e?.message || 'Could not load registrations')
     } finally {

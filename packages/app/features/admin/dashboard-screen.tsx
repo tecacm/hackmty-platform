@@ -16,7 +16,7 @@ import { AdminTabBar, AdminTabType, ADMIN_TAB_PERMISSIONS } from './components/A
 import { SubmissionsSkeleton } from './components/submissions-skeleton'
 import { UserDirectorySkeleton } from './components/user-directory-skeleton'
 import { AppIcon } from 'app/components/app-icon'
-import { isSupabaseConfigured, supabase, fetchAllRows } from 'app/lib/supabase'
+import { isSupabaseConfigured, supabase, fetchAllRows, fetchAdminDirectoryEmails } from 'app/lib/supabase'
 import { useUserPermissions } from 'app/hooks/use-user-permissions'
 import { useSmartNavigate } from 'app/navigation/use-smart-navigate'
 import { useTranslation } from 'app/i18n'
@@ -655,9 +655,7 @@ export function AdminDashboardScreen() {
           .range(from, to)
       )
 
-      const { data: directoryEmails, error: directoryEmailsError } = await supabase
-        .rpc('get_admin_directory_emails')
-      if (directoryEmailsError) console.warn('Could not load auth emails:', directoryEmailsError.message)
+      const directoryEmails = await fetchAdminDirectoryEmails()
       const emailMap: Record<string, string> = {}
       directoryEmails?.forEach((entry: any) => { if (entry.user_id && entry.email) emailMap[entry.user_id] = entry.email })
 
