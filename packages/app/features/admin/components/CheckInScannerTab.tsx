@@ -15,7 +15,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native'
-import { supabase, isSupabaseConfigured, fetchAllRows } from 'app/lib/supabase'
+import { supabase, isSupabaseConfigured, fetchAllRows, fetchAdminDirectoryEmails } from 'app/lib/supabase'
 import { AppIcon } from 'app/components/app-icon'
 import { Skeleton } from 'moti/skeleton'
 import { BadgeIcon } from 'app/components/badge-icon'
@@ -400,7 +400,7 @@ export function CheckInScannerTab() {
       )
 
       // Enrich with auth directory emails if available
-      const { data: directoryEmails } = await supabase.rpc('get_admin_directory_emails')
+      const directoryEmails = await fetchAdminDirectoryEmails()
       const emailMap: Record<string, string> = {}
       directoryEmails?.forEach((entry: any) => {
         if (entry.user_id && entry.email) emailMap[entry.user_id] = entry.email
@@ -733,7 +733,7 @@ export function CheckInScannerTab() {
     setIsSearchingLookup(true)
     try {
       // 1. Load directory emails
-      const { data: directoryEmails } = await supabase.rpc('get_admin_directory_emails')
+      const directoryEmails = await fetchAdminDirectoryEmails()
       const emailMap: Record<string, string> = {}
       const matchingEmailUserIds: string[] = []
 
