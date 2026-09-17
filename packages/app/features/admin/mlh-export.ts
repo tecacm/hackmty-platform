@@ -1,7 +1,7 @@
 'use client'
 
 import { Platform } from 'react-native'
-import { supabase, fetchAllRows } from 'app/lib/supabase'
+import { supabase, fetchAllRows, fetchAdminDirectoryEmails } from 'app/lib/supabase'
 import { createZip, type ZipEntry } from './zip'
 
 // Human labels for the levelOfStudy select (MLH wants the readable label, not the value).
@@ -323,6 +323,70 @@ export async function exportTeamProjectsCsv(
   const stamp = new Date().toISOString().slice(0, 10)
   const scope = trackId ? `track-${trackId.slice(0, 8)}` : 'all'
   downloadCsv(`team-projects-${scope}-${stamp}.csv`, csv)
+  return rows.length
+}
+
+// ---------------------------------------------------------------------------
+// Check-in data export — per-checkpoint (or all) attendance rows.
+// ---------------------------------------------------------------------------
+
+/** Checkpoints for the checkpoint filter dropdown: { id, title, type_id }. */
+export async function fetchCheckpointOptions(): Promise<Array<{ id: string; title: any; type_id: string }>> {
+  const { data, error } = await supabase
+    .from('checkpoints')
+    .select('id, title, type_id')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data as any[]) || []
+}
+
+/** All check-in rows (optionally one checkpoint), paginated + enriched with name/email/checkpoint title. */
+export async function fetchCheckIns(opts: { checkpointId?: string } = {}): Promise<any[]> {
+  const checkpointId = opts.checkpointId && opts.checkpointId !== 'all' ? opts.checkpointId : null
+  const rows = await fetchAllRows<any>((from, to) => {
+    let q = supabase
+      .from('check_ins')
+      .select('id, user_id, checkpoint_id, checkpoint_type, created_at, profiles:user_id ( first_name, last_name, university )')
+    if (checkpointId) q = q.eq('checkpoint_id', checkpointId)
+    return q.order('created_at', { ascending: true }).order('id', { ascending: true }).range(from, to) as any
+  })
+
+  const [checkpoints, emails] = await Promise.all([fetchCheckpointOptions(), fetchAdminDirectoryEmails()])
+  const titleById: Record<string, any> = {}
+  checkpoints.forEach((c) => { titleById[c.id] = c.title })
+  const emailById: Record<string, string> = {}
+  emails.forEach((e) => { if (e.user_id) emailById[e.user_id] = e.email })
+
+  return rows.map((r) => ({
+    ...r,
+    checkpoint_title: titleById[r.checkpoint_id] || null,
+    first_name: r.profiles?.first_name || '',
+    last_name: r.profiles?.last_name || '',
+    university: r.profiles?.university || '',
+    email: emailById[r.user_id] || '',
+  }))
+}
+
+export function buildCheckInsCsv(rows: any[], locale = 'en'): string {
+  const columns: CsvColumn[] = [
+    { header: 'Checkpoint', get: (r) => localizeJson(r.checkpoint_title, locale) || str(r.checkpoint_id) },
+    { header: 'Checkpoint Type', get: (r) => str(r.checkpoint_type) },
+    { header: 'First Name', get: (r) => str(r.first_name) },
+    { header: 'Last Name', get: (r) => str(r.last_name) },
+    { header: 'Email', get: (r) => str(r.email) },
+    { header: 'University', get: (r) => str(r.university) },
+    { header: 'Checked In At', get: (r) => str(r.created_at) },
+  ]
+  return buildCsv(rows, columns)
+}
+
+/** Fetch → build → download check-in data for a checkpoint (or all). Returns row count. */
+export async function exportCheckInsCsv(locale = 'en', opts: { checkpointId?: string } = {}): Promise<number> {
+  const rows = await fetchCheckIns(opts)
+  const csv = buildCheckInsCsv(rows, locale)
+  const stamp = new Date().toISOString().slice(0, 10)
+  const cp = opts.checkpointId && opts.checkpointId !== 'all' ? opts.checkpointId.slice(0, 8) : 'all'
+  downloadCsv(`checkins-${cp}-${stamp}.csv`, csv)
   return rows.length
 }
 

@@ -18,6 +18,8 @@ import {
   exportTrackParticipantsCsv,
   exportResumesZip,
   exportTeamProjectsCsv,
+  exportCheckInsCsv,
+  fetchCheckpointOptions,
   fetchTeamProjects,
   fetchTrackUserIds,
   fetchTrackOptions,
@@ -53,6 +55,9 @@ export function ExportsTab() {
   const [preset, setPreset] = React.useState<'custom' | 'mlh'>('custom')
   const [trackOptions, setTrackOptions] = React.useState<Array<{ label: string; value: string }>>([{ label: 'All tracks', value: 'all' }])
   const [trackId, setTrackId] = React.useState('all')
+  const [checkpointOptions, setCheckpointOptions] = React.useState<Array<{ label: string; value: string }>>([{ label: 'All checkpoints', value: 'all' }])
+  const [checkinCheckpointId, setCheckinCheckpointId] = React.useState('all')
+  const [checkinsExporting, setCheckinsExporting] = React.useState(false)
 
   const [apps, setApps] = React.useState<any[] | null>(null)
   const [availableFields, setAvailableFields] = React.useState<string[]>([])
@@ -86,6 +91,22 @@ export function ExportsTab() {
       try {
         const tracks = await fetchTrackOptions()
         setTrackOptions([{ label: 'All tracks', value: 'all' }, ...tracks.map((tr) => ({ label: localizeTrackTitle(tr.title, locale), value: tr.id }))])
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [locale])
+
+  // Checkpoint options for the check-in export filter.
+  React.useEffect(() => {
+    if (!isSupabaseConfigured) return
+    ;(async () => {
+      try {
+        const cps = await fetchCheckpointOptions()
+        setCheckpointOptions([
+          { label: 'All checkpoints', value: 'all' },
+          ...cps.map((c) => ({ label: `${localizeTrackTitle(c.title, locale) || c.id}${c.type_id ? ` (${c.type_id})` : ''}`, value: c.id })),
+        ])
       } catch {
         /* ignore */
       }
@@ -198,6 +219,19 @@ export function ExportsTab() {
     }
   }
 
+  const handleExportCheckIns = async () => {
+    if (checkinsExporting) return
+    setCheckinsExporting(true)
+    try {
+      const n = await exportCheckInsCsv(locale, { checkpointId: checkinCheckpointId })
+      showAlert(t('admin.exportComplete'), t('admin.exportCompleteBody', { count: n, type: 'check-in' }))
+    } catch (e: any) {
+      showAlert(t('admin.exportFailed'), e?.message || 'Could not export check-ins')
+    } finally {
+      setCheckinsExporting(false)
+    }
+  }
+
   const [resumesExporting, setResumesExporting] = React.useState(false)
   const handleExportResumes = async () => {
     if (resumesExporting) return
@@ -297,12 +331,63 @@ export function ExportsTab() {
         <Text style={styles.hint}>{t('admin.exportResumesHint')}</Text>
       </View>
 
+      {/* Columns + download — appears right under the filters, after Load */}
+      {apps ? (
+        <View style={styles.card}>
+          <Text style={styles.loadedText}>{apps.length} registration{apps.length === 1 ? '' : 's'} loaded</Text>
+
+          {preset === 'custom' ? (
+            <>
+              <Text style={styles.label}>Columns — meta</Text>
+              <View style={styles.chipRow}>
+                {META_COLUMNS.map((m) => (
+                  <Chip key={m.header} label={m.header} active={selectedMeta.has(m.header)} onPress={() => toggleMeta(m.header)} />
+                ))}
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                <Text style={styles.label}>Columns — answer fields</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <Pressable onPress={selectAllFields}><Text style={styles.linkBtn}>Select all</Text></Pressable>
+                  <Pressable onPress={clearFields}><Text style={styles.linkBtn}>Clear</Text></Pressable>
+                </View>
+              </View>
+              {availableFields.length === 0 ? (
+                <Text style={styles.hint}>No answer fields found for this selection.</Text>
+              ) : (
+                <View style={styles.chipRow}>
+                  {availableFields.map((f) => (
+                    <Chip key={f} label={f} active={selectedFields.has(f)} onPress={() => toggleField(f)} />
+                  ))}
+                </View>
+              )}
+            </>
+          ) : null}
+
+          <Pressable onPress={handleDownload} disabled={exporting} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || exporting ? '#3d0042' : '#5a0061' }]}>
+            {exporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Download CSV</Text>}
+          </Pressable>
+          {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
+        </View>
+      ) : null}
+
       {/* Per-track participant export (assignment-based, independent of the filters above) */}
       <View style={styles.card}>
         <Text style={styles.label}>{t('admin.exportByTrackTitle')}</Text>
         <Text style={styles.hint}>{t('admin.exportByTrackHint')}</Text>
         <Pressable onPress={handleExportTracks} disabled={trackExporting} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || trackExporting ? '#3d0042' : '#5a0061' }]}>
           {trackExporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>{t('admin.exportByTrackAction')}</Text>}
+        </Pressable>
+        {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
+      </View>
+
+      {/* Check-in data export — filter by checkpoint (or all) */}
+      <View style={styles.card}>
+        <Text style={styles.label}>{t('admin.exportCheckinsTitle')}</Text>
+        <Text style={styles.hint}>{t('admin.exportCheckinsHint')}</Text>
+        <StyledSelect label={t('admin.exportCheckinsCheckpoint')} value={checkinCheckpointId} options={checkpointOptions} onValueChange={setCheckinCheckpointId} />
+        <Pressable onPress={handleExportCheckIns} disabled={checkinsExporting} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || checkinsExporting ? '#3d0042' : '#5a0061' }]}>
+          {checkinsExporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>{t('admin.exportCheckinsAction')}</Text>}
         </Pressable>
         {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
       </View>
@@ -362,44 +447,6 @@ export function ExportsTab() {
           )
         ) : null}
       </View>
-      {apps ? (
-        <View style={styles.card}>
-          <Text style={styles.loadedText}>{apps.length} registration{apps.length === 1 ? '' : 's'} loaded</Text>
-
-          {preset === 'custom' ? (
-            <>
-              <Text style={styles.label}>Columns — meta</Text>
-              <View style={styles.chipRow}>
-                {META_COLUMNS.map((m) => (
-                  <Chip key={m.header} label={m.header} active={selectedMeta.has(m.header)} onPress={() => toggleMeta(m.header)} />
-                ))}
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                <Text style={styles.label}>Columns — answer fields</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Pressable onPress={selectAllFields}><Text style={styles.linkBtn}>Select all</Text></Pressable>
-                  <Pressable onPress={clearFields}><Text style={styles.linkBtn}>Clear</Text></Pressable>
-                </View>
-              </View>
-              {availableFields.length === 0 ? (
-                <Text style={styles.hint}>No answer fields found for this selection.</Text>
-              ) : (
-                <View style={styles.chipRow}>
-                  {availableFields.map((f) => (
-                    <Chip key={f} label={f} active={selectedFields.has(f)} onPress={() => toggleField(f)} />
-                  ))}
-                </View>
-              )}
-            </>
-          ) : null}
-
-          <Pressable onPress={handleDownload} disabled={exporting} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || exporting ? '#3d0042' : '#5a0061' }]}>
-            {exporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Download CSV</Text>}
-          </Pressable>
-          {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
-        </View>
-      ) : null}
     </View>
   )
 }
