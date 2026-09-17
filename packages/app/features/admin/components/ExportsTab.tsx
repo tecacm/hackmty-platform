@@ -5,6 +5,7 @@ import { View, Text, Pressable, StyleSheet, Platform, ActivityIndicator, Linking
 import { supabase, isSupabaseConfigured, fetchAllRows } from 'app/lib/supabase'
 import { StyledSelect } from 'app/components/styled-select'
 import { AppIcon } from 'app/components/app-icon'
+import { MotiView } from 'moti'
 import { showAlert } from 'app/components/cross-alert'
 import { useTranslation } from 'app/i18n'
 import {
@@ -18,8 +19,9 @@ import {
   exportTrackParticipantsCsv,
   exportResumesZip,
   exportTeamProjectsCsv,
-  exportCheckInsCsv,
   fetchCheckpointOptions,
+  fetchCheckInsWithAnswers,
+  CHECKIN_META_COLUMNS,
   fetchTeamProjects,
   fetchTrackUserIds,
   fetchTrackOptions,
@@ -57,7 +59,13 @@ export function ExportsTab() {
   const [trackId, setTrackId] = React.useState('all')
   const [checkpointOptions, setCheckpointOptions] = React.useState<Array<{ label: string; value: string }>>([{ label: 'All checkpoints', value: 'all' }])
   const [checkinCheckpointId, setCheckinCheckpointId] = React.useState('all')
+  const [checkinTrackId, setCheckinTrackId] = React.useState('all')
   const [checkinsExporting, setCheckinsExporting] = React.useState(false)
+  const [checkinRows, setCheckinRows] = React.useState<any[] | null>(null)
+  const [checkinLoading, setCheckinLoading] = React.useState(false)
+  const [checkinFields, setCheckinFields] = React.useState<string[]>([])
+  const [checkinSelectedMeta, setCheckinSelectedMeta] = React.useState<Set<string>>(new Set(CHECKIN_META_COLUMNS.map((m) => m.header)))
+  const [checkinSelectedFields, setCheckinSelectedFields] = React.useState<Set<string>>(new Set())
 
   const [apps, setApps] = React.useState<any[] | null>(null)
   const [availableFields, setAvailableFields] = React.useState<string[]>([])
@@ -219,12 +227,51 @@ export function ExportsTab() {
     }
   }
 
-  const handleExportCheckIns = async () => {
-    if (checkinsExporting) return
+  const handleLoadCheckIns = async () => {
+    if (checkinLoading) return
+    setCheckinLoading(true)
+    try {
+      let userIds: string[] | undefined
+      if (checkinTrackId !== 'all') userIds = await fetchTrackUserIds(checkinTrackId)
+      const rows = await fetchCheckInsWithAnswers({ checkpointId: checkinCheckpointId, locale, userIds })
+      const fields = collectAnswerKeys(rows)
+      const prevAvailable = new Set(checkinFields)
+      setCheckinRows(rows)
+      setCheckinFields(fields)
+      // Preserve prior column choices across reloads; default-select genuinely new fields (and all on first load).
+      setCheckinSelectedFields((prev) => {
+        const next = new Set<string>()
+        for (const f of fields) {
+          if (prevAvailable.has(f)) { if (prev.has(f)) next.add(f) } else next.add(f)
+        }
+        return next
+      })
+    } catch (e: any) {
+      showAlert(t('admin.exportFailed'), e?.message || 'Could not load check-ins')
+    } finally {
+      setCheckinLoading(false)
+    }
+  }
+  const toggleCheckinMeta = (h: string) =>
+    setCheckinSelectedMeta((prev) => { const n = new Set(prev); n.has(h) ? n.delete(h) : n.add(h); return n })
+  const toggleCheckinField = (f: string) =>
+    setCheckinSelectedFields((prev) => { const n = new Set(prev); n.has(f) ? n.delete(f) : n.add(f); return n })
+  const handleExportCheckIns = () => {
+    if (!checkinRows || checkinsExporting) return
     setCheckinsExporting(true)
     try {
-      const n = await exportCheckInsCsv(locale, { checkpointId: checkinCheckpointId })
-      showAlert(t('admin.exportComplete'), t('admin.exportCompleteBody', { count: n, type: 'check-in' }))
+      const columns: CsvColumn[] = [
+        ...CHECKIN_META_COLUMNS.filter((m) => checkinSelectedMeta.has(m.header)),
+        ...checkinFields.filter((f) => checkinSelectedFields.has(f)).map((f) => answerColumn(f)),
+      ]
+      if (columns.length === 0) {
+        showAlert(t('admin.exportFailed'), 'Select at least one column.')
+        return
+      }
+      const csv = buildCsv(checkinRows, columns)
+      const stamp = new Date().toISOString().slice(0, 10)
+      const cp = checkinCheckpointId !== 'all' ? checkinCheckpointId.slice(0, 8) : 'all'
+      downloadCsv(`checkins-${cp}-${stamp}.csv`, csv)
     } catch (e: any) {
       showAlert(t('admin.exportFailed'), e?.message || 'Could not export check-ins')
     } finally {
@@ -325,51 +372,55 @@ export function ExportsTab() {
           {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Load registrations</Text>}
         </Pressable>
 
+        {apps ? (
+          <MotiView
+            from={{ opacity: 0, translateY: -6 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 220 }}
+            style={{ gap: 8, marginTop: 4 }}
+          >
+            <Text style={styles.loadedText}>{apps.length} registration{apps.length === 1 ? '' : 's'} loaded</Text>
+
+            {preset === 'custom' ? (
+              <>
+                <Text style={styles.label}>Columns — meta</Text>
+                <View style={styles.chipRow}>
+                  {META_COLUMNS.map((m) => (
+                    <Chip key={m.header} label={m.header} active={selectedMeta.has(m.header)} onPress={() => toggleMeta(m.header)} />
+                  ))}
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                  <Text style={styles.label}>Columns — answer fields</Text>
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <Pressable onPress={selectAllFields}><Text style={styles.linkBtn}>Select all</Text></Pressable>
+                    <Pressable onPress={clearFields}><Text style={styles.linkBtn}>Clear</Text></Pressable>
+                  </View>
+                </View>
+                {availableFields.length === 0 ? (
+                  <Text style={styles.hint}>No answer fields found for this selection.</Text>
+                ) : (
+                  <View style={styles.chipRow}>
+                    {availableFields.map((f) => (
+                      <Chip key={f} label={f} active={selectedFields.has(f)} onPress={() => toggleField(f)} />
+                    ))}
+                  </View>
+                )}
+              </>
+            ) : null}
+
+            <Pressable onPress={handleDownload} disabled={exporting} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || exporting ? '#3d0042' : '#5a0061' }]}>
+              {exporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Download CSV</Text>}
+            </Pressable>
+            {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
+          </MotiView>
+        ) : null}
+
         <Pressable onPress={handleExportResumes} disabled={resumesExporting} style={({ pressed }) => [styles.outlineBtn, { backgroundColor: pressed ? 'rgba(90,0,97,0.06)' : 'transparent' }]}>
           {resumesExporting ? <ActivityIndicator size="small" color="#5a0061" /> : <Text style={styles.outlineBtnText}>{t('admin.exportResumes')}</Text>}
         </Pressable>
         <Text style={styles.hint}>{t('admin.exportResumesHint')}</Text>
       </View>
-
-      {/* Columns + download — appears right under the filters, after Load */}
-      {apps ? (
-        <View style={styles.card}>
-          <Text style={styles.loadedText}>{apps.length} registration{apps.length === 1 ? '' : 's'} loaded</Text>
-
-          {preset === 'custom' ? (
-            <>
-              <Text style={styles.label}>Columns — meta</Text>
-              <View style={styles.chipRow}>
-                {META_COLUMNS.map((m) => (
-                  <Chip key={m.header} label={m.header} active={selectedMeta.has(m.header)} onPress={() => toggleMeta(m.header)} />
-                ))}
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                <Text style={styles.label}>Columns — answer fields</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Pressable onPress={selectAllFields}><Text style={styles.linkBtn}>Select all</Text></Pressable>
-                  <Pressable onPress={clearFields}><Text style={styles.linkBtn}>Clear</Text></Pressable>
-                </View>
-              </View>
-              {availableFields.length === 0 ? (
-                <Text style={styles.hint}>No answer fields found for this selection.</Text>
-              ) : (
-                <View style={styles.chipRow}>
-                  {availableFields.map((f) => (
-                    <Chip key={f} label={f} active={selectedFields.has(f)} onPress={() => toggleField(f)} />
-                  ))}
-                </View>
-              )}
-            </>
-          ) : null}
-
-          <Pressable onPress={handleDownload} disabled={exporting} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || exporting ? '#3d0042' : '#5a0061' }]}>
-            {exporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Download CSV</Text>}
-          </Pressable>
-          {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
-        </View>
-      ) : null}
 
       {/* Per-track participant export (assignment-based, independent of the filters above) */}
       <View style={styles.card}>
@@ -381,14 +432,54 @@ export function ExportsTab() {
         {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
       </View>
 
-      {/* Check-in data export — filter by checkpoint (or all) */}
+      {/* Check-in data export — filter by checkpoint + track, flexible columns (incl. application fields) */}
       <View style={styles.card}>
         <Text style={styles.label}>{t('admin.exportCheckinsTitle')}</Text>
         <Text style={styles.hint}>{t('admin.exportCheckinsHint')}</Text>
         <StyledSelect label={t('admin.exportCheckinsCheckpoint')} value={checkinCheckpointId} options={checkpointOptions} onValueChange={setCheckinCheckpointId} />
-        <Pressable onPress={handleExportCheckIns} disabled={checkinsExporting} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || checkinsExporting ? '#3d0042' : '#5a0061' }]}>
-          {checkinsExporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>{t('admin.exportCheckinsAction')}</Text>}
+        <StyledSelect label={t('admin.exportByTrackTitle')} value={checkinTrackId} options={trackOptions} onValueChange={setCheckinTrackId} />
+        <Pressable onPress={handleLoadCheckIns} disabled={checkinLoading} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || checkinLoading ? '#3d0042' : '#5a0061' }]}>
+          {checkinLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>{t('admin.exportCheckinsLoad')}</Text>}
         </Pressable>
+
+        {checkinRows ? (
+          <MotiView
+            from={{ opacity: 0, translateY: -6 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 220 }}
+            style={{ marginTop: 12, gap: 6 }}
+          >
+            <Text style={styles.loadedText}>{checkinRows.length} check-in{checkinRows.length === 1 ? '' : 's'} loaded</Text>
+
+            <Text style={styles.label}>Columns — meta</Text>
+            <View style={styles.chipRow}>
+              {CHECKIN_META_COLUMNS.map((m) => (
+                <Chip key={m.header} label={m.header} active={checkinSelectedMeta.has(m.header)} onPress={() => toggleCheckinMeta(m.header)} />
+              ))}
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+              <Text style={styles.label}>Columns — application fields</Text>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <Pressable onPress={() => setCheckinSelectedFields(new Set(checkinFields))}><Text style={styles.linkBtn}>Select all</Text></Pressable>
+                <Pressable onPress={() => setCheckinSelectedFields(new Set())}><Text style={styles.linkBtn}>Clear</Text></Pressable>
+              </View>
+            </View>
+            {checkinFields.length === 0 ? (
+              <Text style={styles.hint}>No application fields found for these users.</Text>
+            ) : (
+              <View style={styles.chipRow}>
+                {checkinFields.map((f) => (
+                  <Chip key={f} label={f} active={checkinSelectedFields.has(f)} onPress={() => toggleCheckinField(f)} />
+                ))}
+              </View>
+            )}
+
+            <Pressable onPress={handleExportCheckIns} disabled={checkinsExporting} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed || checkinsExporting ? '#3d0042' : '#5a0061' }]}>
+              {checkinsExporting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>{t('admin.exportCheckinsAction')}</Text>}
+            </Pressable>
+          </MotiView>
+        ) : null}
         {Platform.OS !== 'web' ? <Text style={styles.hint}>CSV download is available on the web dashboard.</Text> : null}
       </View>
 
@@ -408,7 +499,12 @@ export function ExportsTab() {
           projectRows.length === 0 ? (
             <Text style={[styles.hint, { marginTop: 10 }]}>{t('admin.exportProjectsEmpty')}</Text>
           ) : (
-            <View style={{ marginTop: 12, gap: 8 }}>
+            <MotiView
+              from={{ opacity: 0, translateY: -6 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: 'timing', duration: 220 }}
+              style={{ marginTop: 12, gap: 8 }}
+            >
               <View style={styles.searchBox}>
                 <AppIcon name="magnifyingglass" size={16} color="#9b8aa3" />
                 <TextInput
@@ -443,7 +539,7 @@ export function ExportsTab() {
                   </View>
                 ))
               )}
-            </View>
+            </MotiView>
           )
         ) : null}
       </View>

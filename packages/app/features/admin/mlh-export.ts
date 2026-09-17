@@ -390,6 +390,44 @@ export async function exportCheckInsCsv(locale = 'en', opts: { checkpointId?: st
   return rows.length
 }
 
+/** Check-in meta columns for the flexible column picker (mirrors META_COLUMNS for registrations). */
+export const CHECKIN_META_COLUMNS: CsvColumn[] = [
+  { header: 'Checkpoint', get: (r) => str(r.checkpoint_label) },
+  { header: 'Checkpoint Type', get: (r) => str(r.checkpoint_type) },
+  { header: 'First Name', get: (r) => str(r.first_name) },
+  { header: 'Last Name', get: (r) => str(r.last_name) },
+  { header: 'Email', get: (r) => str(r.email) },
+  { header: 'University', get: (r) => str(r.university) },
+  { header: 'Checked In At', get: (r) => str(r.created_at) },
+]
+
+/**
+ * Check-in rows (optionally one checkpoint) enriched with each user's merged application `answers`,
+ * so the exporter can offer dynamic answer-field columns (country, phone, dietary, …) like the
+ * registrations export. `checkpoint_label` is pre-localized for the meta column.
+ */
+export async function fetchCheckInsWithAnswers(opts: { checkpointId?: string; locale?: string; userIds?: string[] } = {}): Promise<any[]> {
+  const locale = opts.locale || 'en'
+  let base = await fetchCheckIns({ checkpointId: opts.checkpointId })
+  if (opts.userIds) {
+    const allow = new Set(opts.userIds)
+    base = base.filter((r) => allow.has(r.user_id))
+  }
+  base.forEach((r) => { r.checkpoint_label = localizeJson(r.checkpoint_title, locale) || r.checkpoint_id })
+
+  const userIds = Array.from(new Set(base.map((r) => r.user_id).filter(Boolean)))
+  const answersByUser: Record<string, any> = {}
+  if (userIds.length > 0) {
+    const apps = await fetchRegistrations({ userIds })
+    // Merge answers across a user's applications (later apps override earlier) for the fullest set.
+    for (const a of apps) {
+      if (!a.user_id) continue
+      answersByUser[a.user_id] = { ...(answersByUser[a.user_id] || {}), ...(a.answers || {}) }
+    }
+  }
+  return base.map((r) => ({ ...r, answers: answersByUser[r.user_id] || {} }))
+}
+
 /** Active tracks for a filter dropdown: { id, title }. */
 export async function fetchTrackOptions(): Promise<Array<{ id: string; title: any }>> {
   const { data } = await supabase.from('tracks').select('id, title').eq('is_active', true).order('display_order', { ascending: true })
